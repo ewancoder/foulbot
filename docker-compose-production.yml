@@ -1,0 +1,18 @@
+version: "3.8"
+
+networks:
+  default:
+    name: foulbot
+
+services:
+  foulbot:
+    image: ${DOCKER_REGISTRY-}foulbot
+    container_name: foulbot
+    build:
+      context: .
+      dockerfile: FoulBot.Api/Dockerfile
+    restart: unless-stopped
+    mem_limit: 1g
+    mem_reservation: 750m
+    env_file:
+      - secrets.env
