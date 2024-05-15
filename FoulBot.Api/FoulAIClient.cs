@@ -10,6 +10,7 @@ namespace FoulBot.Api;
 
 public interface IFoulAIClient
 {
+    IEnumerable<string> ContextInfo { get; }
     ValueTask<Tuple<string, string>> GetTextResponseAsync(string userName, string message);
     ValueTask<Tuple<Stream, string>> GetAudioResponseAsync(string userName, string message);
     ValueTask AddToContextAsync(string userName, string message);
@@ -36,6 +37,20 @@ public sealed class FoulAIClient : IFoulAIClient
         _client = new OpenAIClient(aiApiKey);
         _systemMessage = new ChatRequestSystemMessage($"{mainDirective}");
     }
+
+    public IEnumerable<string> ContextInfo => _context.Select<ChatRequestMessage, string>(item =>
+    {
+        if (item is ChatRequestSystemMessage sys)
+            return $"System: {sys.Name} > {sys.Content}";
+
+        if (item is ChatRequestAssistantMessage ass)
+            return $"Bot: {ass.Name} > {ass.Content}";
+
+        if (item is ChatRequestUserMessage user)
+            return $"User: {user.Name} > {user.Content}";
+
+        return string.Empty;
+    }).ToList();
 
     public void ClearContext()
     {

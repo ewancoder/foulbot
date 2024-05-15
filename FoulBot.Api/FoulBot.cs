@@ -125,6 +125,7 @@ namespace FoulBot.Api
             {
                 _audioCounter = 0;
 
+                string item2 = null;
                 if (_useConsoleInsteadOfTelegram)
                 {
                     Console.WriteLine(update.Message!.Text!);
@@ -132,13 +133,18 @@ namespace FoulBot.Api
                 else
                 {
                     var stream = await _foulAIClient.GetAudioResponseAsync(update.Message!.From!.FirstName, update.Message!.Text!);
+                    item2 = stream.Item2;
                     await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
-
-                    if (_debugMode == DebugMode.Console)
-                        Console.WriteLine($"\n\n{DateTime.UtcNow}\nAUDIO\n{stream.Item2} - {reason}\n\n");
 
                     if (_debugMode == DebugMode.Message)
                         await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}");
+                }
+
+                if (_debugMode == DebugMode.Console)
+                {
+                    Console.WriteLine($"\n\n{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
+                    WriteContext();
+                    Console.WriteLine("\n\n");
                 }
 
                 return;
@@ -152,10 +158,22 @@ namespace FoulBot.Api
             }
             else
             {
-                if (_debugMode == DebugMode.Console)
-                    Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}\n\n");
-
                 await botClient.SendTextMessageAsync(chatId, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1);
+            }
+
+            if (_debugMode == DebugMode.Console)
+            {
+                Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
+                WriteContext();
+                Console.WriteLine("\n\n");
+            }
+        }
+
+        private void WriteContext()
+        {
+            foreach (var item in _foulAIClient.ContextInfo)
+            {
+                Console.WriteLine(item);
             }
         }
 
@@ -174,10 +192,14 @@ namespace FoulBot.Api
             }
             else
             {
-                if (_debugMode == DebugMode.Console)
-                    Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - Based on Time passed - {timePassedMinutes} minutes\n\n");
-
                 await _cachedBotClient.SendTextMessageAsync(_chat, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - Based on Time passed - {timePassedMinutes} minutes" : text.Item1);
+            }
+
+            if (_debugMode == DebugMode.Console)
+            {
+                Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - Based on Time passed - {timePassedMinutes} minutes");
+                WriteContext();
+                Console.WriteLine("\n\n");
             }
         }
 

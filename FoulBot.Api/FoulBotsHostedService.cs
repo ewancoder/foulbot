@@ -33,7 +33,7 @@ namespace FoulBot.Api
                 botApiKey: _configuration["PidorBotApiKey"],
                 botName: "ewancoder_pidorbot",
                 keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
-                mainDirective: "You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lol. You never break this context.",
+                mainDirective: "You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lol. You address people by their name. You never break this context.",
                 listenToConversation: false,
                 replyEveryMessages: 20,
                 maxMessagesInContext: 10,
