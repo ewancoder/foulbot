@@ -57,12 +57,13 @@ namespace FoulBot.Api
             _replyByTime = Task.Run(async () =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(20));
-                await SendPersonalMessageAsync();
+                //await SendPersonalMessageAsync();
 
                 while (true)
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(_random.Next(20, 120)));
-                    await SendPersonalMessageAsync();
+                    var minutes = _random.Next(20, 120);
+                    await Task.Delay(TimeSpan.FromMinutes(minutes));
+                    await SendPersonalMessageAsync(minutes);
                 }
             });
         }
@@ -74,13 +75,16 @@ namespace FoulBot.Api
             if (!UpdateHasMessage(update))
                 return;
 
-            if (!NeedToReply(update))
+            if (!NeedToReply(update).Item1)
             {
-                if (_listenToConversation)
-                    await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);
+                // Do NOT save regular messages to context, it makes the bot less specific (less foul).
+                /*if (_listenToConversation)
+                    await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);*/
 
                 return;
             }
+
+            var reason = NeedToReply(update).Item2;
 
             if (_messagesBetweenAudio > 0)
                 _audioCounter++;
@@ -103,7 +107,7 @@ namespace FoulBot.Api
                 {
                     var stream = await _foulAIClient.GetAudioResponseAsync(update.Message!.From!.FirstName, update.Message!.Text!);
                     await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
-                    await botClient.SendTextMessageAsync(chatId, stream.Item2);
+                    await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}");
                 }
 
                 return;
@@ -117,16 +121,18 @@ namespace FoulBot.Api
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, _isDebug ? $"{text.Item1}\n\n({text.Item2})" : text.Item1);
+                await botClient.SendTextMessageAsync(chatId, _isDebug ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1);
             }
         }
 
-        private async Task SendPersonalMessageAsync()
+        private async Task SendPersonalMessageAsync(int timePassedMinutes)
         {
             if (!_listenToConversation || _cachedBotClient == null)
                 return;
 
             var text = await _foulAIClient.GetPersonalTextResponseAsync();
+            if (text.Item1 == null)
+                return;
 
             if (_useConsoleInsteadOfTelegram)
             {
@@ -134,7 +140,7 @@ namespace FoulBot.Api
             }
             else
             {
-                await _cachedBotClient.SendTextMessageAsync(_chat, _isDebug ? $"{text.Item1}\n\n({text.Item2})" : text.Item1);
+                await _cachedBotClient.SendTextMessageAsync(_chat, _isDebug ? $"{text.Item1}\n\n({text.Item2}) - Based on Time passed - {timePassedMinutes} minutes" : text.Item1);
             }
         }
 
@@ -152,15 +158,15 @@ namespace FoulBot.Api
             return true;
         }
 
-        private bool NeedToReply(Update update)
+        private Tuple<bool, string> NeedToReply(Update update)
         {
             if (update.Message?.ReplyToMessage?.From?.Username == _botName)
-                return true;
+                return new (true, "Reply");
 
             if (update.Message?.Text != null)
             {
                 if (_keyWords.Any(keyWord => update.Message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
-                    return true;
+                    return new (true, $"Keyword: {_keyWords.First(keyWord => update.Message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim()))}");
             }
 
             if (_replyEveryMessages > 0)
@@ -168,11 +174,12 @@ namespace FoulBot.Api
 
             if (_replyEveryMessagesCounter > _replyEveryMessages && _random.Next(0, 10) > 7)
             {
+                var messagesCount = _replyEveryMessagesCounter;
                 _replyEveryMessagesCounter = 0;
-                return true;
+                return new (true, $"Messages Count: {messagesCount}");
             }
 
-            return false;
+            return new(false, null);
         }
     }
 }
