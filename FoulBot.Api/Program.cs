@@ -6,10 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 var builder = WebApplication.CreateBuilder();
 
 var aiApiKey = builder.Configuration["OpenAIKey"];
-var isDebugging = true;
+var debugMode = DebugMode.Console;
 var useConsoleInsteadOfTelegram = false;
 
-builder.Services.AddSingleton(new FoulBotGatewayFactory(aiApiKey, isDebugging, useConsoleInsteadOfTelegram));
+builder.Services.AddSingleton(new FoulBotGatewayFactory(aiApiKey, debugMode, useConsoleInsteadOfTelegram));
 builder.Services.AddSingleton<FoulBotsHostedService>();
 builder.Services.AddHostedService(provider => provider.GetRequiredService<FoulBotsHostedService>());
 
@@ -33,3 +33,10 @@ app.MapPut("/api/bots/{botName}", (string botName, string mainDirective) =>
 });
 
 await app.RunAsync();
+
+public enum DebugMode
+{
+    Disabled = 0,
+    Console = 1,
+    Message = 2
+}

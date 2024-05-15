@@ -14,16 +14,16 @@ namespace FoulBot.Api
     public sealed class FoulBotGatewayFactory
     {
         private readonly string _aiApiKey;
-        private readonly bool _isDebugging;
+        private readonly DebugMode _debugMode;
         private readonly bool _useConsoleInsteadOfTelegram;
 
         public FoulBotGatewayFactory(
             string aiApiKey,
-            bool isDebugging,
+            DebugMode debugMode,
             bool useConsoleInsteadOfTelegram)
         {
             _aiApiKey = aiApiKey;
-            _isDebugging = isDebugging;
+            _debugMode = debugMode;
             _useConsoleInsteadOfTelegram = useConsoleInsteadOfTelegram;
         }
 
@@ -35,7 +35,7 @@ namespace FoulBot.Api
             int messagesBetweenAudio = 0)
         {
             return new FoulBotGateway(
-                _isDebugging,
+                _debugMode,
                 botApiKey,
                 _aiApiKey,
                 botName,
@@ -52,7 +52,7 @@ namespace FoulBot.Api
     {
         private readonly List<string> _cachedChats = new List<string>();
         private readonly DateTime _start = DateTime.UtcNow;
-        private readonly bool _isDebugging;
+        private readonly DebugMode _debugMode;
         private readonly string _aiApiKey;
         private readonly ITelegramBotClient _client;
         private readonly string _botName;
@@ -67,7 +67,7 @@ namespace FoulBot.Api
         private string _mainDirective;
 
         public FoulBotGateway(
-            bool isDebugging,
+            DebugMode debugMode,
             string botApiKey,
             string aiApiKey,
             string botName,
@@ -78,7 +78,7 @@ namespace FoulBot.Api
             int messagesBetweenAudio,
             bool useConsoleInsteadOfTelegram)
         {
-            _isDebugging = isDebugging;
+            _debugMode = debugMode;
             _aiApiKey = aiApiKey;
             _botName = botName;
             _keyWords = keyWords;
@@ -96,7 +96,7 @@ namespace FoulBot.Api
                     _client,
                     chat,
                     _botName,
-                    _isDebugging,
+                    _debugMode,
                     _keyWords,
                     _listenToConversation,
                     new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
@@ -122,7 +122,7 @@ namespace FoulBot.Api
                 _client,
                 chat,
                 _botName,
-                _isDebugging,
+                _debugMode,
                 _keyWords,
                 _listenToConversation,
                 new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
