@@ -14,6 +14,9 @@ public interface IFoulAIClient
     ValueTask<Tuple<Stream, string>> GetAudioResponseAsync(string userName, string message);
     ValueTask AddToContextAsync(string userName, string message);
     ValueTask<Tuple<string, string>> GetPersonalTextResponseAsync();
+    void ClearContext();
+    void ChangeDirective(string directive);
+    string GetDirective();
 }
 
 public sealed class FoulAIClient : IFoulAIClient
@@ -21,7 +24,7 @@ public sealed class FoulAIClient : IFoulAIClient
     private readonly int _maxMessagesInContext;
     private readonly OpenAIClient _client;
     private readonly List<ChatRequestMessage> _context = new List<ChatRequestMessage>();
-    private readonly ChatRequestSystemMessage _systemMessage;
+    private ChatRequestSystemMessage _systemMessage;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
 
     public FoulAIClient(
@@ -33,6 +36,19 @@ public sealed class FoulAIClient : IFoulAIClient
         _client = new OpenAIClient(aiApiKey);
         _systemMessage = new ChatRequestSystemMessage($"{mainDirective}");
     }
+
+    public void ClearContext()
+    {
+        _context.Clear();
+    }
+
+    public void ChangeDirective(string directive)
+    {
+        _systemMessage = new ChatRequestSystemMessage(directive);
+        ClearContext();
+    }
+
+    public string GetDirective() => _systemMessage.Content;
 
     public async ValueTask<Tuple<string, string>> GetTextResponseAsync(string userName, string message)
     {

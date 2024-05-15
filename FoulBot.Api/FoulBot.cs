@@ -75,11 +75,36 @@ namespace FoulBot.Api
             if (!UpdateHasMessage(update))
                 return;
 
+            var chatId = update.Message!.Chat.Id;
+            if (chatId.ToString() != _chat)
+                throw new InvalidOperationException("Chat ID doesn't match."); // Log this.
+
+            if (update.Message.Text == $"{_botName} clear context")
+            {
+                _foulAIClient.ClearContext();
+                await botClient.SendTextMessageAsync(chatId, "Context cleared");
+                return;
+            }
+
+            if (update.Message.Text.StartsWith($"{_botName} change directive "))
+            {
+                var directive = update.Message.Text.Replace($"{_botName} change directive ", "");
+                _foulAIClient.ChangeDirective(directive);
+                await botClient.SendTextMessageAsync(chatId, "Changed directive, context cleared");
+                return;
+            }
+
+            if (update.Message.Text == $"{_botName} get directive")
+            {
+                var directive = _foulAIClient.GetDirective();
+                await botClient.SendTextMessageAsync(chatId, $"Current directive: {directive}");
+                return;
+            }
+
             if (!NeedToReply(update).Item1)
             {
-                // Do NOT save regular messages to context, it makes the bot less specific (less foul).
-                /*if (_listenToConversation)
-                    await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);*/
+                if (_listenToConversation)
+                    await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);
 
                 return;
             }
@@ -90,10 +115,6 @@ namespace FoulBot.Api
                 _audioCounter++;
             if (_replyEveryMessages > 0)
                 _replyEveryMessagesCounter++;
-
-            var chatId = update.Message!.Chat.Id;
-            if (chatId.ToString() != _chat)
-                throw new InvalidOperationException("Chat ID doesn't match."); // Log this.
 
             if (_audioCounter > _messagesBetweenAudio)
             {

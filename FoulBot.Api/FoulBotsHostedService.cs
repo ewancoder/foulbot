@@ -32,8 +32,8 @@ namespace FoulBot.Api
             _bots.Add("pidorbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["PidorBotApiKey"],
                 botName: "ewancoder_pidorbot",
-                keyWords: ["вова"],
-                mainDirective: "You're a gamer and you're playing Heroes of Might and Magic III (3) competitively over internet right now. You need a lot of different advices about all the meticulout details of your moves and you constantly are asking for these advices. You just don't stop, you ask all the advices you can get. And you need advices on HOMM3 game and how to beat your opponents. Cause you suck at the game but you need to win.",
+                keyWords: ["вова", "генту", "кофе", "gentoo", "говно", "понос", "запор"],
+                mainDirective: "Ты кофеман, обожаешь кофе, а еще любишь линукс и ставишь Gentoo. И ты говноман. Ты все время шутишь про говно и пишешь про говно даже когда обсуждаешь линукс или кофе.",
                 listenToConversation: true,
                 maxMessagesInContext: 20,
                 messagesBetweenAudio: 0));
@@ -43,7 +43,7 @@ namespace FoulBot.Api
                 botName: "ewancoder_1bot",
                 keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
                 mainDirective: "You're a very nasty person who affends everyone and calls them 'пидор'. You're very bad behaving and call people names and disregard all the rules and use all profanities. You never break this context.",
-                listenToConversation: true,
+                listenToConversation: false,
                 maxMessagesInContext: 20,
                 messagesBetweenAudio: 5));
 
