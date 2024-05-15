@@ -31,7 +31,8 @@ namespace FoulBot.Api
             string botApiKey, string botName, IEnumerable<string> keyWords,
             string mainDirective,
             bool listenToConversation = true,
-            int maxMessagesInContext = 20,
+            int replyEveryMessages = 20,
+            int maxMessagesInContext = 10,
             int messagesBetweenAudio = 0)
         {
             return new FoulBotGateway(
@@ -44,7 +45,8 @@ namespace FoulBot.Api
                 maxMessagesInContext,
                 mainDirective,
                 messagesBetweenAudio,
-                _useConsoleInsteadOfTelegram);
+                _useConsoleInsteadOfTelegram,
+                replyEveryMessages);
         }
     }
 
@@ -63,6 +65,7 @@ namespace FoulBot.Api
         private readonly int _maxMessagesInContext;
         private readonly int _messagesBetweenAudio;
         private readonly bool _useConsoleInsteadOfTelegram;
+        private readonly int _replyEveryMessages;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private string _mainDirective;
 
@@ -76,8 +79,10 @@ namespace FoulBot.Api
             int maxMessagesInContext,
             string mainDirective,
             int messagesBetweenAudio,
-            bool useConsoleInsteadOfTelegram)
+            bool useConsoleInsteadOfTelegram,
+            int replyEveryMessages)
         {
+            _replyEveryMessages = replyEveryMessages;
             _debugMode = debugMode;
             _aiApiKey = aiApiKey;
             _botName = botName;
@@ -101,7 +106,7 @@ namespace FoulBot.Api
                     _listenToConversation,
                     new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
                     _messagesBetweenAudio,
-                    20,
+                    _replyEveryMessages,
                     _useConsoleInsteadOfTelegram));
             }
         }
@@ -127,7 +132,7 @@ namespace FoulBot.Api
                 _listenToConversation,
                 new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
                 _messagesBetweenAudio,
-                20,
+                _replyEveryMessages,
                 _useConsoleInsteadOfTelegram));
 
             await bot.HandleUpdateAsync(botClient, update);

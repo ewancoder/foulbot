@@ -101,7 +101,9 @@ namespace FoulBot.Api
                 return;
             }
 
-            if (!NeedToReply(update).Item1)
+            var reasonResponse = NeedToReply(update);
+
+            if (!reasonResponse.Item1)
             {
                 if (_listenToConversation)
                     await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);
@@ -109,7 +111,10 @@ namespace FoulBot.Api
                 return;
             }
 
-            var reason = NeedToReply(update).Item2;
+            var reason = reasonResponse.Item2;
+            if (string.IsNullOrEmpty(reason))
+            {
+            }
 
             if (_messagesBetweenAudio > 0)
                 _audioCounter++;
