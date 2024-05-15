@@ -100,10 +100,10 @@ public sealed class FoulAIClient : IFoulAIClient
 
     private void AddPersonalMessageToContext()
     {
-        /*if (_context.Count == 0)
-            _context.Add(new ChatRequestSystemMessage("Say that you've started working."));
-        else*/
-            _context.Add(new ChatRequestSystemMessage("Say something."));
+        if (_context.Count < 5)
+            return;
+
+        _context.Add(new ChatRequestSystemMessage("Say something based on context as if you're a participant in the discussion."));
     }
 
     private IEnumerable<ChatRequestMessage> GetMessagesWithContext()
