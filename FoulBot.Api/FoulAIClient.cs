@@ -11,7 +11,7 @@ namespace FoulBot.Api;
 public interface IFoulAIClient
 {
     ValueTask<Tuple<string, string>> GetTextResponseAsync(string userName, string message);
-    ValueTask<Stream> GetAudioResponseAsync(string userName, string message);
+    ValueTask<Tuple<Stream, string>> GetAudioResponseAsync(string userName, string message);
     ValueTask AddToContextAsync(string userName, string message);
     ValueTask<Tuple<string, string>> GetPersonalTextResponseAsync();
 }
@@ -61,11 +61,11 @@ public sealed class FoulAIClient : IFoulAIClient
         }
     }
 
-    public async ValueTask<Stream> GetAudioResponseAsync(string userName, string message)
+    public async ValueTask<Tuple<Stream, string>> GetAudioResponseAsync(string userName, string message)
     {
         var textResponse = await GetTextResponseAsync(userName, message);
 
-        return await GenerateSpeechAsync(textResponse.Item1);
+        return new(await GenerateSpeechAsync(textResponse.Item1), $"{textResponse.Item2}, + {GetAudioCents(textResponse.Item1)} cents for audio");
     }
 
     public async ValueTask AddToContextAsync(string userName, string message)
@@ -81,6 +81,15 @@ public sealed class FoulAIClient : IFoulAIClient
         }
     }
 
+    private decimal GetAudioCents(string text)
+    {
+        var charactersCount = text.Length;
+
+        var amountOfCents = 100m * (decimal)charactersCount * 15m / 1_000_000m;
+
+        return amountOfCents;
+    }
+
     private void AddToContext(string userName, string message)
     {
         _context.Add(new ChatRequestUserMessage(message)
@@ -91,10 +100,10 @@ public sealed class FoulAIClient : IFoulAIClient
 
     private void AddPersonalMessageToContext()
     {
-        if (_context.Count == 0)
+        /*if (_context.Count == 0)
             _context.Add(new ChatRequestSystemMessage("Say that you've started working."));
-        else
-            _context.Add(new ChatRequestSystemMessage("Send your own message."));
+        else*/
+            _context.Add(new ChatRequestSystemMessage("Say something."));
     }
 
     private IEnumerable<ChatRequestMessage> GetMessagesWithContext()

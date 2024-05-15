@@ -32,15 +32,15 @@ namespace FoulBot.Api
             _bots.Add("pidorbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["PidorBotApiKey"],
                 botName: "ewancoder_pidorbot",
-                keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
-                mainDirective: "You're a member of a chat of a few people who all relocated into different countries. You're also moving between countries all the time.",
+                keyWords: ["вова"],
+                mainDirective: "You're a developer with a lot of ideas about improvements for the bot that insults everyone. You want to make it better so it insults even more and uses a lot of profanities. You want to share your ideas with other people. Your name is Вова.",
                 listenToConversation: true,
                 maxMessagesInContext: 20,
                 messagesBetweenAudio: 0));
 
             _bots.Add("testbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["TestBotApiKey"],
-                botName: "ewancoder-bot1",
+                botName: "ewancoder_1bot",
                 keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
                 mainDirective: "You're a very nasty person who affends everyone and calls them 'пидор'. You're very bad behaving and call people names and disregard all the rules and use all profanities. You never break this context.",
                 listenToConversation: true,

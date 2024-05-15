@@ -102,7 +102,8 @@ namespace FoulBot.Api
                 else
                 {
                     var stream = await _foulAIClient.GetAudioResponseAsync(update.Message!.From!.FirstName, update.Message!.Text!);
-                    await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream));
+                    await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
+                    await botClient.SendTextMessageAsync(chatId, stream.Item2);
                 }
 
                 return;
@@ -116,7 +117,7 @@ namespace FoulBot.Api
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, _isDebug ? $"{text.Item1} ({text.Item2})" : text.Item1);
+                await botClient.SendTextMessageAsync(chatId, _isDebug ? $"{text.Item1}\n\n({text.Item2})" : text.Item1);
             }
         }
 
@@ -133,7 +134,7 @@ namespace FoulBot.Api
             }
             else
             {
-                await _cachedBotClient.SendTextMessageAsync(_chat, _isDebug ? $"{text.Item1} ({text.Item2})" : text.Item1);
+                await _cachedBotClient.SendTextMessageAsync(_chat, _isDebug ? $"{text.Item1}\n\n({text.Item2})" : text.Item1);
             }
         }
 
