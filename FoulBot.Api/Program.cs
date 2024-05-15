@@ -8,6 +8,9 @@ var builder = WebApplication.CreateBuilder();
 var aiApiKey = builder.Configuration["OpenAIKey"];
 var debugMode = DebugMode.Console;
 var useConsoleInsteadOfTelegram = false;
+#if DEBUG
+useConsoleInsteadOfTelegram = true;
+#endif
 
 builder.Services.AddSingleton(new FoulBotGatewayFactory(aiApiKey, debugMode, useConsoleInsteadOfTelegram));
 builder.Services.AddSingleton<FoulBotsHostedService>();
