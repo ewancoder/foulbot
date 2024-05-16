@@ -122,7 +122,7 @@ public sealed class FoulAIClient : IFoulAIClient
         return amountOfCents;
     }
 
-    private void AddToContext(string userName, string message)
+    private void AddToContext( string userName, string message)
     {
         _context.Add(new ChatRequestUserMessage(message)
         {

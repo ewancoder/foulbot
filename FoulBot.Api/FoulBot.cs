@@ -106,7 +106,7 @@ namespace FoulBot.Api
             if (!reasonResponse.Item1)
             {
                 if (_listenToConversation)
-                    await _foulAIClient.AddToContextAsync(update.Message!.From!.FirstName, update.Message!.Text!);
+                    await _foulAIClient.AddToContextAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
 
                 return;
             }
@@ -132,7 +132,7 @@ namespace FoulBot.Api
                 }
                 else
                 {
-                    var stream = await _foulAIClient.GetAudioResponseAsync(update.Message!.From!.FirstName, update.Message!.Text!);
+                    var stream = await _foulAIClient.GetAudioResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
                     item2 = stream.Item2;
                     await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
 
@@ -142,16 +142,16 @@ namespace FoulBot.Api
 
                 if (_debugMode == DebugMode.Console)
                 {
-                    Console.WriteLine("Chat: " + chatId);
-                    Console.WriteLine($"\n\n{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
+                    Console.WriteLine($"\n\nChat: {chatId}");
                     WriteContext();
+                    Console.WriteLine($"{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
                     Console.WriteLine("\n\n");
                 }
 
                 return;
             }
 
-            var text = await _foulAIClient.GetTextResponseAsync(update.Message!.From!.FirstName, update.Message!.Text!);
+            var text = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
 
             if (_useConsoleInsteadOfTelegram)
             {
@@ -164,11 +164,25 @@ namespace FoulBot.Api
 
             if (_debugMode == DebugMode.Console)
             {
-                Console.WriteLine("Chat: " + chatId);
-                Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
+                Console.WriteLine($"\n\nChat: {chatId}");
                 WriteContext();
+                Console.WriteLine($"{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
                 Console.WriteLine("\n\n");
             }
+        }
+
+        private string GetUserName(User user)
+        {
+            var name = string.Empty;
+            if (user.FirstName != null)
+                name += user.FirstName;
+
+            if (user.LastName != null)
+                name = string.IsNullOrEmpty(name) ? user.LastName : $"{user.FirstName}_{user.LastName}";
+
+            // TODO: Filter the output so it adheres to telegram Name pattern.
+
+            return name;
         }
 
         private void WriteContext()
@@ -199,9 +213,9 @@ namespace FoulBot.Api
 
             if (_debugMode == DebugMode.Console)
             {
-                Console.WriteLine("Chat: " + _chat);
-                Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - Based on Time passed - {timePassedMinutes} minutes");
+                Console.WriteLine($"\n\nChat: {_chat}");
                 WriteContext();
+                Console.WriteLine($"{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - Based on Time passed - {timePassedMinutes} minutes");
                 Console.WriteLine("\n\n");
             }
         }
@@ -214,7 +228,7 @@ namespace FoulBot.Api
             if (update.Message?.Text == null)
                 return false;
 
-            if (update.Message.From == null || update.Message.From.FirstName == null)
+            if (update.Message.From == null || (update.Message.From.FirstName == null && update.Message.From.LastName == null))
                 return false;
 
             return true;
