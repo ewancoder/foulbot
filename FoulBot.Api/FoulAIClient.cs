@@ -174,6 +174,10 @@ public sealed class FoulAIClient : IFoulAIClient
 
     public async ValueTask<Tuple<string, string>> GetPersonalTextResponseAsync()
     {
+        var lastAssistantMessage = _context.LastOrDefault() as ChatRequestAssistantMessage;
+        if (lastAssistantMessage == null || lastAssistantMessage.Role == ChatRole.Assistant)
+            return new(null, null);
+
         // TODO: This is duplicated code for now.
         await _lock.WaitAsync();
 

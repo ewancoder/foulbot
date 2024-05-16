@@ -63,7 +63,7 @@ namespace FoulBot.Api
                 {
                     var minutes = _random.Next(20, 120);
                     await Task.Delay(TimeSpan.FromMinutes(minutes));
-                    await SendPersonalMessageAsync(minutes);
+                    await SendPersonalMessageIfNeededAsync(minutes);
                 }
             });
         }
@@ -177,7 +177,7 @@ namespace FoulBot.Api
             }
         }
 
-        private async Task SendPersonalMessageAsync(int timePassedMinutes)
+        private async Task SendPersonalMessageIfNeededAsync(int timePassedMinutes)
         {
             if (!_listenToConversation || _cachedBotClient == null)
                 return;
