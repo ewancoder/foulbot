@@ -115,9 +115,6 @@ namespace FoulBot.Api
             }
 
             var reason = reasonResponse.Item2;
-            if (string.IsNullOrEmpty(reason))
-            {
-            }
 
             if (_messagesBetweenAudio > 0)
                 _audioCounter++;

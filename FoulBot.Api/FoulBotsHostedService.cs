@@ -50,7 +50,7 @@ namespace FoulBot.Api
                 maxMessagesInContext: 10,
                 messagesBetweenAudio: 5));
 
-            _bots.Add("ew_test", _factory.CreateFoulBot(
+            _bots.Add("ewancoder_1bot", _factory.CreateFoulBot(
                 botApiKey: _configuration["TestBotApiKey"],
                 botName: "ew_test",
                 keyWords: ["вова", "генту", "кофе", "gentoo", "говно", "понос", "запор"],
