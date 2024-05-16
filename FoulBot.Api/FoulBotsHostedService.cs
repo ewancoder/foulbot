@@ -39,6 +39,18 @@ namespace FoulBot.Api
                 maxMessagesInContext: 10,
                 messagesBetweenAudio: 5));
 
+            _bots.Add("ew_pidorbot", _factory.CreateFoulBot(
+                botApiKey: _configuration["EwPidorBotApiKey"],
+                botName: "ew_pidorbot",
+                keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
+                mainDirective: "You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lot. You address people by their name. You never break this context.",
+                listenToConversation: false,
+                replyEveryMessages: 20,
+                maxMessagesInContext: 10,
+                messagesBetweenAudio: 5));
+
+
+
             _bots.Add("testbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["TestBotApiKey"],
                 botName: "ewancoder_1bot",
