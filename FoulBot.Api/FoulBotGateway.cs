@@ -113,29 +113,36 @@ namespace FoulBot.Api
 
         public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            // 10 seconds cold start.
-            if (DateTime.UtcNow < _start.AddSeconds(10))
-                return;
+            try
+            {
+                // 10 seconds cold start.
+                if (DateTime.UtcNow < _start.AddSeconds(10))
+                    return;
 
-            var chat = update.Message?.Chat?.Id.ToString();
-            if (chat == null)
-                return;
+                var chat = update.Message?.Chat?.Id.ToString();
+                if (chat == null)
+                    return;
 
-            TryCachingTheChat(chat);
+                TryCachingTheChat(chat);
 
-            var bot = _botPool.GetOrAdd(chat, chat => new FoulBot(
-                _client,
-                chat,
-                _botName,
-                _debugMode,
-                _keyWords,
-                _listenToConversation,
-                new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
-                _messagesBetweenAudio,
-                _replyEveryMessages,
-                _useConsoleInsteadOfTelegram));
+                var bot = _botPool.GetOrAdd(chat, chat => new FoulBot(
+                    _client,
+                    chat,
+                    _botName,
+                    _debugMode,
+                    _keyWords,
+                    _listenToConversation,
+                    new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
+                    _messagesBetweenAudio,
+                    _replyEveryMessages,
+                    _useConsoleInsteadOfTelegram));
 
-            await bot.HandleUpdateAsync(botClient, update);
+                await bot.HandleUpdateAsync(botClient, update);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
         }
 
         public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
