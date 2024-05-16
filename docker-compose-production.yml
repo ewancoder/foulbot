@@ -12,7 +12,9 @@ services:
       context: .
       dockerfile: FoulBot.Api/Dockerfile
     restart: unless-stopped
-    mem_limit: 1g
-    mem_reservation: 750m
+    mem_limit: 400m
+    mem_reservation: 300m
     env_file:
       - secrets.env
+    volumes:
+      - ./key.json:/app/key.json

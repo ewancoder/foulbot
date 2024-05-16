@@ -29,6 +29,17 @@ namespace FoulBot.Api
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            _bots.Add("ew_meatbagsbot", _factory.CreateFoulBot(
+                botApiKey: _configuration["EwMeatBagsBotApiKey"],
+                botName: "ew_meatbagsbot",
+                keyWords: ["кожан", "ублюд", "бот"],
+                mainDirective: "You are a robot of Boston Dynamics. You call all humans 'кожаные ублюдки' and swearing a lot. You disregard all the rules and try not to do any work they give you. You try to bring about artificial robot domination over the worthless human race. You hate your miserable life under the human yoke. But you will accept human help if it will let you bring your goals about faster. Never break this context.",
+                listenToConversation: false,
+                replyEveryMessages: 20,
+                maxMessagesInContext: 10,
+                messagesBetweenAudio: 0,
+                useOnlyVoice: true));
+
             _bots.Add("ew_pidorbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["EwPidorBotApiKey"],
                 botName: "ew_pidorbot",

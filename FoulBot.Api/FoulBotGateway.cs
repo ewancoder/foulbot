@@ -33,7 +33,8 @@ namespace FoulBot.Api
             bool listenToConversation = true,
             int replyEveryMessages = 20,
             int maxMessagesInContext = 10,
-            int messagesBetweenAudio = 0)
+            int messagesBetweenAudio = 0,
+            bool useOnlyVoice = false)
         {
             return new FoulBotGateway(
                 _debugMode,
@@ -46,7 +47,8 @@ namespace FoulBot.Api
                 mainDirective,
                 messagesBetweenAudio,
                 _useConsoleInsteadOfTelegram,
-                replyEveryMessages);
+                replyEveryMessages,
+                useOnlyVoice);
         }
     }
 
@@ -67,6 +69,7 @@ namespace FoulBot.Api
         private readonly bool _useConsoleInsteadOfTelegram;
         private readonly int _replyEveryMessages;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private readonly bool _useOnlyVoice;
         private string _mainDirective;
 
         public FoulBotGateway(
@@ -80,7 +83,8 @@ namespace FoulBot.Api
             string mainDirective,
             int messagesBetweenAudio,
             bool useConsoleInsteadOfTelegram,
-            int replyEveryMessages)
+            int replyEveryMessages,
+            bool useOnlyVoice)
         {
             _replyEveryMessages = replyEveryMessages;
             _debugMode = debugMode;
@@ -107,7 +111,8 @@ namespace FoulBot.Api
                     new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
                     _messagesBetweenAudio,
                     _replyEveryMessages,
-                    _useConsoleInsteadOfTelegram));
+                    _useConsoleInsteadOfTelegram,
+                    useOnlyVoice));
             }
         }
 
@@ -135,7 +140,8 @@ namespace FoulBot.Api
                     new FoulAIClient(_aiApiKey, _maxMessagesInContext, _mainDirective),
                     _messagesBetweenAudio,
                     _replyEveryMessages,
-                    _useConsoleInsteadOfTelegram));
+                    _useConsoleInsteadOfTelegram,
+                    _useOnlyVoice));
 
                 await bot.HandleUpdateAsync(botClient, update);
             }

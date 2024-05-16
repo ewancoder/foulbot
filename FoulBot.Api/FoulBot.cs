@@ -27,6 +27,7 @@ namespace FoulBot.Api
         private readonly Random _random = new Random();
         private readonly int _replyEveryMessages;
         private readonly Task _replyByTime;
+        private readonly bool _useOnlyVoice;
         private ITelegramBotClient? _cachedBotClient;
         private int _audioCounter = 0;
         private int _replyEveryMessagesCounter = 0;
@@ -41,7 +42,8 @@ namespace FoulBot.Api
             IFoulAIClient foulAIClient,
             int messagesBetweenAudio,
             int replyEveryMessages,
-            bool useConsoleInsteadOfTelegram)
+            bool useConsoleInsteadOfTelegram,
+            bool useOnlyVoice)
         {
             _chat = chat;
             _botName = botName;
@@ -53,6 +55,7 @@ namespace FoulBot.Api
             _cachedBotClient = botClient;
             _useConsoleInsteadOfTelegram = useConsoleInsteadOfTelegram;
             _replyEveryMessages = replyEveryMessages;
+            _useOnlyVoice = useOnlyVoice;
 
             _replyByTime = Task.Run(async () =>
             {
@@ -121,7 +124,7 @@ namespace FoulBot.Api
             if (_replyEveryMessages > 0)
                 _replyEveryMessagesCounter++;
 
-            if (_audioCounter > _messagesBetweenAudio)
+            if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice == true)
             {
                 _audioCounter = 0;
 
@@ -130,7 +133,7 @@ namespace FoulBot.Api
                 {
                     Console.WriteLine(update.Message!.Text!);
                 }
-                else
+                else if (_useOnlyVoice == false)
                 {
                     var stream = await _foulAIClient.GetAudioResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
                     item2 = stream.Item2;
@@ -138,6 +141,15 @@ namespace FoulBot.Api
 
                     if (_debugMode == DebugMode.Message)
                         await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
+                } else
+                {
+                    var textResponse = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
+                    var stream = await new GoogleTtsService().GetAudioAsync(textResponse.Item1);
+                    item2 = textResponse.Item2;
+                    await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream));
+
+                    if (_debugMode == DebugMode.Message)
+                        await botClient.SendTextMessageAsync(chatId, $"{textResponse.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
                 }
 
                 if (_debugMode == DebugMode.Console)

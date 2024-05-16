@@ -4,3 +4,4 @@
 *.user
 *.chats
 /secrets.env
+**/key.json
