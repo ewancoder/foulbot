@@ -29,16 +29,6 @@ namespace FoulBot.Api
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _bots.Add("pidorbot", _factory.CreateFoulBot(
-                botApiKey: _configuration["PidorBotApiKey"],
-                botName: "ewancoder_pidorbot",
-                keyWords: ["пидор", "бот", "bot", "pidor", "du", "ду", "сн", "sn"],
-                mainDirective: "You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lot. You address people by their name. You never break this context.",
-                listenToConversation: false,
-                replyEveryMessages: 20,
-                maxMessagesInContext: 10,
-                messagesBetweenAudio: 5));
-
             _bots.Add("ew_pidorbot", _factory.CreateFoulBot(
                 botApiKey: _configuration["EwPidorBotApiKey"],
                 botName: "ew_pidorbot",
@@ -49,11 +39,9 @@ namespace FoulBot.Api
                 maxMessagesInContext: 10,
                 messagesBetweenAudio: 5));
 
-
-
-            _bots.Add("testbot", _factory.CreateFoulBot(
+            _bots.Add("ew_test", _factory.CreateFoulBot(
                 botApiKey: _configuration["TestBotApiKey"],
-                botName: "ewancoder_1bot",
+                botName: "ew_test",
                 keyWords: ["вова", "генту", "кофе", "gentoo", "говно", "понос", "запор"],
                 mainDirective: "Ты кофеман, обожаешь кофе, а еще любишь линукс и ставишь Gentoo. И ты говноман. Ты все время шутишь про говно и пишешь про говно даже когда обсуждаешь линукс или кофе.",
                 listenToConversation: true,

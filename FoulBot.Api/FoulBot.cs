@@ -142,6 +142,7 @@ namespace FoulBot.Api
 
                 if (_debugMode == DebugMode.Console)
                 {
+                    Console.WriteLine("Chat: " + chatId);
                     Console.WriteLine($"\n\n{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
                     WriteContext();
                     Console.WriteLine("\n\n");
@@ -163,6 +164,7 @@ namespace FoulBot.Api
 
             if (_debugMode == DebugMode.Console)
             {
+                Console.WriteLine("Chat: " + chatId);
                 Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
                 WriteContext();
                 Console.WriteLine("\n\n");
@@ -197,6 +199,7 @@ namespace FoulBot.Api
 
             if (_debugMode == DebugMode.Console)
             {
+                Console.WriteLine("Chat: " + _chat);
                 Console.WriteLine($"\n\n{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - Based on Time passed - {timePassedMinutes} minutes");
                 WriteContext();
                 Console.WriteLine("\n\n");
