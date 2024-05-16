@@ -82,7 +82,7 @@ namespace FoulBot.Api
             if (update.Message.Text == $"{_botName} clear context")
             {
                 _foulAIClient.ClearContext();
-                await botClient.SendTextMessageAsync(chatId, "Context cleared", parseMode: ParseMode.Markdown);
+                await botClient.SendTextMessageAsync(chatId, "Context cleared"/*, parseMode: ParseMode.Markdown*/);
                 return;
             }
 
@@ -90,14 +90,14 @@ namespace FoulBot.Api
             {
                 var directive = update.Message.Text.Replace($"{_botName} change directive ", "");
                 _foulAIClient.ChangeDirective(directive);
-                await botClient.SendTextMessageAsync(chatId, "Changed directive, context cleared", parseMode: ParseMode.Markdown);
+                await botClient.SendTextMessageAsync(chatId, "Changed directive, context cleared"/*, parseMode: ParseMode.Markdown*/);
                 return;
             }
 
             if (update.Message.Text == $"{_botName} get directive")
             {
                 var directive = _foulAIClient.GetDirective();
-                await botClient.SendTextMessageAsync(chatId, $"Current directive: {directive}", parseMode: ParseMode.Markdown);
+                await botClient.SendTextMessageAsync(chatId, $"Current directive: {directive}"/*, parseMode: ParseMode.Markdown*/);
                 return;
             }
 
@@ -137,7 +137,7 @@ namespace FoulBot.Api
                     await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
 
                     if (_debugMode == DebugMode.Message)
-                        await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}", parseMode: ParseMode.Markdown);
+                        await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
                 }
 
                 if (_debugMode == DebugMode.Console)
@@ -159,7 +159,7 @@ namespace FoulBot.Api
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1, parseMode: ParseMode.Markdown);
+                await botClient.SendTextMessageAsync(chatId, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1/*, parseMode: ParseMode.Markdown*/);
             }
 
             if (_debugMode == DebugMode.Console)
@@ -194,7 +194,7 @@ namespace FoulBot.Api
             }
             else
             {
-                await _cachedBotClient.SendTextMessageAsync(_chat, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - Based on Time passed - {timePassedMinutes} minutes" : text.Item1, parseMode: ParseMode.Markdown);
+                await _cachedBotClient.SendTextMessageAsync(_chat, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - Based on Time passed - {timePassedMinutes} minutes" : text.Item1/*, parseMode: ParseMode.Markdown*/);
             }
 
             if (_debugMode == DebugMode.Console)
