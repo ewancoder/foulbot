@@ -11,6 +11,7 @@
     <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.16" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
     <PackageReference Include="Telegram.Bot" Version="19.0.0" />
+    <PackageReference Include="UnidecodeSharpFork" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using UnidecodeSharpFork;
 
 namespace FoulBot.Api;
 
@@ -125,7 +126,7 @@ public sealed class FoulAIClient : IFoulAIClient
     {
         _context.Add(new ChatRequestUserMessage(message)
         {
-            Name = userName
+            Name = userName.Unidecode()
         });
     }
 
