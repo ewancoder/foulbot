@@ -22,10 +22,12 @@ namespace FoulBot.Api
         private readonly ChatId _chat;
         private readonly Task _typing;
         private readonly DateTime _startedAt;
+        private readonly ChatAction _action;
         private string _text = null;
 
-        public TypingImitator(ITelegramBotClient client, ChatId chat)
+        public TypingImitator(ITelegramBotClient client, ChatId chat, ChatAction action)
         {
+            _action = action;
             _client = client;
             _chat = chat;
 
@@ -39,7 +41,7 @@ namespace FoulBot.Api
 
             while (_text == null && DateTime.UtcNow - _startedAt < TimeSpan.FromMinutes(1))
             {
-                await _client.SendChatActionAsync(_chat, ChatAction.Typing);
+                await _client.SendChatActionAsync(_chat, _action);
                 try
                 {
                     await Task.Delay(random.Next(300, 10000), _cts.Token);
@@ -56,7 +58,7 @@ namespace FoulBot.Api
                 if (remainingSeconds <= 0)
                     remainingSeconds = 1;
 
-                await _client.SendChatActionAsync(_chat, ChatAction.Typing);
+                await _client.SendChatActionAsync(_chat, _action);
                 await Task.Delay(random.Next(2000, Convert.ToInt32(Math.Floor(Math.Min(10000, remainingSeconds))) + 2000));
             }
         }
@@ -193,15 +195,18 @@ namespace FoulBot.Api
 
             await Task.Delay(delay);
 
-            using var typing = new TypingImitator(botClient, chatId);
+            var action = ChatAction.Typing;
+            if (_messagesBetweenAudio > 0)
+                _audioCounter++;
+            if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice)
+                action = ChatAction.RecordVoice;
+            using var typing = new TypingImitator(botClient, chatId, action);
             try
             {
-                if (_messagesBetweenAudio > 0)
-                    _audioCounter++;
                 if (_replyEveryMessages > 0)
                     _replyEveryMessagesCounter++;
 
-                if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice == true)
+                if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice)
                 {
                     _audioCounter = 0;
 
@@ -271,20 +276,6 @@ namespace FoulBot.Api
             {
                 typing.FinishTypingText(" ");
                 throw;
-            }
-        }
-
-        private async Task ImitateTypingAsync(ITelegramBotClient botClient, ChatId chatId, CancellationToken token)
-        {
-            var random = new Random();
-
-            while (true)
-            {
-                await botClient.SendChatActionAsync(chatId, ChatAction.Typing);
-                await Task.Delay(random.Next(300, 10000), token);
-
-                if (token.IsCancellationRequested)
-                    return;
             }
         }
 
