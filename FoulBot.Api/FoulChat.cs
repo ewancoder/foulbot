@@ -39,7 +39,10 @@ public sealed class FoulChat : IFoulChat
                 var snapshot = _context.ToList();
                 return snapshot;
             }
-            catch { }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
         }
     }
 

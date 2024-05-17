@@ -44,7 +44,10 @@ namespace FoulBot.Api
                 {
                     await Task.Delay(random.Next(300, 10000), _cts.Token);
                 }
-                catch { }
+                catch (Exception exception)
+                {
+                    Console.WriteLine(exception);
+                }
             }
 
             var timeSeconds = TimeSpan.FromSeconds(Convert.ToInt32(Math.Floor(60m * ((decimal)_text.Length / 1000m))));
@@ -75,7 +78,10 @@ namespace FoulBot.Api
                 FinishTypingText(" ");
                 _cts.Dispose();
             }
-            catch { }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
         }
     }
 }

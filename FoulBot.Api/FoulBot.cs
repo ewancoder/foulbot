@@ -249,8 +249,9 @@ public sealed class FoulBot : IFoulBot
 
             LogContextAndResponse(context, aiGeneratedTextResponse);
         }
-        catch (Exception exc)
+        catch (Exception exception)
         {
+            Console.WriteLine(exception);
         }
         finally
         {
