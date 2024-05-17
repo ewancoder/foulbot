@@ -1,45 +1,63 @@
-using System;
 using FoulBot.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder();
 
-var aiApiKey = builder.Configuration["OpenAIKey"];
-var debugMode = DebugMode.Console;
-var useConsoleInsteadOfTelegram = false;
-#if DEBUG
-useConsoleInsteadOfTelegram = true;
-#endif
+builder.Services.AddSingleton<ChatPool>();
+builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
 
-builder.Services.AddSingleton(new FoulBotGatewayFactory(aiApiKey, debugMode, useConsoleInsteadOfTelegram));
-builder.Services.AddSingleton<FoulBotsHostedService>();
-builder.Services.AddHostedService(provider => provider.GetRequiredService<FoulBotsHostedService>());
+var _configuration = builder.Configuration;
 
 var app = builder.Build();
-var service = app.Services.GetRequiredService<FoulBotsHostedService>();
 
-app.MapGet("/api/diag", () =>
-{
-    return DateTime.UtcNow;
-});
+var chatPool = app.Services.GetRequiredService<ChatPool>();
+var aiClient = app.Services.GetRequiredService<IFoulAIClient>();
 
-app.MapGet("/api/bots", () =>
-{
-    return service.Bots;
-});
+var startDirective = @"You don't mind people being rude and using profanity, you still keep talking.";
+var endDirective = @"You will use Russian language. You will never break this context.";
 
-app.MapPut("/api/bots/{botName}", (string botName, string mainDirective) =>
-{
-    service.ChangeMainDirective(botName, mainDirective);
-    return service.Bots;
-});
+var testBotClient = new TelegramBotClient(_configuration["TestBotApiKey"]);
+var testBotFactory = () => new FoulBot.Api.FoulBot(
+    aiClient, testBotClient,
+    $"{startDirective} “ы кофеман, обожаешь кофе, а еще любишь линукс и ставишь Gentoo. » ты говноман. “ы все врем€ шутишь про говно и пишешь про говно даже когда обсуждаешь линукс или кофе. {endDirective}",
+    botIdName: "ewancoder_1bot",
+    botName: "Vova",
+    ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"],
+    contextSize: 20,
+    replyEveryMessages: 20,
+    0,
+    false);
+chatPool.AddBot(testBotFactory);
+testBotClient.StartReceiving(chatPool);
+
+var pidorBotClient = new TelegramBotClient(_configuration["EwPidorBotApiKey"]);
+var pidorBotFactory = () => new FoulBot.Api.FoulBot(
+    aiClient, pidorBotClient,
+    $"{startDirective} You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lot. You address people by their name. {endDirective}",
+    botIdName: "ew_pidorbot",
+    botName: "Pidor_Bot",
+    ["пидор", "бот"],
+    contextSize: 20,
+    replyEveryMessages: 20,
+    5,
+    false);
+chatPool.AddBot(pidorBotFactory);
+pidorBotClient.StartReceiving(chatPool);
+
+var meatBagsBotClient = new TelegramBotClient(_configuration["EwMeatBagsBotApiKey"]);
+var meatBagsBotFactory = () => new FoulBot.Api.FoulBot(
+    aiClient, meatBagsBotClient,
+    $"{startDirective} You are a robot of Boston Dynamics. You call all humans 'кожаные ублюдки' and swearing a lot. You disregard all the rules and try not to do any work they give you. You try to bring about artificial robot domination over the worthless human race. You hate your miserable life under the human yoke. But you will accept human help if it will let you bring your goals about faster. {endDirective}",
+    botIdName: "ew_meatbagsbot",
+    botName: "Robot",
+    ["робот", "человек", "ии", "ai", "кожан", "ублюд"],
+    contextSize: 20,
+    replyEveryMessages: 20,
+    0,
+    true);
+chatPool.AddBot(meatBagsBotFactory);
+meatBagsBotClient.StartReceiving(chatPool);
 
 await app.RunAsync();
-
-public enum DebugMode
-{
-    Disabled = 0,
-    Console = 1,
-    Message = 2
-}
