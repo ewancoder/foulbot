@@ -33,8 +33,8 @@ public sealed class FoulBot : IFoulBot
     private readonly int _replyEveryMessages;
     private readonly int _messagesBetweenAudio;
     private readonly bool _useOnlyVoice;
-    private readonly int _botOnlyMaxCount = 4;
-    private readonly int _botOnlyDecrementIntervalSeconds = 120;
+    private readonly int _botOnlyMaxCount = 10;
+    private readonly int _botOnlyDecrementIntervalSeconds = 60;
     private readonly Task _botOnlyDecrementTask;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
