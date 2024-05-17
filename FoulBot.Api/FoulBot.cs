@@ -226,6 +226,7 @@ public sealed class FoulBot : IFoulBot
             .ToList();
 
         var allMessages = fullContext
+            .Where(message => !ShouldAct(message) && !IsMyOwnMessage(message))
             .Select(message =>
             {
                 if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
@@ -233,7 +234,7 @@ public sealed class FoulBot : IFoulBot
 
                 return message;
             })
-            .TakeLast(_contextSize)
+            .TakeLast(_contextSize / 2) // Populate only second half with these messages.
             .ToList();
 
         var combinedContext = onlyAddressedToMe.Concat(allMessages)

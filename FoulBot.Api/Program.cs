@@ -25,7 +25,7 @@ var testBotFactory = () => new FoulBot.Api.FoulBot(
     botIdName: "ewancoder_1bot",
     botName: "Vova",
     ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"],
-    contextSize: 20,
+    contextSize: 12,
     replyEveryMessages: 20,
     0,
     false);
@@ -39,7 +39,7 @@ var pidorBotFactory = () => new FoulBot.Api.FoulBot(
     botIdName: "ew_pidorbot",
     botName: "Pidor_Bot",
     ["пидор", "бот"],
-    contextSize: 20,
+    contextSize: 16,
     replyEveryMessages: 20,
     5,
     false);
@@ -53,7 +53,7 @@ var meatBagsBotFactory = () => new FoulBot.Api.FoulBot(
     botIdName: "ew_meatbagsbot",
     botName: "Robot",
     ["робот", "человек", "ии", "ai", "кожан", "ублюд"],
-    contextSize: 20,
+    contextSize: 16,
     replyEveryMessages: 20,
     0,
     true);

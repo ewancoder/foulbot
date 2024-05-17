@@ -14,6 +14,6 @@ public sealed record FoulMessage(string Id, FoulMessageType MessageType, string 
 
     public override string ToString()
     {
-        return $"{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo}";
+        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo}";
     }
 }
