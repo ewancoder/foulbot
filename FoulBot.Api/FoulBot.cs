@@ -158,7 +158,7 @@ public sealed class FoulBot : IFoulBot
             }
 
             // This will also cause this method to trigger again. Handle this on this level.
-            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null));
+            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow));
 
             if (!_useOnlyVoice)
             {
@@ -213,17 +213,37 @@ public sealed class FoulBot : IFoulBot
 
     private List<FoulMessage> GetContextForAI(List<FoulMessage> fullContext)
     {
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, null) }
-            .Concat(fullContext
-                .Where(message => ShouldAct(message) || IsMyOwnMessage(message))
-                .Select(message =>
-                {
-                    if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
-                        return message.AsUser();
+        var onlyAddressedToMe = fullContext
+            .Where(message => ShouldAct(message) || IsMyOwnMessage(message))
+            .Select(message =>
+            {
+                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
+                    return message.AsUser();
 
-                    return message;
-                })
-                .TakeLast(_contextSize))
+                return message;
+            })
+            .TakeLast(_contextSize)
+            .ToList();
+
+        var allMessages = fullContext
+            .Select(message =>
+            {
+                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
+                    return message.AsUser();
+
+                return message;
+            })
+            .TakeLast(_contextSize)
+            .ToList();
+
+        var combinedContext = onlyAddressedToMe.Concat(allMessages)
+            .DistinctBy(x => x.Id)
+            .OrderBy(x => x.Date)
+            .TakeLast(_contextSize)
+            .ToList();
+
+        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, null, DateTime.MinValue) }
+            .Concat(combinedContext)
             .ToList();
     }
 
