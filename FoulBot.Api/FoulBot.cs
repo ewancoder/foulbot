@@ -67,6 +67,9 @@ public sealed class FoulBot : IFoulBot
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
+        if (_replyEveryMessages > 0)
+            _replyEveryMessagesCounter++;
+
         // TODO: Do NOT send multiple messages in a row if you just sent some. Otherwise it's possible that bot will always talk with itself.
         // BUT if there are MULTIPLE new messages in context apart from yours AND they match your keywords - DO send once more.
 
@@ -90,12 +93,8 @@ public sealed class FoulBot : IFoulBot
                 .ToList();
         }
 
-        if (!unprocessedMessages.Exists(ShouldAct))
+        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
             return;
-
-        var xax1 = snapshot;
-        var sender = message.SenderName;
-        var text = message.Text;
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
         await _lock.WaitAsync();
@@ -242,16 +241,6 @@ public sealed class FoulBot : IFoulBot
 
         if (_keyWords.Any(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
             return true;
-
-        if (_replyEveryMessages > 0)
-            _replyEveryMessagesCounter++;
-
-        if (_replyEveryMessagesCounter > _replyEveryMessages && _random.Next(0, 10) > 7)
-        {
-            var messagesCount = _replyEveryMessagesCounter;
-            _replyEveryMessagesCounter = 0;
-            return true;
-        }
 
         return false;
     }
