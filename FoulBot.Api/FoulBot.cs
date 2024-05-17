@@ -79,11 +79,14 @@ public sealed class FoulBot : IFoulBot
     {
         _chat = chat;
         _chat.MessageReceived += OnMessageReceived;
+        Console.WriteLine($"Bot {_botName} joined chat.");
     }
 
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
+        Console.WriteLine($"\nMESSAGE RECEIVED: {message.Text}\n");
+
         if (_replyEveryMessages > 0)
             _replyEveryMessagesCounter++;
 
@@ -259,6 +262,7 @@ public sealed class FoulBot : IFoulBot
             await Task.Delay(TimeSpan.FromMilliseconds(_random.Next(3000, 12000)));
 
             _lock.Release();
+            Console.WriteLine("We got to finally.");
         }
     }
 
