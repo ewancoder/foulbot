@@ -113,7 +113,7 @@ public sealed class FoulAIClient : IFoulAIClient
         }
     }
 
-    private decimal GetAudioCents(string text)
+    public decimal GetAudioCents(string text)
     {
         var charactersCount = text.Length;
 
@@ -160,7 +160,7 @@ public sealed class FoulAIClient : IFoulAIClient
         return new[] { _systemMessage }.Concat(_context).ToList();
     }
 
-    private async ValueTask<Stream> GenerateSpeechAsync(string message)
+    public async ValueTask<Stream> GenerateSpeechAsync(string message)
     {
         var response = await _client.GenerateSpeechFromTextAsync(new SpeechGenerationOptions
         {

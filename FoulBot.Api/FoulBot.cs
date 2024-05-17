@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -14,6 +15,70 @@ namespace FoulBot.Api
         ValueTask HandleUpdateAsync(ITelegramBotClient botClient, Update update);
     }
 
+    public sealed class TypingImitator : IDisposable
+    {
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private readonly ITelegramBotClient _client;
+        private readonly ChatId _chat;
+        private readonly Task _typing;
+        private readonly DateTime _startedAt;
+        private string _text = null;
+
+        public TypingImitator(ITelegramBotClient client, ChatId chat)
+        {
+            _client = client;
+            _chat = chat;
+
+            _startedAt = DateTime.UtcNow;
+            _typing = ImitateTypingAsync();
+        }
+
+        private async Task ImitateTypingAsync()
+        {
+            var random = new Random();
+
+            while (_text == null && DateTime.UtcNow - _startedAt < TimeSpan.FromMinutes(1))
+            {
+                await _client.SendChatActionAsync(_chat, ChatAction.Typing);
+                try
+                {
+                    await Task.Delay(random.Next(300, 10000), _cts.Token);
+                }
+                catch { }
+            }
+
+            var timeSeconds = TimeSpan.FromSeconds(Convert.ToInt32(Math.Floor(60m * ((decimal)_text.Length / 1000m))));
+
+            var remainingSeconds = (timeSeconds - (DateTime.UtcNow - _startedAt)).TotalSeconds;
+            while (remainingSeconds > 1)
+            {
+                remainingSeconds = (timeSeconds - (DateTime.UtcNow - _startedAt)).TotalSeconds;
+                if (remainingSeconds <= 0)
+                    remainingSeconds = 1;
+
+                await _client.SendChatActionAsync(_chat, ChatAction.Typing);
+                await Task.Delay(random.Next(2000, Convert.ToInt32(Math.Floor(Math.Min(10000, remainingSeconds))) + 2000));
+            }
+        }
+
+        public Task FinishTypingText(string text)
+        {
+            _text = text;
+            _cts.Cancel();
+            return _typing;
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                FinishTypingText(" ");
+                _cts.Dispose();
+            }
+            catch { }
+        }
+    }
+
     public sealed class FoulBot
     {
         private readonly string _chat;
@@ -21,7 +86,7 @@ namespace FoulBot.Api
         private readonly DebugMode _debugMode;
         private readonly IEnumerable<string> _keyWords;
         private readonly bool _listenToConversation;
-        private readonly IFoulAIClient _foulAIClient;
+        private readonly FoulAIClient _foulAIClient;
         private readonly int _messagesBetweenAudio;
         private readonly bool _useConsoleInsteadOfTelegram;
         private readonly Random _random = new Random();
@@ -39,7 +104,7 @@ namespace FoulBot.Api
             DebugMode debugMode,
             IEnumerable<string> keyWords,
             bool listenToConversation,
-            IFoulAIClient foulAIClient,
+            FoulAIClient foulAIClient,
             int messagesBetweenAudio,
             int replyEveryMessages,
             bool useConsoleInsteadOfTelegram,
@@ -116,67 +181,110 @@ namespace FoulBot.Api
 
             var reason = reasonResponse.Item2;
 
-            if (_messagesBetweenAudio > 0)
-                _audioCounter++;
-            if (_replyEveryMessages > 0)
-                _replyEveryMessagesCounter++;
-
-            if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice == true)
+            var delay = _random.Next(1, 100);
+            if (delay > 90)
             {
-                _audioCounter = 0;
+                delay = _random.Next(1000, 3000);
+            }
+            else
+            {
+                delay = _random.Next(250, 1200);
+            }
 
-                string item2 = null;
+            await Task.Delay(delay);
+
+            using var typing = new TypingImitator(botClient, chatId);
+            try
+            {
+                if (_messagesBetweenAudio > 0)
+                    _audioCounter++;
+                if (_replyEveryMessages > 0)
+                    _replyEveryMessagesCounter++;
+
+                if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice == true)
+                {
+                    _audioCounter = 0;
+
+                    string item2 = null;
+                    if (_useConsoleInsteadOfTelegram)
+                    {
+                        Console.WriteLine(update.Message!.Text!);
+                    }
+                    else if (_useOnlyVoice == false)
+                    {
+                        var textResponse = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
+                        Tuple<System.IO.Stream, string> stream = new(await _foulAIClient.GenerateSpeechAsync(textResponse.Item1), $"{textResponse.Item2}, + {_foulAIClient.GetAudioCents(textResponse.Item1)} cents for audio");
+
+                        await typing.FinishTypingText(textResponse.Item1);
+
+                        item2 = stream.Item2;
+                        await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
+
+                        if (_debugMode == DebugMode.Message)
+                            await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
+                    }
+                    else
+                    {
+                        var textResponse = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
+                        var stream = await new GoogleTtsService().GetAudioAsync(textResponse.Item1);
+                        item2 = textResponse.Item2;
+
+                        await typing.FinishTypingText(textResponse.Item1);
+                        await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream));
+
+                        if (_debugMode == DebugMode.Message)
+                            await botClient.SendTextMessageAsync(chatId, $"{textResponse.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
+                    }
+
+                    if (_debugMode == DebugMode.Console)
+                    {
+                        Console.WriteLine($"\n\nChat: {chatId}");
+                        WriteContext();
+                        Console.WriteLine($"{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
+                        Console.WriteLine("\n\n");
+                    }
+
+                    return;
+                }
+
+                var text = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
+
                 if (_useConsoleInsteadOfTelegram)
                 {
-                    Console.WriteLine(update.Message!.Text!);
+                    Console.WriteLine(text);
                 }
-                else if (_useOnlyVoice == false)
+                else
                 {
-                    var stream = await _foulAIClient.GetAudioResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
-                    item2 = stream.Item2;
-                    await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream.Item1));
-
-                    if (_debugMode == DebugMode.Message)
-                        await botClient.SendTextMessageAsync(chatId, $"{stream.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
-                } else
-                {
-                    var textResponse = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
-                    var stream = await new GoogleTtsService().GetAudioAsync(textResponse.Item1);
-                    item2 = textResponse.Item2;
-                    await botClient.SendVoiceAsync(chatId, InputFile.FromStream(stream));
-
-                    if (_debugMode == DebugMode.Message)
-                        await botClient.SendTextMessageAsync(chatId, $"{textResponse.Item2} - {reason}"/*, parseMode: ParseMode.Markdown*/);
+                    await typing.FinishTypingText(text.Item1);
+                    await botClient.SendTextMessageAsync(chatId, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1/*, parseMode: ParseMode.Markdown*/);
                 }
 
                 if (_debugMode == DebugMode.Console)
                 {
                     Console.WriteLine($"\n\nChat: {chatId}");
                     WriteContext();
-                    Console.WriteLine($"{DateTime.UtcNow}\nAUDIO\n{item2} - {reason}");
+                    Console.WriteLine($"{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
                     Console.WriteLine("\n\n");
                 }
-
-                return;
             }
-
-            var text = await _foulAIClient.GetTextResponseAsync(GetUserName(update.Message!.From!), update.Message!.Text!);
-
-            if (_useConsoleInsteadOfTelegram)
+            catch
             {
-                Console.WriteLine(text);
+                typing.FinishTypingText(" ");
+                throw;
             }
-            else
-            {
-                await botClient.SendTextMessageAsync(chatId, _debugMode == DebugMode.Message ? $"{text.Item1}\n\n({text.Item2}) - {reason}" : text.Item1/*, parseMode: ParseMode.Markdown*/);
-            }
+        }
 
-            if (_debugMode == DebugMode.Console)
+        private async Task ImitateTypingAsync(ITelegramBotClient botClient, ChatId chatId, CancellationToken token)
+        {
+            var random = new Random();
+
+            while (true)
             {
-                Console.WriteLine($"\n\nChat: {chatId}");
-                WriteContext();
-                Console.WriteLine($"{DateTime.UtcNow}\n{text.Item1}\n{text.Item2} - {reason}");
-                Console.WriteLine("\n\n");
+                await botClient.SendChatActionAsync(chatId, ChatAction.Typing);
+                await Task.Delay(random.Next(300, 10000), token);
+
+                if (token.IsCancellationRequested)
+                    return;
             }
         }
 
