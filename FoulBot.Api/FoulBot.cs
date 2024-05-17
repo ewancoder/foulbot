@@ -1,5 +1,4 @@
-﻿using Google.Apis.Http;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -124,11 +123,6 @@ public sealed class FoulBot : IFoulBot
         {
             Console.WriteLine("Exiting because there are no messages that need to be processed.");
             return;
-        }
-
-        if (!unprocessedMessages.Exists(ShouldAct))
-        {
-            Console.WriteLine("We got here because we need to process after N messages.");
         }
 
         if (_replyEveryMessagesCounter >= _replyEveryMessages)

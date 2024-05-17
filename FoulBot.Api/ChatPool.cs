@@ -45,7 +45,7 @@ public sealed class ChatPool : IUpdateHandler
         var chatId = update.Message.Chat.Id;
 
         if (!_chats.TryGetValue(chatId, out var chat))
-            GetOrAddFoulChat(chatId);
+            chat = GetOrAddFoulChat(chatId);
 
         chat.HandleUpdate(update);
         return Task.CompletedTask;

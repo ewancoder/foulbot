@@ -30,7 +30,6 @@ var testBotFactory = () => new FoulBot.Api.FoulBot(
     messagesBetweenAudio: 0,
     useOnlyVoice: false);
 chatPool.AddBot(testBotFactory);
-testBotClient.StartReceiving(chatPool);
 
 var pidorBotClient = new TelegramBotClient(_configuration["EwPidorBotApiKey"]);
 var pidorBotFactory = () => new FoulBot.Api.FoulBot(
@@ -44,7 +43,6 @@ var pidorBotFactory = () => new FoulBot.Api.FoulBot(
     messagesBetweenAudio: 5,
     useOnlyVoice: false);
 chatPool.AddBot(pidorBotFactory);
-pidorBotClient.StartReceiving(chatPool);
 
 var meatBagsBotClient = new TelegramBotClient(_configuration["EwMeatBagsBotApiKey"]);
 var meatBagsBotFactory = () => new FoulBot.Api.FoulBot(
@@ -58,6 +56,9 @@ var meatBagsBotFactory = () => new FoulBot.Api.FoulBot(
     messagesBetweenAudio: 0,
     useOnlyVoice: true);
 chatPool.AddBot(meatBagsBotFactory);
+
 meatBagsBotClient.StartReceiving(chatPool);
+testBotClient.StartReceiving(chatPool);
+pidorBotClient.StartReceiving(chatPool);
 
 await app.RunAsync();

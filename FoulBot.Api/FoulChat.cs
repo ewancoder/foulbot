@@ -73,9 +73,28 @@ public sealed class FoulChat : IFoulChat
             if (_processedMessages.Contains(messageId))
                 return null;
 
-            var message = new FoulMessage(messageId, FoulMessageType.User, GetSenderName(update), update.Message.Text, update.Message.ReplyToMessage?.From?.Username, update.Message.Date, false);
+            var message = new FoulMessage(
+                messageId,
+                FoulMessageType.User,
+                GetSenderName(update),
+                update.Message.Text,
+                update.Message.ReplyToMessage?.From?.Username,
+                update.Message.Date,
+                false);
             _context.Add(message);
             _processedMessages.Add(messageId);
+
+            // TODO: This is duplicate code.
+            if (_context.Count > 900) // TODO: Make these numbers configurable.
+            {
+                while (_context.Count > 600)
+                {
+                    var msg = _context[0];
+                    _context.RemoveAt(0);
+                    _processedMessages.Remove(msg.Id);
+                }
+            }
+
             return message;
         }
     }
