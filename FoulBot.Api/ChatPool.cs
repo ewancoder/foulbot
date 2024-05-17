@@ -20,9 +20,15 @@ public sealed class ChatPool : IUpdateHandler
         _enabledBots.Add(botFactory);
     }
 
-    public FoulChat? GetOrAddFoulChat(ChatId chatId)
+    public FoulChat? GetOrAddFoulChat(long chatId)
     {
-        return _chats.GetOrAdd(chatId.Identifier!.Value, CreateChat);
+        if (_chats.ContainsKey(chatId))
+            return _chats.GetOrAdd(chatId, (FoulChat)null);
+
+        lock (_chats)
+        {
+            return _chats.GetOrAdd(chatId, CreateChat);
+        }
     }
 
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -38,7 +44,8 @@ public sealed class ChatPool : IUpdateHandler
 
         var chatId = update.Message.Chat.Id;
 
-        var chat = _chats.GetOrAdd(chatId, CreateChat);
+        if (!_chats.TryGetValue(chatId, out var chat))
+            GetOrAddFoulChat(chatId);
 
         chat.HandleUpdate(update);
         return Task.CompletedTask;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Google.Apis.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -26,7 +27,7 @@ public sealed class FoulBot : IFoulBot
     private readonly Random _random = new Random();
     private readonly string _botIdName;
     private readonly string _botName;
-    private readonly IEnumerable<string> _keyWords;
+    private readonly List<string> _keyWords;
     private readonly string _directive;
     private readonly int _contextSize;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
@@ -48,7 +49,7 @@ public sealed class FoulBot : IFoulBot
         string directive,
         string botIdName,
         string botName,
-        IEnumerable<string> keyWords,
+        List<string> keyWords,
         int contextSize,
         int replyEveryMessages,
         int messagesBetweenAudio,
@@ -79,7 +80,7 @@ public sealed class FoulBot : IFoulBot
     {
         _chat = chat;
         _chat.MessageReceived += OnMessageReceived;
-        Console.WriteLine($"Bot {_botName} joined chat.");
+        Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
     }
 
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
@@ -113,27 +114,47 @@ public sealed class FoulBot : IFoulBot
                 .ToList();
         }
 
-        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
+        if (!unprocessedMessages.Any())
+        {
+            Console.WriteLine("No unprocessed messages. Returning.");
             return;
+        }
+
+        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
+        {
+            Console.WriteLine("Exiting because there are no messages that need to be processed.");
+            return;
+        }
+
+        if (!unprocessedMessages.Exists(ShouldAct))
+        {
+            Console.WriteLine("We got here because we need to process after N messages.");
+        }
 
         if (_replyEveryMessagesCounter >= _replyEveryMessages)
+        {
             _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
+            Console.WriteLine("Reset counter for N messages repeat.");
+        }
 
         if (unprocessedMessages.Last().IsOriginallyBotMessage)
         {
             if (_botOnlyCount >= _botOnlyMaxCount)
             {
-                Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count.");
+                Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count. Meanwhile all messages are lost.");
                 return;
             }
 
+            Console.WriteLine("Increasing bot-only count.");
             _botOnlyCount++;
         }
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
+        Console.WriteLine("Acquiring lock.");
         await _lock.WaitAsync();
         try
         {
+            Console.WriteLine("Inside lock.");
             {
                 // After waiting - let's grab context one more time.
                 snapshot = _chat.GetContextSnapshot();
@@ -333,6 +354,7 @@ public sealed class FoulBot : IFoulBot
         if (message.ReplyTo == _botIdName)
             return true;
 
+        Console.WriteLine($"{string.Join(',', _keyWords)} {message.Text}");
         if (_keyWords.Any(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
             return true;
 
