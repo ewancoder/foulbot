@@ -96,6 +96,9 @@ public sealed class FoulBot : IFoulBot
         if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
             return;
 
+        if (_replyEveryMessagesCounter >= _replyEveryMessages)
+            _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
+
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
         await _lock.WaitAsync();
         try
