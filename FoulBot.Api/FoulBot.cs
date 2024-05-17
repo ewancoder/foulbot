@@ -16,7 +16,11 @@ public interface IFoulBot
 
 public sealed class FoulBot : IFoulBot
 {
-    private static readonly string[] _failedContext = ["извините", "sorry", "простите"];
+    private static readonly string[] _failedContext = [
+        "извините", "sorry", "простите", "не могу продолжать",
+        "не могу участвовать", "давайте воздержимся", "прошу пролщения",
+        "за нецензурн", "прошу вас выражаться"
+    ];
     private readonly IFoulAIClient _aiClient;
     private readonly ITelegramBotClient _botClient;
     private readonly Random _random = new Random();
