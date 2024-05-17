@@ -33,6 +33,10 @@ public sealed class FoulBot : IFoulBot
     private readonly int _replyEveryMessages;
     private readonly int _messagesBetweenAudio;
     private readonly bool _useOnlyVoice;
+    private readonly int _botOnlyMaxCount = 4;
+    private readonly int _botOnlyDecrementIntervalSeconds = 120;
+    private readonly Task _botOnlyDecrementTask;
+    private int _botOnlyCount = 0;
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
     private IFoulChat _chat;
@@ -60,6 +64,15 @@ public sealed class FoulBot : IFoulBot
         _replyEveryMessages = replyEveryMessages;
         _messagesBetweenAudio = messagesBetweenAudio;
         _useOnlyVoice = useOnlyVoice;
+        _botOnlyDecrementTask = Task.Run(async () =>
+        {
+            while (true)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_botOnlyDecrementIntervalSeconds));
+                if (_botOnlyCount > 0)
+                    _botOnlyCount--;
+            }
+        });
     }
 
     public void JoinChat(IFoulChat chat)
@@ -103,10 +116,58 @@ public sealed class FoulBot : IFoulBot
         if (_replyEveryMessagesCounter >= _replyEveryMessages)
             _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
 
+        if (unprocessedMessages.Last().IsOriginallyBotMessage)
+        {
+            if (_botOnlyCount >= _botOnlyMaxCount)
+            {
+                Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count.");
+                return;
+            }
+
+            _botOnlyCount++;
+        }
+
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
         await _lock.WaitAsync();
         try
         {
+            {
+                // After waiting - let's grab context one more time.
+                snapshot = _chat.GetContextSnapshot();
+
+                // Do not allow sending multiple messages. Just skip it till the next one arrives.
+                if (snapshot.LastOrDefault() != null && snapshot.Last().SenderName == _botIdName)
+                    return;
+
+                unprocessedMessages = snapshot;
+
+                if (_lastProcessedId != null)
+                {
+                    unprocessedMessages = unprocessedMessages
+                        .SkipWhile(message => message.Id != _lastProcessedId)
+                        .Skip(1)
+                        .ToList();
+                }
+
+                if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
+                    return;
+
+                if (_replyEveryMessagesCounter >= _replyEveryMessages)
+                    _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
+
+                if (unprocessedMessages.Last().IsOriginallyBotMessage)
+                {
+                    if (_botOnlyCount >= _botOnlyMaxCount)
+                    {
+                        Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count.");
+                        return;
+                    }
+
+                    _botOnlyCount++;
+                }
+            }
+
+            // TODO: This is duplicated code because after we enter the lock we still need to do this (after the previous message got handled).
 
             /*while (unprocessedMessages[^1].SenderName == _botName)
                 unprocessedMessages.RemoveAt(unprocessedMessages.Count - 1);*/
@@ -162,7 +223,7 @@ public sealed class FoulBot : IFoulBot
             }
 
             // This will also cause this method to trigger again. Handle this on this level.
-            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow));
+            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow, true));
 
             if (!_useOnlyVoice)
             {
@@ -247,7 +308,7 @@ public sealed class FoulBot : IFoulBot
             .TakeLast(_contextSize)
             .ToList();
 
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, null, DateTime.MinValue) }
+        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, null, DateTime.MinValue, false) }
             .Concat(combinedContext)
             .ToList();
     }

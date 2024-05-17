@@ -70,7 +70,7 @@ public sealed class FoulChat : IFoulChat
             if (_processedMessages.Contains(messageId))
                 return null;
 
-            var message = new FoulMessage(messageId, FoulMessageType.User, GetSenderName(update), update.Message.Text, update.Message.ReplyToMessage?.From?.Username, update.Message.Date);
+            var message = new FoulMessage(messageId, FoulMessageType.User, GetSenderName(update), update.Message.Text, update.Message.ReplyToMessage?.From?.Username, update.Message.Date, false);
             _context.Add(message);
             _processedMessages.Add(messageId);
             return message;

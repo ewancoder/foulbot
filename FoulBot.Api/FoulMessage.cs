@@ -2,7 +2,7 @@
 
 namespace FoulBot.Api;
 
-public sealed record FoulMessage(string Id, FoulMessageType MessageType, string SenderName, string Text, string? ReplyTo, DateTime Date)
+public sealed record FoulMessage(string Id, FoulMessageType MessageType, string SenderName, string Text, string? ReplyTo, DateTime Date, bool IsOriginallyBotMessage)
 {
     public FoulMessage AsUser()
     {
@@ -14,6 +14,6 @@ public sealed record FoulMessage(string Id, FoulMessageType MessageType, string 
 
     public override string ToString()
     {
-        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo}";
+        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
     }
 }
