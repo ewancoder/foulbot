@@ -11,6 +11,7 @@ namespace FoulBot.Api;
 public interface IFoulAIClient
 {
     ValueTask<string> GetTextResponseAsync(IEnumerable<FoulMessage> context);
+    ValueTask<string> GetCustomResponseAsync(string directive);
     ValueTask<Stream> GetAudioResponseAsync(string text);
 }
 
@@ -56,6 +57,21 @@ public sealed class FoulAIClient : IFoulAIClient
 
             throw new InvalidOperationException("Could not determine the type.");
         }).ToList();
+
+        var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
+        var response = await _client.GetChatCompletionsAsync(options);
+        var responseMessage = response.Value.Choices[0].Message;
+        var content = responseMessage.Content;
+
+        return content;
+    }
+
+    public async ValueTask<string> GetCustomResponseAsync(string directive)
+    {
+        var aiContext = new[]
+        {
+            new ChatRequestSystemMessage(directive)
+        };
 
         var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
         var response = await _client.GetChatCompletionsAsync(options);

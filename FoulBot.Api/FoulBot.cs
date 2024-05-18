@@ -38,6 +38,7 @@ public sealed class FoulBot : IFoulBot
     private readonly int _botOnlyMaxCount = 10;
     private readonly int _botOnlyDecrementIntervalSeconds = 60;
     private readonly Task _botOnlyDecrementTask;
+    private readonly string[] _stickers;
     private bool _subscribed;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
@@ -55,8 +56,10 @@ public sealed class FoulBot : IFoulBot
         int contextSize,
         int replyEveryMessages,
         int messagesBetweenAudio,
-        bool useOnlyVoice)
+        bool useOnlyVoice,
+        string[] stickers)
     {
+        _stickers = stickers;
         _aiClient = aiClient;
         _botClient = botClient;
         _directive = directive;
@@ -87,11 +90,18 @@ public sealed class FoulBot : IFoulBot
             _chat = chat;
             _chat.StatusChanged += OnStatusChanged;
 
+            // Test that bot is a member of the chat by trying to send an event.
+            await _botClient.SendChatActionAsync(chat.ChatId, ChatAction.ChooseSticker);
+
             // Do not send status messages if bot has already been in the chat.
             if (invitedBy != null)
             {
-                await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId("CAACAgIAAxkBAAM8ZkiaAqUCx8WwSJjjTr9H86UCDlYAAigDAAK1cdoGkHpKh16VSm41BA"));
-                await _botClient.SendTextMessageAsync(chat.ChatId, $"@{invitedBy}, Спасибо за инвайт братуха");
+                if (_stickers.Any())
+                    await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_stickers[_random.Next(0, _stickers.Length)]));
+
+                var welcome = await _aiClient.GetCustomResponseAsync(
+$"{_directive}. You have just been added to a chat group with a number of people{(invitedBy == null ? string.Empty : " by a person named "+ invitedBy + "")}, tell them hello in your manner or thank the person for adding you if you feel like it.");
+                await _botClient.SendTextMessageAsync(chat.ChatId, welcome);
             }
 
             Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
@@ -252,8 +262,10 @@ public sealed class FoulBot : IFoulBot
             // Get context from this bot for the AI client.
             var context = GetContextForAI(snapshot);
 
-            var aiGeneratedTextResponse = $"{DateTime.UtcNow} - bot reply from {_botName}";
-            var contextForLogging = string.Join('\n', context.Select(c => c.ToString())); //await _aiClient.GetTextResponseAsync(context);
+            /*var aiGeneratedTextResponse = $"{DateTime.UtcNow} - bot reply from {_botName}";*/
+            var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
+            var contextForLogging = string.Join('\n', context.Select(c => c.ToString()));
+
             var i = 0;
             while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
             {
@@ -279,7 +291,8 @@ public sealed class FoulBot : IFoulBot
                 }
                 else
                 {
-                    await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse + "\n" + contextForLogging);
+                    await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse);
+                    Console.WriteLine(contextForLogging);
                 }
             }
             else
