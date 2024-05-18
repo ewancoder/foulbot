@@ -19,7 +19,7 @@ public sealed class FoulBot : IFoulBot
     private static readonly string[] _failedContext = [
         "извините", "sorry", "простите", "не могу продолжать",
         "не могу участвовать", "давайте воздержимся", "прошу пролщения",
-        "за нецензурн", "прошу вас выражаться"
+        "за нецензурн", "прошу вас выражаться", "извини", "прости"
     ];
     private readonly IFoulAIClient _aiClient;
     private readonly ITelegramBotClient _botClient;
