@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using UnidecodeSharpFork;
 
 namespace FoulBot.Api;
 
@@ -46,13 +47,13 @@ public sealed class FoulAIClient : IFoulAIClient
             if (message.MessageType == FoulMessageType.User)
                 return new ChatRequestUserMessage(message.Text)
                 {
-                    Name = message.SenderName
+                    Name = message.SenderName.Unidecode()
                 };
 
             if (message.MessageType == FoulMessageType.Bot)
                 return new ChatRequestAssistantMessage(message.Text)
                 {
-                    Name = message.SenderName
+                    Name = message.SenderName.Unidecode()
                 };
 
             throw new InvalidOperationException("Could not determine the type.");
