@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
@@ -21,7 +22,7 @@ public sealed class ChatPool : IUpdateHandler
         _enabledBots.Add(botFactory);
     }
 
-    public async ValueTask<FoulChat> GetOrAddFoulChatAsync(long chatId)
+    public async ValueTask<FoulChat> GetOrAddFoulChatAsync(long chatId, string? invitedBy)
     {
         _chats.TryGetValue(chatId, out var chat);
         if (chat != null)
@@ -34,7 +35,7 @@ public sealed class ChatPool : IUpdateHandler
             if (chat != null)
                 return chat;
 
-            chat = await CreateChatAsync(chatId);
+            chat = await CreateChatAsync(chatId, invitedBy);
             _chats.GetOrAdd(chatId, chat);
 
             return chat;
@@ -53,18 +54,30 @@ public sealed class ChatPool : IUpdateHandler
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
-        if (update.Message == null || update.Message.Chat == null)
+        if (update.Message?.Chat == null
+            && update.MyChatMember?.Chat == null)
             return;
 
-        var chatId = update.Message.Chat.Id;
+        var member = update.MyChatMember?.NewChatMember;
+
+        var chatId = member == null
+            ? update.Message.Chat.Id
+            : update.MyChatMember.Chat.Id;
 
         if (!_chats.TryGetValue(chatId, out var chat))
-            chat = await GetOrAddFoulChatAsync(chatId);
+            chat = await GetOrAddFoulChatAsync(chatId, update.MyChatMember?.From?.Username);
 
-        chat.HandleUpdate(update);
+        if (member != null)
+        {
+            await chat.ChangeBotStatusAsync(member.User.Username, update.MyChatMember.From.Username, member.Status);
+        }
+        else
+        {
+            chat.HandleUpdate(update);
+        }
     }
 
-    private async ValueTask<FoulChat> CreateChatAsync(long chatId)
+    private async ValueTask<FoulChat> CreateChatAsync(long chatId, string? invitedBy)
     {
         var chat = new FoulChat(chatId);
 
@@ -72,7 +85,7 @@ public sealed class ChatPool : IUpdateHandler
         {
             // TODO: Only create bots that are present in chat. AND when bot is added to chat - add it too.
             var bot = botFactory();
-            await bot.JoinChatAsync(chat);
+            await bot.JoinChatAsync(chat, invitedBy);
         }
 
         return chat;

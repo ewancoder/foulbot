@@ -38,6 +38,7 @@ public sealed class FoulBot : IFoulBot
     private readonly int _botOnlyMaxCount = 10;
     private readonly int _botOnlyDecrementIntervalSeconds = 60;
     private readonly Task _botOnlyDecrementTask;
+    private bool _subscribed;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
@@ -84,12 +85,18 @@ public sealed class FoulBot : IFoulBot
         try
         {
             _chat = chat;
-            _chat.MessageReceived += OnMessageReceived;
+            _chat.StatusChanged += OnStatusChanged;
 
-            await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId("CAACAgIAAxkBAAM8ZkiaAqUCx8WwSJjjTr9H86UCDlYAAigDAAK1cdoGkHpKh16VSm41BA"));
+            // Do not send status messages if bot has already been in the chat.
             if (invitedBy != null)
+            {
+                await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId("CAACAgIAAxkBAAM8ZkiaAqUCx8WwSJjjTr9H86UCDlYAAigDAAK1cdoGkHpKh16VSm41BA"));
                 await _botClient.SendTextMessageAsync(chat.ChatId, $"@{invitedBy}, Спасибо за инвайт братуха");
+            }
+
             Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
+            _chat.MessageReceived += OnMessageReceived;
+            _subscribed = true;
             return true;
         }
         catch (Exception exception)
@@ -297,6 +304,25 @@ public sealed class FoulBot : IFoulBot
             _lock.Release();
             Console.WriteLine("We got to finally.");
         }
+    }
+
+    private void OnStatusChanged(object sender, FoulStatusChanged message) => OnStatusChangedAsync(message);
+    public async Task OnStatusChangedAsync(FoulStatusChanged message)
+    {
+        if (message.WhoName != _botIdName)
+            return;
+
+        if (message.Status == ChatMemberStatus.Left
+            || message.Status == ChatMemberStatus.Kicked)
+        {
+            _chat.MessageReceived -= OnMessageReceived;
+            _subscribed = false;
+            return;
+        }
+
+        // For any other status.
+        if (!_subscribed)
+            await JoinChatAsync(_chat, message.ByName);
     }
 
     private void LogContextAndResponse(List<FoulMessage> context, string aiGeneratedTextResponse)

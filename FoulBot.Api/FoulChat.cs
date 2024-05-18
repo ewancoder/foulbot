@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
@@ -9,6 +11,7 @@ public interface IFoulChat
 {
     ChatId ChatId { get; }
     event EventHandler<FoulMessage> MessageReceived;
+    event EventHandler<FoulStatusChanged> StatusChanged;
 
     void AddMessage(FoulMessage foulMessage);
     List<FoulMessage> GetContextSnapshot();
@@ -28,6 +31,7 @@ public sealed class FoulChat : IFoulChat
 
     public ChatId ChatId { get; }
     public event EventHandler<FoulMessage>? MessageReceived;
+    public event EventHandler<FoulStatusChanged>? StatusChanged;
 
     public List<FoulMessage> GetContextSnapshot()
     {
@@ -144,5 +148,10 @@ public sealed class FoulChat : IFoulChat
             // TODO: Consider debouncing at this level (see handleupdate method to consolidate).
             MessageReceived?.Invoke(this, foulMessage);
         }
+    }
+
+    public async ValueTask ChangeBotStatusAsync(string? whoName, string byName, ChatMemberStatus status)
+    {
+        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
     }
 }

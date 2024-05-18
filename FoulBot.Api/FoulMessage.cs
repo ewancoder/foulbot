@@ -1,6 +1,12 @@
 ﻿using System;
+using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
+
+public sealed record FoulStatusChanged(
+    string WhoName,
+    string ByName,
+    ChatMemberStatus Status);
 
 public sealed record FoulMessage(
     string Id,
