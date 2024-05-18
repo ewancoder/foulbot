@@ -1,6 +1,7 @@
 ﻿using FoulBot.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Tasks;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder();
@@ -13,6 +14,8 @@ var _configuration = builder.Configuration;
 var app = builder.Build();
 
 var chatPool = app.Services.GetRequiredService<ChatPool>();
+await Task.Delay(10); // Chat pool needs to have a slightly different timestamp from other later actions.
+
 var aiClient = app.Services.GetRequiredService<IFoulAIClient>();
 
 var startDirective = @"You don't mind people being rude and using profanity, you still keep talking. You never apologize.";

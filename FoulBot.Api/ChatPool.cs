@@ -12,6 +12,7 @@ namespace FoulBot.Api;
 
 public sealed class ChatPool : IUpdateHandler
 {
+    private readonly DateTime _appStarted = DateTime.UtcNow;
     private readonly List<Func<IFoulBot>> _enabledBots = new List<Func<IFoulBot>>();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<long, FoulChat> _chats
@@ -79,7 +80,7 @@ public sealed class ChatPool : IUpdateHandler
 
     private async ValueTask<FoulChat> CreateChatAsync(long chatId, string? invitedBy)
     {
-        var chat = new FoulChat(chatId);
+        var chat = new FoulChat(chatId, _appStarted);
 
         foreach (var botFactory in _enabledBots)
         {

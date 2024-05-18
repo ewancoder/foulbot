@@ -19,14 +19,15 @@ public interface IFoulChat
 
 public sealed class FoulChat : IFoulChat
 {
-    private readonly DateTime _chatBotCreatedAt = DateTime.UtcNow;
+    private readonly DateTime _appStarted;
     private readonly HashSet<string> _processedMessages = new HashSet<string>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
-    public FoulChat(ChatId chatId)
+    public FoulChat(ChatId chatId, DateTime appStarted)
     {
         ChatId = chatId;
+        _appStarted = appStarted;
     }
 
     public ChatId ChatId { get; }
@@ -52,7 +53,7 @@ public sealed class FoulChat : IFoulChat
 
     public void HandleUpdate(Update update)
     {
-        if (update?.Message?.Date < _chatBotCreatedAt)
+        if (update?.Message?.Date < _appStarted)
             return;
 
         var message = GetFoulMessageFromTelegramUpdate(update);
