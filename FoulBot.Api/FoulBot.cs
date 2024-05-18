@@ -83,6 +83,8 @@ public sealed class FoulBot : IFoulBot
 
     public string BotId => _botIdName;
 
+    // TODO: If after restarting the solution someone REMOVES a bot from the chat - all the other bots will comment on it as if you have ADDED them.
+    // This is because the chat object has not been created yet and this method is called for everyone.
     public async ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null)
     {
         try
