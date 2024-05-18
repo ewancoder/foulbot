@@ -11,15 +11,17 @@ namespace FoulBot.Api;
 
 public interface IFoulBot
 {
-    void JoinChat(IFoulChat chat);
+    string BotId { get; }
+    ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null);
 }
 
 public sealed class FoulBot : IFoulBot
 {
     private static readonly string[] _failedContext = [
         "извините", "sorry", "простите", "не могу продолжать",
-        "не могу участвовать", "давайте воздержимся", "прошу пролщения",
-        "за нецензурн", "прошу вас выражаться", "извини", "прости"
+        "не могу участвовать", "давайте воздержимся", "прошу прощения",
+        "за нецензурн", "прошу вас выражаться", "извини", "прости", "не могу помочь",
+        "не могу обсуждать"
     ];
     private readonly IFoulAIClient _aiClient;
     private readonly ITelegramBotClient _botClient;
@@ -75,11 +77,26 @@ public sealed class FoulBot : IFoulBot
         });
     }
 
-    public void JoinChat(IFoulChat chat)
+    public string BotId => _botIdName;
+
+    public async ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null)
     {
-        _chat = chat;
-        _chat.MessageReceived += OnMessageReceived;
-        Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
+        try
+        {
+            _chat = chat;
+            _chat.MessageReceived += OnMessageReceived;
+
+            await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId("CAACAgIAAxkBAAM8ZkiaAqUCx8WwSJjjTr9H86UCDlYAAigDAAK1cdoGkHpKh16VSm41BA"));
+            if (invitedBy != null)
+                await _botClient.SendTextMessageAsync(chat.ChatId, $"@{invitedBy}, Спасибо за инвайт братуха");
+            Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine($"Failed to join {_botClient} to chat {chat.ChatId}");
+            return false;
+        }
     }
 
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
@@ -228,7 +245,8 @@ public sealed class FoulBot : IFoulBot
             // Get context from this bot for the AI client.
             var context = GetContextForAI(snapshot);
 
-            var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
+            var aiGeneratedTextResponse = $"{DateTime.UtcNow} - bot reply from {_botName}";
+            var contextForLogging = string.Join('\n', context.Select(c => c.ToString())); //await _aiClient.GetTextResponseAsync(context);
             var i = 0;
             while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
             {
@@ -254,7 +272,7 @@ public sealed class FoulBot : IFoulBot
                 }
                 else
                 {
-                    await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse);
+                    await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse + "\n" + contextForLogging);
                 }
             }
             else

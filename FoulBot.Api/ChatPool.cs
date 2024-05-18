@@ -12,6 +12,7 @@ namespace FoulBot.Api;
 public sealed class ChatPool : IUpdateHandler
 {
     private readonly List<Func<IFoulBot>> _enabledBots = new List<Func<IFoulBot>>();
+    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<long, FoulChat> _chats
         = new ConcurrentDictionary<long, FoulChat>();
 
@@ -20,14 +21,27 @@ public sealed class ChatPool : IUpdateHandler
         _enabledBots.Add(botFactory);
     }
 
-    public FoulChat? GetOrAddFoulChat(long chatId)
+    public async ValueTask<FoulChat> GetOrAddFoulChatAsync(long chatId)
     {
-        if (_chats.ContainsKey(chatId))
-            return _chats.GetOrAdd(chatId, (FoulChat)null);
+        _chats.TryGetValue(chatId, out var chat);
+        if (chat != null)
+            return chat;
 
-        lock (_chats)
+        await _lock.WaitAsync();
+        try
         {
-            return _chats.GetOrAdd(chatId, CreateChat);
+            _chats.TryGetValue(chatId, out chat);
+            if (chat != null)
+                return chat;
+
+            chat = await CreateChatAsync(chatId);
+            _chats.GetOrAdd(chatId, chat);
+
+            return chat;
+        }
+        finally
+        {
+            _lock.Release();
         }
     }
 
@@ -37,21 +51,20 @@ public sealed class ChatPool : IUpdateHandler
         return Task.CompletedTask;
     }
 
-    public Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+    public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
         if (update.Message == null || update.Message.Chat == null)
-            return Task.CompletedTask;
+            return;
 
         var chatId = update.Message.Chat.Id;
 
         if (!_chats.TryGetValue(chatId, out var chat))
-            chat = GetOrAddFoulChat(chatId);
+            chat = await GetOrAddFoulChatAsync(chatId);
 
         chat.HandleUpdate(update);
-        return Task.CompletedTask;
     }
 
-    private FoulChat CreateChat(long chatId)
+    private async ValueTask<FoulChat> CreateChatAsync(long chatId)
     {
         var chat = new FoulChat(chatId);
 
@@ -59,7 +72,7 @@ public sealed class ChatPool : IUpdateHandler
         {
             // TODO: Only create bots that are present in chat. AND when bot is added to chat - add it too.
             var bot = botFactory();
-            bot.JoinChat(chat);
+            await bot.JoinChatAsync(chat);
         }
 
         return chat;
