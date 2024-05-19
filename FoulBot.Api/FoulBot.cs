@@ -279,9 +279,6 @@ $"{_directive}. You have just been added to a chat group with a number of people
                     throw new InvalidOperationException("Could not generate a valid response.");
             }
 
-            // This will also cause this method to trigger again. Handle this on this level.
-            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow, true));
-
             if (!_useOnlyVoice)
             {
                 if (isAudio)
@@ -304,6 +301,10 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 await typing.FinishTypingText(aiGeneratedTextResponse);
                 await _botClient.SendVoiceAsync(_chat.ChatId, InputFile.FromStream(stream));
             }
+
+            // This will also cause this method to trigger again. Handle this on this level.
+            // Add this message to the global context ONLY after it has been received by telegram.
+            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow, true));
 
             LogContextAndResponse(context, aiGeneratedTextResponse);
         }
