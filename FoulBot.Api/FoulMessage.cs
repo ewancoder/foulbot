@@ -30,4 +30,6 @@ public sealed record FoulMessage(
     {
         return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
     }
+
+    public static FoulMessage ByTime() => new FoulMessage("ByTime", FoulMessageType.System, null, null, DateTime.UtcNow, false);
 }

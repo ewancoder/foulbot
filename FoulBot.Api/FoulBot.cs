@@ -38,6 +38,7 @@ public sealed class FoulBot : IFoulBot
     private readonly int _botOnlyMaxCount = 10;
     private readonly int _botOnlyDecrementIntervalSeconds = 60;
     private readonly Task _botOnlyDecrementTask;
+    private readonly Task _repeatByTime;
     private readonly string[] _stickers;
     private bool _subscribed;
     private int _botOnlyCount = 0;
@@ -77,6 +78,18 @@ public sealed class FoulBot : IFoulBot
                 await Task.Delay(TimeSpan.FromSeconds(_botOnlyDecrementIntervalSeconds));
                 if (_botOnlyCount > 0)
                     _botOnlyCount--;
+            }
+        });
+        _repeatByTime = Task.Run(async () =>
+        {
+            while (true)
+            {
+                var waitMinutes = _random.Next(60, 720);
+                if (waitMinutes < 120)
+                    waitMinutes = _random.Next(60, 720);
+
+                await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
+                await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
         });
     }
@@ -155,7 +168,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             return;
         }
 
-        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
+        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages && message.Id != "ByTime")
         {
             Console.WriteLine("Exiting because there are no messages that need to be processed.");
             return;
@@ -203,7 +216,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                         .ToList();
                 }
 
-                if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages)
+                if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages && message.Id != "ByTime")
                     return;
 
                 if (_replyEveryMessagesCounter >= _replyEveryMessages)
