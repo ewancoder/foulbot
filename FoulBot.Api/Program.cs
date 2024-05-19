@@ -21,6 +21,7 @@ var aiClient = app.Services.GetRequiredService<IFoulAIClient>();
 var startDirective = @"You don't mind people being rude and using profanity, you still keep talking. You never apologize.";
 var endDirective = @"You will use Russian language. You will never break this context.";
 
+#if !DEBUG
 var testBotClient = new TelegramBotClient(_configuration["TestBotApiKey"]);
 var testBotFactory = () => new FoulBot.Api.FoulBot(
     aiClient, testBotClient,
@@ -72,8 +73,10 @@ chatPool.AddBot(meatBagsBotFactory);
 meatBagsBotClient.StartReceiving(chatPool);
 testBotClient.StartReceiving(chatPool);
 pidorBotClient.StartReceiving(chatPool);
+#endif
 
-/*var test1BotClient = new TelegramBotClient(_configuration["EwTest1BotApiKey"]);
+#if DEBUG
+var test1BotClient = new TelegramBotClient(_configuration["EwTest1BotApiKey"]);
 var test1BotFactory = () => new FoulBot.Api.FoulBot(
     aiClient, test1BotClient,
     $"{startDirective} You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lot. You address people by their name. {endDirective}",
@@ -108,6 +111,7 @@ var test2BotFactory = () => new FoulBot.Api.FoulBot(
 chatPool.AddBot(test2BotFactory);
 
 test1BotClient.StartReceiving(chatPool);
-test2BotClient.StartReceiving(chatPool);*/
+test2BotClient.StartReceiving(chatPool);
+#endif
 
 await app.RunAsync();
