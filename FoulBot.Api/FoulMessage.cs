@@ -13,10 +13,11 @@ public sealed record FoulMessage(
     FoulMessageType MessageType,
     string SenderName,
     string Text,
-    string? ReplyTo,
     DateTime Date,
     bool IsOriginallyBotMessage)
 {
+    public string ReplyTo { get; set; }
+
     public FoulMessage AsUser()
     {
         return this with

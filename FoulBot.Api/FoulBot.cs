@@ -304,7 +304,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
             // This will also cause this method to trigger again. Handle this on this level.
             // Add this message to the global context ONLY after it has been received by telegram.
-            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, null, DateTime.UtcNow, true));
+            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, DateTime.UtcNow, true));
 
             LogContextAndResponse(context, aiGeneratedTextResponse);
         }
@@ -388,7 +388,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             .TakeLast(_contextSize)
             .ToList();
 
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, null, DateTime.MinValue, false) }
+        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false) }
             .Concat(combinedContext)
             .ToList();
     }

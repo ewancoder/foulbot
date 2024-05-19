@@ -60,8 +60,14 @@ public sealed class FoulChat : IFoulChat
         if (message == null)
             return;
 
-        // TODO: Consider debouncing at this level.
-        MessageReceived?.Invoke(this, message);
+        // Mega super duper HACK to wait for the message from ALL the bots.
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(2000);
+
+            // TODO: Consider debouncing at this level.
+            MessageReceived?.Invoke(this, message);
+        });
     }
 
     private FoulMessage? GetFoulMessageFromTelegramUpdate(Update update)
@@ -70,37 +76,49 @@ public sealed class FoulChat : IFoulChat
             return null;
 
         var messageId = GetUniqueMessageId(update.Message);
-        if (_processedMessages.Contains(messageId))
+        if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
             return null;
 
         lock (_lock)
         {
-            if (_processedMessages.Contains(messageId))
+            if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
                 return null;
 
-            var message = new FoulMessage(
-                messageId,
-                FoulMessageType.User,
-                GetSenderName(update),
-                update.Message.Text,
-                update.Message.ReplyToMessage?.From?.Username,
-                update.Message.Date,
-                false);
-            _context.Add(message);
-            _processedMessages.Add(messageId);
-
-            // TODO: This is duplicate code.
-            if (_context.Count > 900) // TODO: Make these numbers configurable.
+            if (_processedMessages.Contains(messageId))
             {
-                while (_context.Count > 600)
-                {
-                    var msg = _context[0];
-                    _context.RemoveAt(0);
-                    _processedMessages.Remove(msg.Id);
-                }
+                // TODO: Create dictionary.
+                var message = _context.First(x => x.Id == messageId);
+                message.ReplyTo = update.Message.ReplyToMessage?.From?.Username;
+                return null; // Discard the message after updating existing message.
             }
 
-            return message;
+            {
+                var message = new FoulMessage(
+                    messageId,
+                    FoulMessageType.User,
+                    GetSenderName(update),
+                    update.Message.Text,
+                    update.Message.Date,
+                    false)
+                {
+                    ReplyTo = update.Message.ReplyToMessage?.From?.Username
+                };
+                _context.Add(message);
+                _processedMessages.Add(messageId);
+
+                // TODO: This is duplicate code.
+                if (_context.Count > 900) // TODO: Make these numbers configurable.
+                {
+                    while (_context.Count > 600)
+                    {
+                        var msg = _context[0];
+                        _context.RemoveAt(0);
+                        _processedMessages.Remove(msg.Id);
+                    }
+                }
+
+                return message;
+            }
         }
     }
 
