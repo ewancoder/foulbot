@@ -49,6 +49,7 @@ public sealed class FoulBot : IFoulBot
     private readonly Task _botOnlyDecrementTask;
     private readonly Task _repeatByTime;
     private readonly string[] _stickers;
+    private readonly GoogleTtsService _googleTts = new GoogleTtsService();
     private bool _subscribed;
     private bool _subscribedToStatusChanged = false;
     private int _botOnlyCount = 0;
@@ -338,7 +339,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             }
             else
             {
-                using var stream = await new GoogleTtsService().GetAudioAsync(aiGeneratedTextResponse);
+                using var stream = await _googleTts.GetAudioAsync(aiGeneratedTextResponse);
 
                 await typing.FinishTypingText(aiGeneratedTextResponse);
                 await _botClient.SendVoiceAsync(_chat.ChatId, InputFile.FromStream(stream));

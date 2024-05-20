@@ -7,9 +7,13 @@ namespace FoulBot.Api
 {
     public sealed class GoogleTtsService
     {
-        public async Task<Stream> GetAudioAsync(string text)
+        public GoogleTtsService()
         {
             Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "key.json");
+        }
+
+        public async Task<Stream> GetAudioAsync(string text)
+        {
             var client = await TextToSpeechClient.CreateAsync();
 
             // The input to be synthesized, can be provided as text or SSML.
