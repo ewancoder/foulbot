@@ -191,12 +191,6 @@ $"{_directive}. You have just been added to a chat group with a number of people
             return;
         }
 
-        if (_replyEveryMessagesCounter >= _replyEveryMessages)
-        {
-            _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
-            LogDebug("Reset counter for N messages repeat.");
-        }
-
         if (unprocessedMessages[^1].IsOriginallyBotMessage)
         {
             if (_botOnlyCount >= _botOnlyMaxCount)
@@ -237,7 +231,11 @@ $"{_directive}. You have just been added to a chat group with a number of people
                     return;
 
                 if (_replyEveryMessagesCounter >= _replyEveryMessages)
-                    _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
+                {
+                    // TODO: Add randomness here.
+                    _replyEveryMessagesCounter = 0;
+                    LogDebug("Reset counter for N messages repeat.");
+                }
 
                 if (unprocessedMessages[^1].IsOriginallyBotMessage)
                 {

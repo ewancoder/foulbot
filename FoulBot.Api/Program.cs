@@ -65,7 +65,7 @@ var pidorBotHandler = factory.CreateHandler("PidorBot", () => new FoulBot.Api.Fo
     botName: "Pidor_Bot",
     keyWords: ["пидор", "бот"],
     contextSize: 16,
-    replyEveryMessages: 20,
+    replyEveryMessages: 32,
     messagesBetweenAudio: 5,
     useOnlyVoice: false,
     stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"], true));
@@ -79,7 +79,7 @@ var meatBagsBotHandler = factory.CreateHandler("MeatBagsBot", () => new FoulBot.
     botName: "Robot",
     keyWords: ["робот", "человек", "ии", "ai", "кожан", "ублюд"],
     contextSize: 16,
-    replyEveryMessages: 20,
+    replyEveryMessages: 27,
     messagesBetweenAudio: 0,
     useOnlyVoice: true,
     stickers: [
@@ -105,7 +105,7 @@ var test1Handler = factory.CreateHandler("First_TestBot", () => new FoulBot.Api.
     botName: "First_TestBot",
     keyWords: ["test", "bot"],
     contextSize: 16,
-    replyEveryMessages: 10,
+    replyEveryMessages: 20,
     messagesBetweenAudio: 0,
     useOnlyVoice: false,
     stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"], true));
@@ -119,7 +119,7 @@ var test2Handler = factory.CreateHandler("Second_TestBot", () => new FoulBot.Api
     botName: "Second_TestBot",
     keyWords: ["test", "bot"],
     contextSize: 16,
-    replyEveryMessages: 10,
+    replyEveryMessages: 28,
     messagesBetweenAudio: 0,
     useOnlyVoice: false,
     stickers: [
