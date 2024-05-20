@@ -99,6 +99,13 @@ var meatBagsBotHandler = factory.CreateHandler("MeatBagsBot", () => new FoulBot.
 meatBagsBotClient.StartReceiving(meatBagsBotHandler);
 testBotClient.StartReceiving(testBotHandler);
 pidorBotClient.StartReceiving(pidorBotHandler);
+
+_ = chatLoader.LoadAllBotsToAllChats(chatPool, new Dictionary<string, Func<IFoulBot>>
+{
+    [meatBagsBotHandler.BotId] = meatBagsBotHandler.Factory,
+    [testBotHandler.BotId] = testBotHandler.Factory,
+    [pidorBotHandler.BotId] = pidorBotHandler.Factory
+});
 #endif
 
 #if DEBUG
@@ -138,13 +145,13 @@ var test2Handler = factory.CreateHandler("Second_TestBot", () => new FoulBot.Api
 
 test1BotClient.StartReceiving(test1Handler);
 test2BotClient.StartReceiving(test2Handler);
-#endif
 
 _ = chatLoader.LoadAllBotsToAllChats(chatPool, new Dictionary<string, Func<IFoulBot>>
 {
     [test1Handler.BotId] = test1Handler.Factory,
     [test2Handler.BotId] = test2Handler.Factory
 });
+#endif
 
 await app.RunAsync();
 
@@ -155,7 +162,7 @@ public sealed class ChatLoader
 
     public ChatLoader()
     {
-        _chats = File.Exists("chats")
+        _chats = File.Exists("chats") && File.ReadAllText("chats") != string.Empty
             ? File.ReadAllText("chats").Split(',').Select(x => Convert.ToInt64(x)).ToHashSet()
             : new HashSet<long>();
     }
