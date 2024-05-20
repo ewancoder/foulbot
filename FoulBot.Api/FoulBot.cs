@@ -104,7 +104,9 @@ public sealed class FoulBot : IFoulBot
                 if (waitMinutes < 120)
                     waitMinutes = _random.Next(60, 720);
 
+                _logger.LogInformation("Prepairing to wait for a message based on time, {waitMinutes} minutes. Bot {bot}, chat {chat}.", waitMinutes, _botIdName, _chat?.ChatId);
                 await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
+                _logger.LogInformation("Sending a message based on time, {waitMinutes} minutes passed. Bot {bot}, chat {chat}.", waitMinutes, _botIdName, _chat?.ChatId);
                 await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
         });
