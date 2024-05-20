@@ -307,6 +307,8 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 var i = 0;
                 while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
                 {
+                    _logger.LogWarning("Generated broken context message: {message} from bot {botName} in chat {chatId}, trying to regenerate.", aiGeneratedTextResponse, _botName, _chat.ChatId);
+
                     i++;
                     await Task.Delay(1000);
                     aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
@@ -316,6 +318,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 }
             }
 
+            _logger.LogInformation("Generated (message, bot, chat): {message} {bot} {chat}", aiGeneratedTextResponse, _botName, _chat.ChatId);
             if (!_useOnlyVoice)
             {
                 if (isAudio)
