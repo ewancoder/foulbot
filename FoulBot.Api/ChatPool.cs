@@ -1,6 +1,4 @@
-﻿using Google.Apis.Logging;
-using Microsoft.Extensions.Logging;
-using Serilog;
+﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,10 +7,10 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
+// TODO: Improve logs here to include specific bot information.
 public sealed class ChatPool : IUpdateHandler
 {
     private readonly ILogger<ChatPool> _logger;
@@ -24,9 +22,8 @@ public sealed class ChatPool : IUpdateHandler
 
     public ChatPool(ILogger<ChatPool> logger)
     {
-        Log.Warning("test {abc}", "hah");
         _logger = logger;
-        _logger.LogDebug("ChatPool instance is created. Application has started. Start time is {AppStartedTime}", _appStarted);
+        _logger.LogInformation("ChatPool instance is created. Application has started. Start time is {AppStartedTime}", _appStarted);
     }
 
     public void AddBot(Func<IFoulBot> botFactory)
@@ -40,35 +37,43 @@ public sealed class ChatPool : IUpdateHandler
         if (chat != null)
             return chat;
 
+        _logger.LogInformation("Chat {chatId} is not created yet, creating using a lock. Invited by {invitedBy}", chatId, invitedBy);
+
         await _lock.WaitAsync();
         try
         {
+            _logger.LogInformation("Entered lock for creating {chatId} by {invitedBy}", chatId, invitedBy);
             _chats.TryGetValue(chatId, out chat);
             if (chat != null)
                 return chat;
 
             chat = await CreateChatAsync(chatId, invitedBy);
-            _chats.GetOrAdd(chatId, chat);
+            chat = _chats.GetOrAdd(chatId, chat);
 
             return chat;
         }
         finally
         {
+            _logger.LogInformation("Releasing lock for creating {chatId} by {invitedBy}", chatId, invitedBy);
             _lock.Release();
         }
     }
 
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
-        // TODO: Handle error.
+        _logger.LogError(exception, "Polling error from the bot {bot}", botClient.BotId);
         return Task.CompletedTask;
     }
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        _logger.LogDebug("Received update {@update}", update);
+
         if (update.Message?.Chat == null
             && update.MyChatMember?.Chat == null)
+        {
             return;
+        }
 
         var member = update.MyChatMember?.NewChatMember;
 
@@ -93,11 +98,13 @@ public sealed class ChatPool : IUpdateHandler
     {
         var chat = new FoulChat(chatId, _appStarted);
 
+        _logger.LogInformation("Created chat {chatId}, invited by {invitedBy}. Adding all the bots to it now.", chatId, invitedBy);
         foreach (var botFactory in _enabledBots)
         {
-            // TODO: Only create bots that are present in chat. AND when bot is added to chat - add it too.
             var bot = botFactory();
+            _logger.LogInformation("Adding bot {botId} to the chat {chatId}", bot.BotId);
             await bot.JoinChatAsync(chat, invitedBy);
+            _logger.LogInformation("Added bot {botId} to the chat {chatId}", bot.BotId);
         }
 
         return chat;
