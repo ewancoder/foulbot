@@ -53,6 +53,7 @@ public sealed class FoulBot : IFoulBot
     private bool _subscribedToStatusChanged = false;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
+    private int _randomReplyEveryMessages;
     private int _replyEveryMessagesCounter = 0;
     private IFoulChat _chat;
     private string? _lastProcessedId;
@@ -82,6 +83,7 @@ public sealed class FoulBot : IFoulBot
         _keyWords = keyWords;
         _contextSize = contextSize;
         _replyEveryMessages = replyEveryMessages;
+        _randomReplyEveryMessages = _random.Next(Math.Max(1, _replyEveryMessages - 5), _replyEveryMessages + 15);
         _messagesBetweenAudio = messagesBetweenAudio;
         _useOnlyVoice = useOnlyVoice;
         _notAnAssistant = notAnAssistant;
@@ -186,7 +188,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             return;
         }
 
-        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages && message.Id != "ByTime")
+        if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
         {
             LogDebug("Exiting because there are no messages that need to be processed.");
             return;
@@ -228,13 +230,14 @@ $"{_directive}. You have just been added to a chat group with a number of people
                         .ToList();
                 }
 
-                if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages && message.Id != "ByTime")
+                if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
                     return;
 
-                if (_replyEveryMessagesCounter >= _replyEveryMessages)
+                if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
                 {
                     // TODO: Add randomness here.
                     _replyEveryMessagesCounter = 0;
+                    _randomReplyEveryMessages = _random.Next(Math.Max(1, _replyEveryMessages - 5), _replyEveryMessages + 15);
                     LogDebug("Reset counter for N messages repeat.");
                 }
 
