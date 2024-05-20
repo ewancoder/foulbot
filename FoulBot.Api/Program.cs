@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder();
+var _configuration = builder.Configuration;
 
 builder.Host.UseSerilog((context, config) =>
 {
@@ -20,15 +21,13 @@ builder.Host.UseSerilog((context, config) =>
         .WriteTo.Console()
         .WriteTo.File(new CompactJsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day)
         .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-        .WriteTo.Seq("http://31.146.143.167:5341")
+        .WriteTo.Seq("http://31.146.143.167:5341", apiKey: _configuration["SeqApiKey"])
         .Enrich.WithThreadId();
 });
 
 builder.Services.AddTransient<TelegramUpdateHandlerFactory>();
 builder.Services.AddSingleton<ChatPool>();
 builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
-
-var _configuration = builder.Configuration;
 
 var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<FoulBot.Api.FoulBot>>();
