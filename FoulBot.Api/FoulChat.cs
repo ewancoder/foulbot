@@ -133,7 +133,7 @@ public sealed class FoulChat : IFoulChat
                 _context.Add(message);
                 _processedMessages.Add(messageId);
                 _contextMessages.Add(messageId, message);
-                _logger.LogDebug("Added message to context and to processed messages, message {messageId}.", messageId);
+                _logger.LogDebug("Added message to context and to processed messages, message {messageId} - {message}.", messageId, message);
 
                 CleanupContext();
 
