@@ -44,6 +44,7 @@ public sealed class FoulBot : IFoulBot
     private readonly bool _useOnlyVoice;
     private readonly int _botOnlyMaxCount = 10;
     private readonly int _botOnlyDecrementIntervalSeconds = 60;
+    private readonly bool _notAnAssistant;
     private readonly Task _botOnlyDecrementTask;
     private readonly Task _repeatByTime;
     private readonly string[] _stickers;
@@ -67,7 +68,8 @@ public sealed class FoulBot : IFoulBot
         int replyEveryMessages,
         int messagesBetweenAudio,
         bool useOnlyVoice,
-        string[] stickers)
+        string[] stickers,
+        bool notAnAssistant)
     {
         _logger = logger;
         _stickers = stickers;
@@ -81,6 +83,7 @@ public sealed class FoulBot : IFoulBot
         _replyEveryMessages = replyEveryMessages;
         _messagesBetweenAudio = messagesBetweenAudio;
         _useOnlyVoice = useOnlyVoice;
+        _notAnAssistant = notAnAssistant;
         _botOnlyDecrementTask = Task.Run(async () =>
         {
             while (true)
@@ -297,15 +300,18 @@ $"{_directive}. You have just been added to a chat group with a number of people
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
             var contextForLogging = string.Join('\n', context.Select(c => c.ToString()));
 
-            var i = 0;
-            while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
+            if (_notAnAssistant)
             {
-                i++;
-                await Task.Delay(1000);
-                aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
+                var i = 0;
+                while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
+                {
+                    i++;
+                    await Task.Delay(1000);
+                    aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
 
-                if (i > 5)
-                    throw new InvalidOperationException("Could not generate a valid response.");
+                    if (i > 5)
+                        throw new InvalidOperationException("Could not generate a valid response.");
+                }
             }
 
             if (!_useOnlyVoice)

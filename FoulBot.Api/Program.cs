@@ -54,7 +54,7 @@ var testBotHandler = factory.CreateHandler("Vova", () => new FoulBot.Api.FoulBot
     replyEveryMessages: 20,
     messagesBetweenAudio: 0,
     useOnlyVoice: false,
-    stickers: []));
+    stickers: [], false));
 
 var pidorBotClient = new TelegramBotClient(_configuration["EwPidorBotApiKey"]);
 var pidorBotHandler = factory.CreateHandler("PidorBot", () => new FoulBot.Api.FoulBot(
@@ -68,7 +68,7 @@ var pidorBotHandler = factory.CreateHandler("PidorBot", () => new FoulBot.Api.Fo
     replyEveryMessages: 20,
     messagesBetweenAudio: 5,
     useOnlyVoice: false,
-    stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"]));
+    stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"], true));
 
 var meatBagsBotClient = new TelegramBotClient(_configuration["EwMeatBagsBotApiKey"]);
 var meatBagsBotHandler = factory.CreateHandler("MeatBagsBot", () => new FoulBot.Api.FoulBot(
@@ -88,7 +88,7 @@ var meatBagsBotHandler = factory.CreateHandler("MeatBagsBot", () => new FoulBot.
         "CAACAgIAAxkBAAPPZkjBhJM9ujwTp1gJOFAXgAzq3acAAhcDAALPu9QOfWnbEIRIz601BA",
         "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
         "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
-    ]));
+    ], true));
 
 meatBagsBotClient.StartReceiving(meatBagsBotHandler);
 testBotClient.StartReceiving(testBotHandler);
@@ -108,7 +108,7 @@ var test1Handler = factory.CreateHandler("First_TestBot", () => new FoulBot.Api.
     replyEveryMessages: 10,
     messagesBetweenAudio: 0,
     useOnlyVoice: false,
-    stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"]));
+    stickers: ["CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"], true));
 
 var test2BotClient = new TelegramBotClient(_configuration["EwTest2BotApiKey"]);
 var test2Handler = factory.CreateHandler("Second_TestBot", () => new FoulBot.Api.FoulBot(
@@ -128,7 +128,7 @@ var test2Handler = factory.CreateHandler("Second_TestBot", () => new FoulBot.Api
         "CAACAgIAAxkBAAPPZkjBhJM9ujwTp1gJOFAXgAzq3acAAhcDAALPu9QOfWnbEIRIz601BA",
         "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
         "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
-    ]));
+    ], true));
 
 test1BotClient.StartReceiving(test1Handler);
 test2BotClient.StartReceiving(test2Handler);
