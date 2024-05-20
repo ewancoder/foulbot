@@ -111,7 +111,10 @@ public sealed class ChatPool
             return;
         }
 
-        if (update.Type == UpdateType.Message)
+        // Added or left - can comment on it.
+        //if (update.Type == UpdateType.Message && update.Message.Type == MessageType.ChatMembersAdded)
+
+        if (update.Type == UpdateType.Message && update.Message.Type == MessageType.Text)
         {
             _logger.LogDebug("Bot {botId} Received Message update, initiating message handling.", botId);
             var chatId = update.Message.Chat.Id;
