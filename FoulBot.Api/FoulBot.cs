@@ -124,14 +124,14 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 await _botClient.SendTextMessageAsync(chat.ChatId, welcome);
             }
 
-            Console.WriteLine($"Bot {_botName} joined chat {chat.ChatId}.");
+            _logger.LogInformation("Bot {botName} joined chat {chatId}.", _botName, chat.ChatId);
             _chat.MessageReceived += OnMessageReceived;
             _subscribed = true;
             return true;
         }
         catch (Exception exception)
         {
-            Console.WriteLine($"Failed to join {_botClient} to chat {chat.ChatId}");
+            _logger.LogWarning(exception, "Failed to join {botClient} to chat {chatId}.", _botName, chat.ChatId);
             return false;
         }
     }
@@ -139,7 +139,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
-        Console.WriteLine($"\nMESSAGE RECEIVED: {message.Text}\n");
+        _logger.LogDebug("Message received by bot {botName} in chat {chatId}, message {@message}.", _botName, _chat.ChatId, message);
 
         if (_replyEveryMessages > 0)
             _replyEveryMessagesCounter++;
@@ -169,40 +169,40 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
         if (!unprocessedMessages.Any())
         {
-            Console.WriteLine("No unprocessed messages. Returning.");
+            LogDebug("No unprocessed messages. Returning.");
             return;
         }
 
         if (!unprocessedMessages.Exists(ShouldAct) && _replyEveryMessagesCounter < _replyEveryMessages && message.Id != "ByTime")
         {
-            Console.WriteLine("Exiting because there are no messages that need to be processed.");
+            LogDebug("Exiting because there are no messages that need to be processed.");
             return;
         }
 
         if (_replyEveryMessagesCounter >= _replyEveryMessages)
         {
             _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
-            Console.WriteLine("Reset counter for N messages repeat.");
+            LogDebug("Reset counter for N messages repeat.");
         }
 
         if (unprocessedMessages.Last().IsOriginallyBotMessage)
         {
             if (_botOnlyCount >= _botOnlyMaxCount)
             {
-                Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count. Meanwhile all messages are lost.");
+                LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count. Meanwhile all messages are lost.", _botOnlyDecrementIntervalSeconds);
                 return;
             }
 
-            Console.WriteLine("Increasing bot-only count.");
+            LogDebug("Increasing bot-only count.");
             _botOnlyCount++;
         }
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
-        Console.WriteLine("Acquiring lock.");
+        LogDebug("Acquiring lock.");
         await _lock.WaitAsync();
         try
         {
-            Console.WriteLine("Inside lock.");
+            LogDebug("Inside lock.");
             {
                 // After waiting - let's grab context one more time.
                 snapshot = _chat.GetContextSnapshot();
@@ -231,7 +231,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 {
                     if (_botOnlyCount >= _botOnlyMaxCount)
                     {
-                        Console.WriteLine($"Exceeded bot-to-bot messages count. Waiting for {_botOnlyDecrementIntervalSeconds} seconds to decrease the count.");
+                        LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count.", _botOnlyDecrementIntervalSeconds);
                         return;
                     }
 
@@ -311,7 +311,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 else
                 {
                     await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse);
-                    Console.WriteLine(contextForLogging);
+                    LogDebug(contextForLogging);
                 }
             }
             else
@@ -330,7 +330,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         }
         catch (Exception exception)
         {
-            Console.WriteLine(exception);
+            _logger.LogError(exception, "Error while processing the message by {botName} in {chatId}.", _botName, _chat.ChatId);
         }
         finally
         {
@@ -338,7 +338,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             await Task.Delay(TimeSpan.FromMilliseconds(_random.Next(3000, 12000)));
 
             _lock.Release();
-            Console.WriteLine("We got to finally.");
+            LogDebug("We got to finally.");
         }
     }
 
@@ -361,19 +361,18 @@ $"{_directive}. You have just been added to a chat group with a number of people
             await JoinChatAsync(_chat, message.ByName);
     }
 
+    private void LogDebug(string message, params object[] objects)
+    {
+        var args = objects
+            .Append(_botName)
+            .Append(_chat.ChatId);
+
+        _logger.LogDebug(message + " Bot {botName}, Chat {chatId}.", args);
+    }
+
     private void LogContextAndResponse(List<FoulMessage> context, string aiGeneratedTextResponse)
     {
-        Console.WriteLine();
-        Console.WriteLine();
-
-        foreach (var item in context)
-        {
-            Console.WriteLine(item.ToString());
-        }
-
-        Console.WriteLine(aiGeneratedTextResponse);
-        Console.WriteLine();
-        Console.WriteLine();
+        LogDebug("Context and response {@context}, {response}", context, aiGeneratedTextResponse);
     }
 
     private List<FoulMessage> GetContextForAI(List<FoulMessage> fullContext)
@@ -428,7 +427,6 @@ $"{_directive}. You have just been added to a chat group with a number of people
         if (message.ReplyTo == _botIdName)
             return true;
 
-        Console.WriteLine($"{string.Join(',', _keyWords)} {message.Text}");
         if (_keyWords.Any(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
             return true;
 

@@ -46,7 +46,6 @@ namespace FoulBot.Api
                 }
                 catch (Exception exception)
                 {
-                    Console.WriteLine(exception);
                 }
             }
 
@@ -80,7 +79,6 @@ namespace FoulBot.Api
             }
             catch (Exception exception)
             {
-                Console.WriteLine(exception);
             }
         }
     }
