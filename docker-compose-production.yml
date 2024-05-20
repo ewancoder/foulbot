@@ -18,6 +18,7 @@ services:
       - secrets.env
     volumes:
       - ./key.json:/app/key.json
+      - ./chats:/app/chats
       - /data/foulbot-logs:/app/logs
 
   #seq:

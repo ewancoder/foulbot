@@ -49,6 +49,9 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _logger = logger;
     }
 
+    public string BotId => _botId;
+    public Func<IFoulBot> Factory => _botFactory;
+
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         _logger.LogError(exception, "Polling error from the bot {bot}", botClient.BotId);
@@ -72,6 +75,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
 public sealed class ChatPool
 {
+    private readonly ChatLoader _chatLoader;
     private readonly ILogger<ChatPool> _logger;
     private readonly ILogger<FoulChat> _foulChatLogger;
     private readonly DateTime _appStarted = DateTime.UtcNow;
@@ -81,9 +85,11 @@ public sealed class ChatPool
         = new ConcurrentDictionary<long, FoulChat>();
 
     public ChatPool(
+        ChatLoader chatLoader,
         ILogger<ChatPool> logger,
         ILogger<FoulChat> foulChatLogger)
     {
+        _chatLoader = chatLoader;
         _logger = logger;
         _foulChatLogger = foulChatLogger;
         _logger.LogInformation("ChatPool instance is created. Application has started. Start time is {AppStartedTime}", _appStarted);
@@ -133,6 +139,17 @@ public sealed class ChatPool
         _logger.LogDebug("Received unnecessary update from the bot {botId}, skipping handling.", botId);
     }
 
+    public async Task JoinChatAsync(string botId, long chatId, Func<IFoulBot> botFactory)
+    {
+        // TODO: Unify this code between three methods.
+        _logger.LogDebug("Bot {botId} is joining chat {chatId} on startup.", botId);
+
+        if (!_chats.TryGetValue(chatId, out var chat))
+            chat = await GetOrAddFoulChatAsync(chatId, null, botId, botFactory);
+
+        await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, null, botFactory);
+    }
+
     public async ValueTask<FoulChat> GetOrAddFoulChatAsync(long chatId, string? invitedBy, string botId, Func<IFoulBot> botFactory)
     {
         _chats.TryGetValue(chatId, out var chat);
@@ -151,6 +168,9 @@ public sealed class ChatPool
 
             chat = new FoulChat(_foulChatLogger, chatId, _appStarted);
             chat = _chats.GetOrAdd(chatId, chat);
+
+            _chatLoader.AddChat(chatId);
+            _logger.LogInformation("Saved chat {chatId} for future loading.", chatId);
 
             return chat;
         }

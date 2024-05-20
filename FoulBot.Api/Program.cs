@@ -6,6 +6,10 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot;
 
@@ -25,6 +29,7 @@ builder.Host.UseSerilog((context, config) =>
         .Enrich.WithThreadId();
 });
 
+builder.Services.AddSingleton<ChatLoader>();
 builder.Services.AddTransient<TelegramUpdateHandlerFactory>();
 builder.Services.AddSingleton<ChatPool>();
 builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
@@ -32,6 +37,7 @@ builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
 var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<FoulBot.Api.FoulBot>>();
 var factory = app.Services.GetRequiredService<TelegramUpdateHandlerFactory>();
+var chatLoader = app.Services.GetRequiredService<ChatLoader>();
 
 var chatPool = app.Services.GetRequiredService<ChatPool>();
 await Task.Delay(10); // Chat pool needs to have a slightly different timestamp from other later actions.
@@ -134,4 +140,47 @@ test1BotClient.StartReceiving(test1Handler);
 test2BotClient.StartReceiving(test2Handler);
 #endif
 
+_ = chatLoader.LoadAllBotsToAllChats(chatPool, new Dictionary<string, Func<IFoulBot>>
+{
+    [test1Handler.BotId] = test1Handler.Factory,
+    [test2Handler.BotId] = test2Handler.Factory
+});
+
 await app.RunAsync();
+
+public sealed class ChatLoader
+{
+    private readonly object _lock = new object();
+    private readonly HashSet<long> _chats;
+
+    public ChatLoader()
+    {
+        _chats = File.Exists("chats")
+            ? File.ReadAllText("chats").Split(',').Select(x => Convert.ToInt64(x)).ToHashSet()
+            : new HashSet<long>();
+    }
+
+    public async Task LoadAllBotsToAllChats(ChatPool chatPool, IDictionary<string, Func<IFoulBot>> bots)
+    {
+        foreach (var chat in _chats)
+        {
+            foreach (var bot in bots)
+            {
+                await chatPool.JoinChatAsync(bot.Key, chat, bot.Value);
+            }
+        }
+    }
+
+    // A hacky way to avoid nasty deadlocks.
+    public void AddChat(long chatId)
+    {
+        _ = Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                _chats.Add(chatId);
+                File.WriteAllText("chats", string.Join(',', _chats));
+            }
+        });
+    }
+}
