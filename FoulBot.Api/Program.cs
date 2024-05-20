@@ -1,10 +1,28 @@
 ﻿using FoulBot.Api;
+using Google.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
 using System.Threading.Tasks;
 using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder();
+
+builder.Host.UseSerilog((context, config) =>
+{
+    config
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("FoulBot", LogEventLevel.Verbose)
+        .WriteTo.Console()
+        .WriteTo.File(new CompactJsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day)
+        .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+        .WriteTo.Seq("http://foulbot-seq:5341")
+        .Enrich.WithThreadId();
+});
 
 builder.Services.AddSingleton<ChatPool>();
 builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();

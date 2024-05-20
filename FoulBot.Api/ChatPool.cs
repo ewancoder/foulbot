@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Google.Apis.Logging;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
@@ -12,11 +15,19 @@ namespace FoulBot.Api;
 
 public sealed class ChatPool : IUpdateHandler
 {
+    private readonly ILogger<ChatPool> _logger;
     private readonly DateTime _appStarted = DateTime.UtcNow;
     private readonly List<Func<IFoulBot>> _enabledBots = new List<Func<IFoulBot>>();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<long, FoulChat> _chats
         = new ConcurrentDictionary<long, FoulChat>();
+
+    public ChatPool(ILogger<ChatPool> logger)
+    {
+        Log.Warning("test {abc}", "hah");
+        _logger = logger;
+        _logger.LogDebug("ChatPool instance is created. Application has started. Start time is {AppStartedTime}", _appStarted);
+    }
 
     public void AddBot(Func<IFoulBot> botFactory)
     {
