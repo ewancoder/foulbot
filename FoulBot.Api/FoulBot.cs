@@ -335,7 +335,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         finally
         {
             // Wait at least 3 seconds after each reply, but random up to 12.
-            await Task.Delay(TimeSpan.FromMilliseconds(_random.Next(3000, 12000)));
+            await Task.Delay(TimeSpan.FromMilliseconds(_random.Next(1000, 8000)));
 
             _lock.Release();
             LogDebug("We got to finally.");
