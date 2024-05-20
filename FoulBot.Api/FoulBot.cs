@@ -382,7 +382,8 @@ $"{_directive}. You have just been added to a chat group with a number of people
     {
         var args = objects
             .Append(_botName)
-            .Append(_chat.ChatId);
+            .Append(_chat.ChatId)
+            .ToArray();
 
         _logger.LogDebug(message + " Bot {botName}, Chat {chatId}.", args);
     }
