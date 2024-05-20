@@ -73,15 +73,19 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 public sealed class ChatPool
 {
     private readonly ILogger<ChatPool> _logger;
+    private readonly ILogger<FoulChat> _foulChatLogger;
     private readonly DateTime _appStarted = DateTime.UtcNow;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly HashSet<string> _joinedBots = new HashSet<string>();
     private readonly ConcurrentDictionary<long, FoulChat> _chats
         = new ConcurrentDictionary<long, FoulChat>();
 
-    public ChatPool(ILogger<ChatPool> logger)
+    public ChatPool(
+        ILogger<ChatPool> logger,
+        ILogger<FoulChat> foulChatLogger)
     {
         _logger = logger;
+        _foulChatLogger = foulChatLogger;
         _logger.LogInformation("ChatPool instance is created. Application has started. Start time is {AppStartedTime}", _appStarted);
     }
 
@@ -142,7 +146,7 @@ public sealed class ChatPool
             if (chat != null)
                 return chat;
 
-            chat = new FoulChat(chatId, _appStarted);
+            chat = new FoulChat(_foulChatLogger, chatId, _appStarted);
             chat = _chats.GetOrAdd(chatId, chat);
 
             return chat;

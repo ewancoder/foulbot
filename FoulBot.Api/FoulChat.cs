@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,15 +20,19 @@ public interface IFoulChat
 
 public sealed class FoulChat : IFoulChat
 {
+    private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _appStarted;
     private readonly HashSet<string> _processedMessages = new HashSet<string>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
-    public FoulChat(ChatId chatId, DateTime appStarted)
+    public FoulChat(ILogger<FoulChat> logger, ChatId chatId, DateTime appStarted)
     {
+        _logger = logger;
         ChatId = chatId;
         _appStarted = appStarted;
+
+        logger.LogInformation("Created instance of FoulChat {chatId}, with appStarted {appStarted}", chatId.Identifier, appStarted);
     }
 
     public ChatId ChatId { get; }
@@ -46,47 +51,69 @@ public sealed class FoulChat : IFoulChat
             }
             catch (Exception exception)
             {
-                Console.WriteLine(exception);
+                _logger.LogWarning(exception, "Concurrency error when getting the context snapshot.");
             }
         }
     }
 
     public void HandleUpdate(Update update)
     {
+        var messageId = GetUniqueMessageId(update.Message);
+
+        _logger.LogInformation("Handling a message by FoulChat {chatId}, message {messageId}, update {@update}", ChatId.Identifier, messageId, update);
         if (update?.Message?.Date < _appStarted)
+        {
+            _logger.LogDebug("Filtering out old message since it's date {date} is less than appStarted date {appStarted}, message {messageId}", update?.Message?.Date, _appStarted, messageId);
             return;
+        }
 
         var message = GetFoulMessageFromTelegramUpdate(update);
         if (message == null)
+        {
+            _logger.LogDebug("Skipping notifying bots: rules say we should skip it (or it's a duplicate from another bot). Chat {chatId}, message {messageId}", ChatId, messageId);
             return;
+        }
 
         // Mega super duper HACK to wait for the message from ALL the bots.
+        _logger.LogDebug("Entering a very hacky 2-second way to consolidate the same message from different bots, chat {chatId}, message {messageId}", ChatId, messageId);
         _ = Task.Run(async () =>
         {
             await Task.Delay(2000);
 
             // TODO: Consider debouncing at this level.
+            _logger.LogDebug("Finished waiting for 2 seconds in super-hack, notifying bots about the message. Chat {chatId}, message {messageId}", ChatId, messageId);
             MessageReceived?.Invoke(this, message);
         });
     }
 
     private FoulMessage? GetFoulMessageFromTelegramUpdate(Update update)
     {
-        if (update.Message == null || update.Message.Text == null || GetSenderName(update) == null)
-            return null;
-
         var messageId = GetUniqueMessageId(update.Message);
-        if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
+        if (update.Message == null || update.Message.Text == null || GetSenderName(update) == null)
+        {
+            _logger.LogDebug("Message text or sender name are null, skipping the message {messageId}", messageId);
             return null;
+        }
+
+        if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
+        {
+            _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
+            return null;
+        }
 
         lock (_lock)
         {
+            _logger.LogDebug("Entered lock for adding the message to the CONTEXT. Message {messageId}", messageId);
             if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
+            {
+                _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
                 return null;
+            }
 
             if (_processedMessages.Contains(messageId))
             {
-                // TODO: Create dictionary.
+                _logger.LogDebug("Message has already been added by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message {messageId}.", messageId);
+                // TODO: Create dictionary instead of list for context.
                 var message = _context.First(x => x.Id == messageId);
                 message.ReplyTo = update.Message.ReplyToMessage?.From?.Username;
                 return null; // Discard the message after updating existing message.
@@ -105,18 +132,11 @@ public sealed class FoulChat : IFoulChat
                 };
                 _context.Add(message);
                 _processedMessages.Add(messageId);
+                _logger.LogDebug("Added message to context and to processed messages, message {messageId}.", messageId);
 
-                // TODO: This is duplicate code.
-                if (_context.Count > 900) // TODO: Make these numbers configurable.
-                {
-                    while (_context.Count > 600)
-                    {
-                        var msg = _context[0];
-                        _context.RemoveAt(0);
-                        _processedMessages.Remove(msg.Id);
-                    }
-                }
+                CleanupContext();
 
+                _logger.LogDebug("Exiting the lock (after returning) for adding the message to the context, message {messageId}.", messageId);
                 return message;
             }
         }
@@ -150,27 +170,36 @@ public sealed class FoulChat : IFoulChat
     {
         lock (_lock)
         {
+            _logger.LogDebug("Entered a lock for adding the message to the context manually. Chat {chatId}, message {@message}.", ChatId, foulMessage);
             // TODO: Consider storing separate contexts for separate bots cause they might not be talking for a long time while others do.
 
             _context.Add(foulMessage);
 
-            if (_context.Count > 900) // TODO: Make these numbers configurable.
-            {
-                while (_context.Count > 600)
-                {
-                    var msg = _context[0];
-                    _context.RemoveAt(0);
-                    _processedMessages.Remove(msg.Id);
-                }
-            }
+            CleanupContext();
 
             // TODO: Consider debouncing at this level (see handleupdate method to consolidate).
+            _logger.LogDebug("Notifying bots about the manual message {@message}.", foulMessage);
             MessageReceived?.Invoke(this, foulMessage);
         }
     }
 
     public async ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status)
     {
+        _logger.LogDebug("Notifying bots about status change: {who}, {by}, {status}, {chatId}", whoName, byName, status, ChatId);
         StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
+    }
+
+    private void CleanupContext()
+    {
+        if (_context.Count > 900) // TODO: Make these numbers configurable.
+        {
+            _logger.LogDebug("Context has more than 900 messages. Cleaning it up to 600.");
+            while (_context.Count > 600)
+            {
+                var msg = _context[0];
+                _context.RemoveAt(0);
+                _processedMessages.Remove(msg.Id);
+            }
+        }
     }
 }
