@@ -120,7 +120,7 @@ public sealed class FoulBot : IFoulBot
                     await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_stickers[_random.Next(0, _stickers.Length)]));
 
                 var welcome = await _aiClient.GetCustomResponseAsync(
-$"{_directive}. You have just been added to a chat group with a number of people{(invitedBy == null ? string.Empty : " by a person named "+ invitedBy + "")}, tell them hello in your manner or thank the person for adding you if you feel like it.");
+$"{_directive}. You have just been added to a chat group with a number of people by a person named {invitedBy}, tell them hello in your manner or thank the person for adding you if you feel like it.");
                 await _botClient.SendTextMessageAsync(chat.ChatId, welcome);
             }
 
@@ -154,7 +154,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         var snapshot = _chat.GetContextSnapshot();
 
         // Do not allow sending multiple messages. Just skip it till the next one arrives.
-        if (snapshot.LastOrDefault() != null && snapshot.Last().SenderName == _botIdName)
+        if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _botIdName)
             return;
 
         var unprocessedMessages = snapshot;
@@ -185,7 +185,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
             LogDebug("Reset counter for N messages repeat.");
         }
 
-        if (unprocessedMessages.Last().IsOriginallyBotMessage)
+        if (unprocessedMessages[^1].IsOriginallyBotMessage)
         {
             if (_botOnlyCount >= _botOnlyMaxCount)
             {
@@ -208,7 +208,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 snapshot = _chat.GetContextSnapshot();
 
                 // Do not allow sending multiple messages. Just skip it till the next one arrives.
-                if (snapshot.LastOrDefault() != null && snapshot.Last().SenderName == _botIdName)
+                if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _botIdName)
                     return;
 
                 unprocessedMessages = snapshot;
@@ -227,7 +227,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 if (_replyEveryMessagesCounter >= _replyEveryMessages)
                     _replyEveryMessagesCounter = 0; // TODO: Test this that bot really sends messages every N messages.
 
-                if (unprocessedMessages.Last().IsOriginallyBotMessage)
+                if (unprocessedMessages[^1].IsOriginallyBotMessage)
                 {
                     if (_botOnlyCount >= _botOnlyMaxCount)
                     {
@@ -427,7 +427,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         if (message.ReplyTo == _botIdName)
             return true;
 
-        if (_keyWords.Any(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
+        if (_keyWords.Exists(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
             return true;
 
         return false;

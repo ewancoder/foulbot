@@ -183,10 +183,11 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    public async ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status)
+    public ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status)
     {
         _logger.LogDebug("Notifying bots about status change: {who}, {by}, {status}, {chatId}", whoName, byName, status, ChatId);
         StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
+        return default;
     }
 
     private void CleanupContext()
