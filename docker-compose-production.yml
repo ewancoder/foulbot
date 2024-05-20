@@ -20,15 +20,15 @@ services:
       - ./key.json:/app/key.json
       - /data/foulbot-logs:/app/logs
 
-  seq:
-    image: datalust/seq:latest
-    container_name: foulbot-seq
-    restart: unless-stopped
-    mem_limit: 800m
-    mem_reservation: 400m
-    environment:
-      - ACCEPT_EULA=Y
-    ports:
-      - 8081:80
-    volumes:
-      - /data/foulbot-seq:/data
+  #seq:
+  #  image: datalust/seq:latest
+  #  container_name: foulbot-seq
+  #  restart: unless-stopped
+  #  mem_limit: 800m
+  #  mem_reservation: 400m
+  #  environment:
+  #    - ACCEPT_EULA=Y
+  #  ports:
+  #    - 8081:80
+  #  volumes:
+  #    - /data/foulbot-seq:/data
