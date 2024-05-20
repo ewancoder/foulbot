@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Google.Apis.Logging;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -23,6 +25,7 @@ public sealed class FoulBot : IFoulBot
         "за нецензурн", "прошу вас выражаться", "извини", "прости", "не могу помочь",
         "не могу обсуждать"
     ];
+    private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
     private readonly ITelegramBotClient _botClient;
     private readonly Random _random = new Random();
@@ -48,6 +51,7 @@ public sealed class FoulBot : IFoulBot
     private string? _lastProcessedId;
 
     public FoulBot(
+        ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
         ITelegramBotClient botClient,
         string directive,
@@ -60,6 +64,7 @@ public sealed class FoulBot : IFoulBot
         bool useOnlyVoice,
         string[] stickers)
     {
+        _logger = logger;
         _stickers = stickers;
         _aiClient = aiClient;
         _botClient = botClient;
@@ -276,6 +281,8 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
             // Get context from this bot for the AI client.
             var context = GetContextForAI(snapshot);
+
+            _logger.LogDebug("Bot {botName} in chat {chatId} is processing context {@context}", _botName, _chat.ChatId, context);
 
             /*var aiGeneratedTextResponse = $"{DateTime.UtcNow} - bot reply from {_botName}";*/
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
