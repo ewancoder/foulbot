@@ -18,7 +18,7 @@ services:
       - secrets.env
     volumes:
       - ./key.json:/app/key.json
-      - ./chats:/app/chats
+      #- ./chats:/app/chats # For some reason it doesn't work, something with linux permissions.
       - /data/foulbot-logs:/app/logs
 
   #seq:
