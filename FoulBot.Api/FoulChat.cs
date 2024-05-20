@@ -169,7 +169,7 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    public async ValueTask ChangeBotStatusAsync(string? whoName, string byName, ChatMemberStatus status)
+    public async ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status)
     {
         StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
     }
