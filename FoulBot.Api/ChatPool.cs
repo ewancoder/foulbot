@@ -163,19 +163,19 @@ public sealed class ChatPool
 
     private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, long chatId, FoulChat chat, string invitedByUsername, Func<IFoulBot> botFactory)
     {
-        if (_joinedBots.Contains(botId))
+        if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
 
         await _lock.WaitAsync();
         try
         {
             _logger.LogInformation("Entered lock for joining {botId} bot to {chatId} chat.", botId, chatId);
-            if (!_joinedBots.Contains(botId))
+            if (!_joinedBots.Contains($"{botId}{chatId}"))
             {
                 _logger.LogInformation("Bot {botId} is not created for chat {chatId}, invited by {invitedBy}. Creating now.", botId, chatId, invitedByUsername);
                 var bot = botFactory();
                 await bot.JoinChatAsync(chat, invitedByUsername);
-                _joinedBots.Add(botId);
+                _joinedBots.Add($"{botId}{chatId}");
                 _logger.LogInformation("Bot {botId} is successfully added to chat {chatId}. Invited by {invitedBy}.", botId, chatId, invitedByUsername);
             }
         }

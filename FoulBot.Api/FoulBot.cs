@@ -44,6 +44,7 @@ public sealed class FoulBot : IFoulBot
     private readonly Task _repeatByTime;
     private readonly string[] _stickers;
     private bool _subscribed;
+    private bool _subscribedToStatusChanged = false;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
@@ -108,7 +109,11 @@ public sealed class FoulBot : IFoulBot
         try
         {
             _chat = chat;
-            _chat.StatusChanged += OnStatusChanged;
+            if (!_subscribedToStatusChanged)
+            {
+                _chat.StatusChanged += OnStatusChanged;
+                _subscribedToStatusChanged = true;
+            }
 
             // Test that bot is a member of the chat by trying to send an event.
             await _botClient.SendChatActionAsync(chat.ChatId, ChatAction.ChooseSticker);
