@@ -28,7 +28,7 @@ public sealed class FoulBot : IFoulBot
         "поведения не терплю", "есть другие вопросы", "или нужна помощь",
         "stop it right there", "I'm here to help", "with any questions",
         "can assist", "не будем оскорблять", "не буду оскорблять", "не могу оскорблять",
-        "нецензурн", "готов помочь", "с любыми вопросами"
+        "нецензурн", "готов помочь", "с любыми вопросами", "за грубость"
     ];
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
