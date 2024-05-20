@@ -20,7 +20,7 @@ builder.Host.UseSerilog((context, config) =>
         .WriteTo.Console()
         .WriteTo.File(new CompactJsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day)
         .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-        .WriteTo.Seq("http://foulbot-seq:5341")
+        .WriteTo.Seq("http://31.146.143.167:5341")
         .Enrich.WithThreadId();
 });
 

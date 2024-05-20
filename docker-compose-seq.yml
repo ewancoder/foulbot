@@ -1,0 +1,20 @@
+version: "3.8"
+
+networks:
+  default:
+    name: foulbot
+
+services:
+  seq:
+    image: datalust/seq:latest
+    container_name: foulbot-seq
+    restart: unless-stopped
+    mem_limit: 3000m
+    mem_reservation: 3000m
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - 8081:80
+      - 5341:5341
+    volumes:
+      - ./logs/foulbot-seq:/data
