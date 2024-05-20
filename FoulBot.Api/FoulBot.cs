@@ -441,8 +441,12 @@ $"{_directive}. You have just been added to a chat group with a number of people
         if (message.ReplyTo == _botIdName)
             return true;
 
-        if (_keyWords.Exists(keyWord => message.Text.ToLowerInvariant().Contains(keyWord.ToLowerInvariant().Trim())))
+        var triggerKeyword = _keyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
+        if (triggerKeyword != null)
+        {
+            _logger.LogDebug("Trigger word for the message: {triggerWord}, {message}", triggerKeyword, message.Text);
             return true;
+        }
 
         return false;
     }
