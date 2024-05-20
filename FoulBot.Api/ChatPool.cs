@@ -101,7 +101,7 @@ public sealed class ChatPool
             if (!_chats.TryGetValue(chatId, out var chat))
                 chat = await GetOrAddFoulChatAsync(chatId, invitedByUsername, botId, botFactory);
 
-            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, null, botFactory);
+            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, invitedByUsername, botFactory);
 
             await chat.ChangeBotStatusAsync(
                 member.User.Username,
