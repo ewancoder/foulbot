@@ -6,3 +6,4 @@
 /secrets.env
 **/key.json
 **/logs/
+**/chats
