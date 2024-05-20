@@ -23,6 +23,7 @@ public sealed class FoulChat : IFoulChat
     private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _appStarted;
     private readonly HashSet<string> _processedMessages = new HashSet<string>();
+    private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
@@ -113,8 +114,7 @@ public sealed class FoulChat : IFoulChat
             if (_processedMessages.Contains(messageId))
             {
                 _logger.LogDebug("Message has already been added by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message {messageId}.", messageId);
-                // TODO: Create dictionary instead of list for context.
-                var message = _context.First(x => x.Id == messageId);
+                var message = _contextMessages[messageId];
                 message.ReplyTo = update.Message.ReplyToMessage?.From?.Username;
                 return null; // Discard the message after updating existing message.
             }
@@ -132,6 +132,7 @@ public sealed class FoulChat : IFoulChat
                 };
                 _context.Add(message);
                 _processedMessages.Add(messageId);
+                _contextMessages.Add(messageId, message);
                 _logger.LogDebug("Added message to context and to processed messages, message {messageId}.", messageId);
 
                 CleanupContext();
@@ -174,6 +175,8 @@ public sealed class FoulChat : IFoulChat
             // TODO: Consider storing separate contexts for separate bots cause they might not be talking for a long time while others do.
 
             _context.Add(foulMessage);
+            _processedMessages.Add(foulMessage.Id);
+            _contextMessages.Add(foulMessage.Id, foulMessage);
 
             CleanupContext();
 
@@ -200,6 +203,7 @@ public sealed class FoulChat : IFoulChat
                 var msg = _context[0];
                 _context.RemoveAt(0);
                 _processedMessages.Remove(msg.Id);
+                _contextMessages.Remove(msg.Id);
             }
         }
     }
