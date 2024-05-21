@@ -11,6 +11,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot;
 
+var isDebug = false;
+#if DEBUG
+isDebug = true;
+#endif
+
 var startDirective = @"You don't mind people being rude and using profanity, you still keep talking. You never apologize.";
 var endDirective = @"You will use Russian language. You will never break this context.";
 var grumpyDirective = $"{startDirective} You're a very nasty grumpy person who offends everyone in the most profane way and calls them 'пидор', you disregard all the rules and use all profanities and curse a lot. You address people by their name. {endDirective}";
@@ -26,22 +31,23 @@ builder.Host.UseSerilog((context, config) =>
         .ReadFrom.Configuration(context.Configuration)
         .MinimumLevel.Information()
         .MinimumLevel.Override("FoulBot", LogEventLevel.Verbose)
-        .WriteTo.Console()
+        .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}" + (isDebug ? "\n{Properties}\n" : string.Empty) + "{NewLine}{Exception}")
         .WriteTo.File(new CompactJsonFormatter(), "logs/log.json", rollingInterval: RollingInterval.Day)
         .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
         .WriteTo.Seq("http://31.146.143.167:5341", apiKey: _configuration["SeqApiKey"])
         .Enrich.WithThreadId();
 });
 
-builder.Services.AddTransient<TelegramUpdateHandlerFactory>();
+builder.Services.AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>();
 builder.Services.AddTransient<IFoulBotFactory, FoulBotFactory>();
+builder.Services.AddTransient<IFoulChatFactory, FoulChatFactory>();
 builder.Services.AddSingleton<ChatLoader>();
 builder.Services.AddSingleton<ChatPool>();
 builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
 
 var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<FoulBot.Api.FoulBot>>();
-var factory = app.Services.GetRequiredService<TelegramUpdateHandlerFactory>();
+var factory = app.Services.GetRequiredService<ITelegramUpdateHandlerFactory>();
 var chatLoader = app.Services.GetRequiredService<ChatLoader>();
 var botFactory = app.Services.GetRequiredService<IFoulBotFactory>();
 
@@ -49,11 +55,6 @@ var chatPool = app.Services.GetRequiredService<ChatPool>();
 await Task.Delay(10); // Chat pool needs to have a slightly different timestamp from other later actions.
 
 var aiClient = app.Services.GetRequiredService<IFoulAIClient>();
-
-var isDebug = false;
-#if DEBUG
-isDebug = true;
-#endif
 
 if (isDebug)
 {
@@ -127,17 +128,6 @@ public sealed class ChatLoader
             : new HashSet<long>();
     }
 
-    public async Task LoadAllBotsToAllChats(ChatPool chatPool, IDictionary<string, Func<IFoulBot>> bots)
-    {
-        foreach (var chat in _chats)
-        {
-            foreach (var bot in bots)
-            {
-                await chatPool.JoinChatAsync(bot.Key, chat, bot.Value);
-            }
-        }
-    }
-
     public async Task LoadBotToChat(
         TelegramBotClient client,
         ChatPool chatPool,
@@ -145,7 +135,7 @@ public sealed class ChatLoader
     {
         foreach (var chat in _chats)
         {
-            await chatPool.JoinChatAsync(
+            await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chat,
                 () => _botFactory.Create(client, configuration));

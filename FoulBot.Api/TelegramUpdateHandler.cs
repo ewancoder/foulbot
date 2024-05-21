@@ -1,35 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 
 namespace FoulBot.Api;
-
-public sealed class TelegramUpdateHandlerFactory
-{
-    private readonly ILogger<TelegramUpdateHandler> _logger;
-    private readonly ChatPool _chatPool;
-    private readonly IFoulBotFactory _botFactory;
-
-    public TelegramUpdateHandlerFactory(
-        ILogger<TelegramUpdateHandler> logger,
-        ChatPool chatPool,
-        IFoulBotFactory botFactory)
-    {
-        _logger = logger;
-        _chatPool = chatPool;
-        _botFactory = botFactory;
-    }
-
-    public TelegramUpdateHandler Create(FoulBotConfiguration configuration)
-    {
-        return new TelegramUpdateHandler(
-            _logger, _chatPool, _botFactory, configuration);
-    }
-}
 
 public sealed class TelegramUpdateHandler : IUpdateHandler
 {
@@ -49,23 +27,36 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _chatPool = chatPool;
         _botFactory = botFactory;
         _botConfiguration = botConfiguration;
+
+        using var _ = _logger.BeginScope(LogContext);
+        _logger.LogInformation("Initialized TelegramUpdateHandler with configuration {@Configuration}.", _botConfiguration);
     }
+
+    private Dictionary<string, object> LogContext => new()
+    {
+        ["BotId"] = _botConfiguration.BotId
+    };
 
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Polling error from the bot {bot}", botClient.BotId);
+        using var _ = _logger.BeginScope(LogContext);
+        _logger.LogError(exception, "Polling error occurred.");
         return Task.CompletedTask;
     }
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        using var _ = _logger.BeginScope(LogContext);
+
         if (!_coldStarted)
         {
+            // TODO: Rewrite it to use started datetime instead of flag, this triggers even after lots of time if nobody wrote anything.
+            _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
             await Task.Delay(2000);
             _coldStarted = true;
         }
 
-        _logger.LogDebug("Received update {@update} from bot {botId}", update, _botConfiguration.BotId);
+        _logger.LogDebug("Received update {@Update}.", update);
 
         try
         {
@@ -73,7 +64,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to handle update from bot {botId}.", _botConfiguration.BotId);
+            _logger.LogError(exception, "Failed to handle update {@Update}.", update);
         }
     }
 }

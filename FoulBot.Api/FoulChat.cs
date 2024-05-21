@@ -16,24 +16,26 @@ public interface IFoulChat
 
     void AddMessage(FoulMessage foulMessage);
     List<FoulMessage> GetContextSnapshot();
+    ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status);
+    void HandleUpdate(Update update);
 }
 
 public sealed class FoulChat : IFoulChat
 {
     private readonly ILogger<FoulChat> _logger;
-    private readonly DateTime _appStarted;
+    private readonly DateTime _chatCreatedAt;
     private readonly HashSet<string> _processedMessages = new HashSet<string>();
     private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
-    public FoulChat(ILogger<FoulChat> logger, ChatId chatId, DateTime appStarted)
+    public FoulChat(ILogger<FoulChat> logger, ChatId chatId)
     {
         _logger = logger;
         ChatId = chatId;
-        _appStarted = appStarted;
+        _chatCreatedAt = DateTime.UtcNow;
 
-        logger.LogInformation("Created instance of FoulChat {chatId}, with appStarted {appStarted}", chatId.Identifier, appStarted);
+        logger.LogInformation("Created instance of FoulChat {chatId} with start time {StartTime}.", chatId.Identifier, _chatCreatedAt);
     }
 
     public ChatId ChatId { get; }
@@ -62,9 +64,9 @@ public sealed class FoulChat : IFoulChat
         var messageId = GetUniqueMessageId(update.Message);
 
         _logger.LogInformation("Handling a message by FoulChat {chatId}, message {messageId}, update {@update}", ChatId.Identifier, messageId, update);
-        if (update?.Message?.Date < _appStarted)
+        if (update?.Message?.Date < _chatCreatedAt)
         {
-            _logger.LogDebug("Filtering out old message since it's date {date} is less than appStarted date {appStarted}, message {messageId}", update?.Message?.Date, _appStarted, messageId);
+            _logger.LogDebug("Filtering out old message since it's date {date} is less than started date {appStarted}, message {messageId}", update?.Message?.Date, _chatCreatedAt, messageId);
             return;
         }
 
