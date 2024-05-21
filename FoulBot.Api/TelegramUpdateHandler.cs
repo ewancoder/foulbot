@@ -60,7 +60,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await _chatPool.HandleUpdateAsync(_botConfiguration.BotId, update, () => _botFactory.Create(botClient, _botConfiguration));
+            await _chatPool.HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botClient, _botConfiguration, chat));
         }
         catch (Exception exception)
         {

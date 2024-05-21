@@ -33,7 +33,7 @@ public sealed class ChatPool
 
     // This is being called from outside to join bots to chats after app restart.
     // And also from this class whenever new bot in a new chat receives a message and needs to be created.
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, long chatId, Func<IFoulBot> botFactory, string? invitedBy = null)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, long chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
     {
         using var _ = _logger
             .AddScoped("BotId", botId)
@@ -52,7 +52,7 @@ public sealed class ChatPool
         return chat;
     }
 
-    public async Task HandleUpdateAsync(string botId, Update update, Func<IFoulBot> botFactory)
+    public async Task HandleUpdateAsync(string botId, Update update, Func<IFoulChat, IFoulBot> botFactory)
     {
         _logger
             .AddScoped("BotId", botId)
@@ -151,7 +151,7 @@ public sealed class ChatPool
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, long chatId, IFoulChat chat, Func<IFoulBot> botFactory, string? invitedBy = null)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, long chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
@@ -174,8 +174,8 @@ public sealed class ChatPool
             }
 
             _logger.LogInformation("Creating the bot and joining it to chat.");
-            var bot = botFactory();
-            await bot.JoinChatAsync(chat, invitedBy);
+            var bot = botFactory(chat);
+            await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
             _joinedBots.Add($"{botId}{chatId}");
             _logger.LogInformation("The bot is successfully added to chat.");
         }

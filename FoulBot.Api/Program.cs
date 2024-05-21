@@ -138,7 +138,7 @@ public sealed class ChatLoader
             await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chat,
-                () => _botFactory.Create(client, configuration));
+                chat => _botFactory.Create(client, configuration, chat));
         }
     }
 

@@ -7,7 +7,8 @@ public interface IFoulBotFactory
 {
     public IFoulBot Create(
         ITelegramBotClient telegramBotClient,
-        FoulBotConfiguration configuration);
+        FoulBotConfiguration configuration,
+        IFoulChat chat);
 }
 
 public sealed class FoulBotFactory : IFoulBotFactory
@@ -25,12 +26,14 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
     public IFoulBot Create(
         ITelegramBotClient telegramBotClient,
-        FoulBotConfiguration configuration)
+        FoulBotConfiguration configuration,
+        IFoulChat chat)
     {
         return new FoulBot(
             _logger,
             _aiClient,
             telegramBotClient,
-            configuration);
+            configuration,
+            chat);
     }
 }
