@@ -17,6 +17,100 @@ public interface IFoulBot
     ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null);
 }
 
+public sealed record FoulBotConfiguration
+{
+    public FoulBotConfiguration(
+        string botId,
+        string botName,
+        string directive,
+        HashSet<string> keyWords)
+    {
+        if (botId == null || botName == null || directive == null || keyWords == null)
+            throw new ArgumentException("One of the arguments is null.");
+
+        if (!keyWords.Any())
+            throw new ArgumentException("Should have at least one keyword.");
+
+        BotId = botId;
+        BotName = botName;
+        Directive = directive;
+        KeyWords = keyWords;
+    }
+
+    public string BotId { get; }
+    public string BotName { get; }
+    public string Directive { get; }
+    public HashSet<string> KeyWords { get; }
+    public int ContextSize { get; } = 20;
+    public int ReplyEveryMessages { get; } = 20;
+    public int MessagesBetweenVoice { get; init; } = 0;
+    public bool UseOnlyVoice { get; init; } = false;
+    public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 10;
+    public int BotOnlyDecrementIntervalSeconds { get; init; } = 60;
+    public bool NotAnAssistant { get; init; } = true;
+    public HashSet<string> Stickers { get; } = new HashSet<string>();
+
+    public FoulBotConfiguration WithVoiceBetween(int messages)
+    {
+        if (messages < 0)
+            throw new InvalidOperationException("Messages count cannot be negative.");
+
+        return this with
+        {
+            MessagesBetweenVoice = messages
+        };
+    }
+
+    public FoulBotConfiguration WithOnlyVoice()
+    {
+        return this with
+        {
+            UseOnlyVoice = true
+        };
+    }
+
+    public FoulBotConfiguration ConfigureBotToBotCommunication(
+        int botOnlyMaxMessagesBetweenDebounce,
+        int botOnlyDecrementIntervalSeconds)
+    {
+        if (botOnlyMaxMessagesBetweenDebounce < 0 || botOnlyDecrementIntervalSeconds < 0)
+            throw new InvalidOperationException("Negative values are invalid.");
+
+        return this with
+        {
+            BotOnlyMaxMessagesBetweenDebounce = botOnlyMaxMessagesBetweenDebounce,
+            BotOnlyDecrementIntervalSeconds = botOnlyDecrementIntervalSeconds
+        };
+    }
+
+    public FoulBotConfiguration DoNotTalkToBots()
+    {
+        return this with
+        {
+            BotOnlyMaxMessagesBetweenDebounce = 0
+        };
+    }
+
+    public FoulBotConfiguration AllowBeingAnAssistant()
+    {
+        return this with
+        {
+            NotAnAssistant = false
+        };
+    }
+
+    // TODO: Consider making it immutable.
+    public FoulBotConfiguration AddStickers(params string[] stickers)
+    {
+        foreach (var sticker in stickers)
+        {
+            Stickers.Add(sticker);
+        }
+
+        return this;
+    }
+}
+
 public sealed class FoulBot : IFoulBot
 {
     private static readonly string[] _failedContext = [
@@ -31,25 +125,27 @@ public sealed class FoulBot : IFoulBot
         "нецензурн", "готов помочь", "с любыми вопросами", "за грубость"
     ];
     private readonly ILogger<FoulBot> _logger;
-    private readonly IFoulAIClient _aiClient;
     private readonly ITelegramBotClient _botClient;
+    private readonly IFoulAIClient _aiClient;
+    private readonly GoogleTtsService _googleTts = new GoogleTtsService();
     private readonly Random _random = new Random();
+    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private readonly Task _botOnlyDecrementTask;
+    private readonly Task _repeatByTimeTask;
+
     private readonly string _botIdName;
     private readonly string _botName;
-    private readonly List<string> _keyWords;
+    private readonly HashSet<string> _keyWords;
     private readonly string _directive;
     private readonly int _contextSize;
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly int _replyEveryMessages;
     private readonly int _messagesBetweenAudio;
     private readonly bool _useOnlyVoice;
     private readonly int _botOnlyMaxCount = 10;
     private readonly int _botOnlyDecrementIntervalSeconds = 60;
     private readonly bool _notAnAssistant;
-    private readonly Task _botOnlyDecrementTask;
-    private readonly Task _repeatByTime;
-    private readonly string[] _stickers;
-    private readonly GoogleTtsService _googleTts = new GoogleTtsService();
+    private readonly List<string> _stickers;
+
     private bool _subscribed;
     private bool _subscribedToStatusChanged = false;
     private int _botOnlyCount = 0;
@@ -63,31 +159,22 @@ public sealed class FoulBot : IFoulBot
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
         ITelegramBotClient botClient,
-        string directive,
-        string botIdName,
-        string botName,
-        List<string> keyWords,
-        int contextSize,
-        int replyEveryMessages,
-        int messagesBetweenAudio,
-        bool useOnlyVoice,
-        string[] stickers,
-        bool notAnAssistant)
+        FoulBotConfiguration configuration)
     {
         _logger = logger;
-        _stickers = stickers;
+        _stickers = configuration.Stickers.ToList();
         _aiClient = aiClient;
         _botClient = botClient;
-        _directive = directive;
-        _botIdName = botIdName;
-        _botName = botName;
-        _keyWords = keyWords;
-        _contextSize = contextSize;
-        _replyEveryMessages = replyEveryMessages;
+        _directive = configuration.Directive;
+        _botIdName = configuration.BotId;
+        _botName = configuration.BotName;
+        _keyWords = configuration.KeyWords;
+        _contextSize = configuration.ContextSize;
+        _replyEveryMessages = configuration.ReplyEveryMessages;
         _randomReplyEveryMessages = _random.Next(Math.Max(1, _replyEveryMessages - 5), _replyEveryMessages + 15);
-        _messagesBetweenAudio = messagesBetweenAudio;
-        _useOnlyVoice = useOnlyVoice;
-        _notAnAssistant = notAnAssistant;
+        _messagesBetweenAudio = configuration.MessagesBetweenVoice;
+        _useOnlyVoice = configuration.UseOnlyVoice;
+        _notAnAssistant = configuration.NotAnAssistant;
         _botOnlyDecrementTask = Task.Run(async () =>
         {
             while (true)
@@ -97,7 +184,7 @@ public sealed class FoulBot : IFoulBot
                     _botOnlyCount--;
             }
         });
-        _repeatByTime = Task.Run(async () =>
+        _repeatByTimeTask = Task.Run(async () =>
         {
             while (true)
             {
@@ -135,7 +222,7 @@ public sealed class FoulBot : IFoulBot
             if (invitedBy != null)
             {
                 if (_stickers.Any())
-                    await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_stickers[_random.Next(0, _stickers.Length)]));
+                    await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_stickers[_random.Next(0, _stickers.Count)]));
 
                 var welcome = await _aiClient.GetCustomResponseAsync(
 $"{_directive}. You have just been added to a chat group with a number of people by a person named {invitedBy}, tell them hello in your manner or thank the person for adding you if you feel like it.");

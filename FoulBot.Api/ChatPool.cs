@@ -4,74 +4,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Telegram.Bot;
-using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
-
-public sealed class TelegramUpdateHandlerFactory
-{
-    private readonly ILogger<TelegramUpdateHandler> _logger;
-    private readonly ChatPool _chatPool;
-
-    public TelegramUpdateHandlerFactory(
-        ILogger<TelegramUpdateHandler> logger,
-        ChatPool chatPool)
-    {
-        _logger = logger;
-        _chatPool = chatPool;
-    }
-
-    public TelegramUpdateHandler CreateHandler(string botId, Func<IFoulBot> botFactory)
-    {
-        return new TelegramUpdateHandler(_chatPool, botId, botFactory, _logger);
-    }
-}
-
-public sealed class TelegramUpdateHandler : IUpdateHandler
-{
-    private readonly ChatPool _chatPool;
-    private readonly string _botId;
-    private readonly Func<IFoulBot> _botFactory;
-    private readonly ILogger<TelegramUpdateHandler> _logger;
-
-    public TelegramUpdateHandler(
-        ChatPool chatPool,
-        string botId,
-        Func<IFoulBot> botFactory,
-        ILogger<TelegramUpdateHandler> logger)
-    {
-        _chatPool = chatPool;
-        _botId = botId;
-        _botFactory = botFactory;
-        _logger = logger;
-    }
-
-    public string BotId => _botId;
-    public Func<IFoulBot> Factory => _botFactory;
-
-    public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
-    {
-        _logger.LogError(exception, "Polling error from the bot {bot}", botClient.BotId);
-        return Task.CompletedTask;
-    }
-
-    public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
-    {
-        _logger.LogDebug("Received update {@update} from bot {botId}", update, _botId);
-
-        try
-        {
-            await _chatPool.HandleUpdateAsync(_botId, update, _botFactory);
-        }
-        catch (Exception exception)
-        {
-            _logger.LogError(exception, "Failed to handle update from bot {botId}.", _botId);
-        }
-    }
-}
 
 public sealed class ChatPool
 {
