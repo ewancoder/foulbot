@@ -52,7 +52,9 @@ public sealed class FoulChat : IFoulChat
         {
             try
             {
-                var snapshot = _context.ToList();
+                var snapshot = _context
+                    .OrderBy(x => x.Date) // Order by date so we're sure context is in correct order at decision making step.
+                    .ToList();
                 return snapshot;
             }
             catch (Exception exception)
