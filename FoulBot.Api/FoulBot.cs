@@ -107,7 +107,6 @@ public sealed record FoulBotConfiguration
 
 public interface IFoulBot
 {
-    string BotId { get; }
     ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null);
 }
 
@@ -159,6 +158,11 @@ public sealed class FoulBot : IFoulBot
         _botClient = botClient;
         _config = configuration;
 
+        // Can't use BeginScope method yet as the Chat is not set yet.
+        using var _ = _logger
+            .AddScoped("BotId", _config.BotId)
+            .BeginScope();
+
         SetupNextReplyEveryMessages();
 
         _botOnlyDecrementTask = Task.Run(async () =>
@@ -183,9 +187,9 @@ public sealed class FoulBot : IFoulBot
                 if (waitMinutes < 120)
                     waitMinutes = _random.Next(60, 720);
 
-                _logger.LogInformation("Prepairing to wait for a message based on time, {waitMinutes} minutes. Bot {bot}, chat {chat}.", waitMinutes, _config.BotId, _chat?.ChatId);
+                _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
                 await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
-                _logger.LogInformation("Sending a message based on time, {waitMinutes} minutes passed. Bot {bot}, chat {chat}.", waitMinutes, _config.BotId, _chat?.ChatId);
+                _logger.LogInformation("Sending a message based on time, {WaitMinutes} minutes passed.", waitMinutes);
                 await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
         });
@@ -205,8 +209,6 @@ public sealed class FoulBot : IFoulBot
 
         _logger.LogInformation("Reset next mandatory reply after {Count} messages.", count);
     }
-
-    public string BotId => _config.BotId;
 
     // TODO: If after restarting the solution someone REMOVES a bot from the chat - all the other bots will comment on it as if you have ADDED them.
     // This is because the chat object has not been created yet and this method is called for everyone.
