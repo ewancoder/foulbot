@@ -14,10 +14,10 @@ public interface IFoulChat
     event EventHandler<FoulMessage> MessageReceived;
     event EventHandler<FoulStatusChanged> StatusChanged;
 
-    void AddMessage(FoulMessage foulMessage);
     List<FoulMessage> GetContextSnapshot();
-    ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status);
-    void HandleUpdate(Update update);
+    void ChangeBotStatus(string whoName, string? byName, ChatMemberStatus status);
+    void HandleTelegramMessage(Message telegramMessage);
+    void AddMessage(FoulMessage foulMessage);
 }
 
 public sealed class FoulChat : IFoulChat
@@ -34,8 +34,12 @@ public sealed class FoulChat : IFoulChat
         ChatId = chatId;
         _chatCreatedAt = DateTime.UtcNow;
 
-        logger.LogInformation("Created instance of FoulChat {chatId} with start time {StartTime}.", chatId.Identifier, _chatCreatedAt);
+        using var _ = Logger.BeginScope();
+        _logger.LogInformation("Created instance of FoulChat with start time {StartTime}.", _chatCreatedAt);
     }
+
+    private IScopedLogger Logger => _logger
+        .AddScoped("ChatId", ChatId);
 
     public ChatId ChatId { get; }
     public event EventHandler<FoulMessage>? MessageReceived;
@@ -53,118 +57,59 @@ public sealed class FoulChat : IFoulChat
             }
             catch (Exception exception)
             {
-                _logger.LogWarning(exception, "Concurrency error when getting the context snapshot.");
+                using var _ = Logger.BeginScope();
+                _logger.LogWarning(exception, "Concurrency error when getting the context snapshot. Trying again.");
             }
         }
     }
 
-    public void HandleUpdate(Update update)
+    public void ChangeBotStatus(string whoName, string? byName, ChatMemberStatus status)
     {
-        var messageId = GetUniqueMessageId(update.Message);
+        using var _ = Logger.BeginScope();
 
-        _logger.LogInformation("Handling a message by FoulChat {chatId}, message {messageId}, update {@update}", ChatId.Identifier, messageId, update);
-        if (update?.Message?.Date < _chatCreatedAt)
+        _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName} into status {Status}", whoName, byName, status);
+
+        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
+    }
+
+    public void HandleTelegramMessage(Message telegramMessage)
+    {
+        // TODO: Consider including Message to the scope, but filter out all non-relevant fields.
+        using var l = Logger
+            .AddScoped("MessageId", telegramMessage.MessageId)
+            .BeginScope();
+
+        _logger.LogInformation("Received message by FoulChat");
+
+        if (telegramMessage.Date < _chatCreatedAt)
         {
-            _logger.LogDebug("Filtering out old message since it's date {date} is less than started date {appStarted}, message {messageId}", update?.Message?.Date, _chatCreatedAt, messageId);
+            _logger.LogTrace("Skipping out old message since it's date {MessageTime} is less than started date {StartTime}", telegramMessage.Date, _chatCreatedAt);
             return;
         }
 
-        var message = GetFoulMessageFromTelegramUpdate(update);
+        var message = GetFoulMessage(telegramMessage);
         if (message == null)
         {
-            _logger.LogDebug("Skipping notifying bots: rules say we should skip it (or it's a duplicate from another bot). Chat {chatId}, message {messageId}", ChatId, messageId);
+            _logger.LogDebug("Skipping this message by rules.");
             return;
         }
 
         // Mega super duper HACK to wait for the message from ALL the bots.
-        _logger.LogDebug("Entering a very hacky 2-second way to consolidate the same message from different bots, chat {chatId}, message {messageId}", ChatId, messageId);
+        _logger.LogTrace("Entering a very hacky 2-second way to consolidate the same message from different bots");
+
         _ = Task.Run(async () =>
         {
             await Task.Delay(2000);
 
+            // For some reason logging scope is still present here (using Serilog).
+            // Which is Great for me, but need to investigate why.
+            // !!! It even bleeds through the event into the ensuing FoulBot instance which is wild.
+
             // TODO: Consider debouncing at this level.
-            _logger.LogDebug("Finished waiting for 2 seconds in super-hack, notifying bots about the message. Chat {chatId}, message {messageId}", ChatId, messageId);
+            _logger.LogTrace("Finished waiting for 2 seconds in super-hack, now notifying bots about the message.");
+            _logger.LogInformation("Notifying bots about the message: {Message}", message);
             MessageReceived?.Invoke(this, message);
         });
-    }
-
-    private FoulMessage? GetFoulMessageFromTelegramUpdate(Update update)
-    {
-        var messageId = GetUniqueMessageId(update.Message);
-        if (update.Message == null || update.Message.Text == null || GetSenderName(update) == null)
-        {
-            _logger.LogDebug("Message text or sender name are null, skipping the message {messageId}", messageId);
-            return null;
-        }
-
-        if (_contextMessages.ContainsKey(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
-        {
-            _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
-            return null;
-        }
-
-        lock (_lock)
-        {
-            _logger.LogDebug("Entered lock for adding the message to the CONTEXT. Message {messageId}", messageId);
-            if (_contextMessages.ContainsKey(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
-            {
-                _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
-                return null;
-            }
-
-            if (_contextMessages.ContainsKey(messageId))
-            {
-                _logger.LogDebug("Message has already been added by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message {messageId}.", messageId);
-                var message = _contextMessages[messageId];
-                message.ReplyTo = update.Message.ReplyToMessage?.From?.Username;
-                return null; // Discard the message after updating existing message.
-            }
-
-            {
-                var message = new FoulMessage(
-                    messageId,
-                    FoulMessageType.User,
-                    GetSenderName(update),
-                    update.Message.Text,
-                    update.Message.Date,
-                    false)
-                {
-                    ReplyTo = update.Message.ReplyToMessage?.From?.Username
-                };
-                _context.Add(message);
-                _contextMessages.Add(messageId, message);
-                _logger.LogDebug("Added message to context and to processed messages, message {messageId} - {message}.", messageId, message);
-
-                CleanupContext();
-
-                _logger.LogDebug("Exiting the lock (after returning) for adding the message to the context, message {messageId}.", messageId);
-                return message;
-            }
-        }
-    }
-
-    private string GetUniqueMessageId(Message message)
-    {
-        return $"{message.From.Id}-{message.Date.Ticks}";
-    }
-
-    private string? GetSenderName(Update update)
-    {
-        // TODO: Remove all unsupported characters (normalize name).
-        // Maybe do this on OpenAI side.
-        if (update.Message?.From == null)
-            return null;
-
-        if (update.Message.From.FirstName == null && update.Message.From.LastName == null)
-            return null;
-
-        if (update.Message.From.FirstName == null)
-            return update.Message.From.LastName;
-
-        if (update.Message.From.LastName == null)
-            return update.Message.From.FirstName;
-
-        return $"{update.Message.From.FirstName}_{update.Message.From.LastName}";
     }
 
     public void AddMessage(FoulMessage foulMessage)
@@ -185,24 +130,98 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    public ValueTask ChangeBotStatusAsync(string whoName, string? byName, ChatMemberStatus status)
+    private FoulMessage? GetFoulMessage(Message telegramMessage)
     {
-        _logger.LogDebug("Notifying bots about status change: {who}, {by}, {status}, {chatId}", whoName, byName, status, ChatId);
-        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
-        return default;
+        var messageId = GetUniqueMessageId(telegramMessage);
+        if (telegramMessage == null || telegramMessage.Text == null || GetSenderName(telegramMessage) == null)
+        {
+            _logger.LogWarning("Message text or sender name are null, skipping the message.");
+            return null;
+        }
+
+        if (_contextMessages.ContainsKey(messageId) && telegramMessage.ReplyToMessage?.From?.Username == null)
+        {
+            _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
+            return null;
+        }
+
+        _logger.LogDebug("Entering lock for adding (updating) message to context.");
+        lock (_lock)
+        {
+            _logger.LogDebug("Entered lock for adding (updating) message to context.");
+            if (_contextMessages.ContainsKey(messageId) && telegramMessage.ReplyToMessage?.From?.Username == null)
+            {
+                _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
+                return null;
+            }
+
+            if (_contextMessages.ContainsKey(messageId))
+            {
+                _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
+                var message = _contextMessages[messageId];
+                message.ReplyTo = telegramMessage.ReplyToMessage.From.Username;
+                return null; // Discard the message after updating existing message.
+            }
+
+            {
+                var message = new FoulMessage(
+                    messageId,
+                    FoulMessageType.User,
+                    GetSenderName(telegramMessage),
+                    telegramMessage.Text,
+                    telegramMessage.Date,
+                    false)
+                {
+                    ReplyTo = telegramMessage.ReplyToMessage?.From?.Username
+                };
+                _context.Add(message);
+                _contextMessages.Add(messageId, message);
+                _logger.LogDebug("Added message to context.");
+
+                CleanupContext();
+
+                _logger.LogDebug("Exiting the lock for adding message to context.");
+                return message;
+            }
+        }
+    }
+
+    private string GetUniqueMessageId(Message message)
+    {
+        return $"{message.From.Id}-{message.Date.Ticks}";
+    }
+
+    private string? GetSenderName(Message message)
+    {
+        // TODO: Remove all unsupported characters (normalize name).
+        // Maybe do this on OpenAI side.
+        if (message?.From == null)
+            return null;
+
+        if (message.From.FirstName == null && message.From.LastName == null)
+            return null;
+
+        if (message.From.FirstName == null)
+            return message.From.LastName;
+
+        if (message.From.LastName == null)
+            return message.From.FirstName;
+
+        return $"{message.From.FirstName}_{message.From.LastName}";
     }
 
     private void CleanupContext()
     {
-        if (_context.Count > 900) // TODO: Make these numbers configurable.
+        if (_context.Count > 400) // TODO: Make these numbers configurable.
         {
-            _logger.LogDebug("Context has more than 900 messages. Cleaning it up to 600.");
-            while (_context.Count > 600)
+            _logger.LogDebug("Context has more than 400 messages. Cleaning it up to 300.");
+            while (_context.Count > 300)
             {
                 var msg = _context[0];
                 _context.RemoveAt(0);
                 _contextMessages.Remove(msg.Id);
             }
+            _logger.LogDebug("Successfully cleaned up the context.");
         }
     }
 }

@@ -11,12 +11,6 @@ using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
-public interface IFoulBot
-{
-    string BotId { get; }
-    ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null);
-}
-
 public sealed record FoulBotConfiguration
 {
     public FoulBotConfiguration(
@@ -111,6 +105,12 @@ public sealed record FoulBotConfiguration
     }
 }
 
+public interface IFoulBot
+{
+    string BotId { get; }
+    ValueTask<bool> JoinChatAsync(IFoulChat chat, string invitedBy = null);
+}
+
 public sealed class FoulBot : IFoulBot
 {
     private static readonly string[] _failedContext = [
@@ -124,37 +124,30 @@ public sealed class FoulBot : IFoulBot
         "can assist", "не будем оскорблять", "не буду оскорблять", "не могу оскорблять",
         "нецензурн", "готов помочь", "с любыми вопросами", "за грубость"
     ];
+    private static readonly string[] _failedContextCancellation = [
+        "ссылок", "ссылк", "просматривать ссыл", "просматривать содерж", "просматривать контент"
+    ];
     private readonly ILogger<FoulBot> _logger;
-    private readonly ITelegramBotClient _botClient;
     private readonly IFoulAIClient _aiClient;
+    private readonly ITelegramBotClient _botClient;
+    private readonly FoulBotConfiguration _config;
     private readonly GoogleTtsService _googleTts = new GoogleTtsService();
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly Task _botOnlyDecrementTask;
     private readonly Task _repeatByTimeTask;
+    private readonly int _botOnlyMaxCount = 10; // TODO: Consider moving to configuration.
 
-    private readonly string _botIdName;
-    private readonly string _botName;
-    private readonly HashSet<string> _keyWords;
-    private readonly string _directive;
-    private readonly int _contextSize;
-    private readonly int _replyEveryMessages;
-    private readonly int _messagesBetweenAudio;
-    private readonly bool _useOnlyVoice;
-    private readonly int _botOnlyMaxCount = 10;
-    private readonly int _botOnlyDecrementIntervalSeconds = 60;
-    private readonly bool _notAnAssistant;
-    private readonly List<string> _stickers;
-
-    private bool _subscribed;
+    private IFoulChat? _chat;
+    private int _randomReplyEveryMessages;
+    private bool _subscribed = false;
     private bool _subscribedToStatusChanged = false;
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
-    private int _randomReplyEveryMessages;
     private int _replyEveryMessagesCounter = 0;
-    private IFoulChat _chat;
     private string? _lastProcessedId;
 
+    // TODO: Consider whether I can make Chat a field of the constructor.
     public FoulBot(
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
@@ -162,28 +155,26 @@ public sealed class FoulBot : IFoulBot
         FoulBotConfiguration configuration)
     {
         _logger = logger;
-        _stickers = configuration.Stickers.ToList();
         _aiClient = aiClient;
         _botClient = botClient;
-        _directive = configuration.Directive;
-        _botIdName = configuration.BotId;
-        _botName = configuration.BotName;
-        _keyWords = configuration.KeyWords;
-        _contextSize = configuration.ContextSize;
-        _replyEveryMessages = configuration.ReplyEveryMessages;
-        _randomReplyEveryMessages = _random.Next(Math.Max(1, _replyEveryMessages - 5), _replyEveryMessages + 15);
-        _messagesBetweenAudio = configuration.MessagesBetweenVoice;
-        _useOnlyVoice = configuration.UseOnlyVoice;
-        _notAnAssistant = configuration.NotAnAssistant;
+        _config = configuration;
+
+        SetupNextReplyEveryMessages();
+
         _botOnlyDecrementTask = Task.Run(async () =>
         {
             while (true)
             {
-                await Task.Delay(TimeSpan.FromSeconds(_botOnlyDecrementIntervalSeconds));
+                await Task.Delay(TimeSpan.FromSeconds(_config.BotOnlyDecrementIntervalSeconds));
+
                 if (_botOnlyCount > 0)
+                {
+                    _logger.LogTrace("Reduced bot-to-bot debounce to -1, current value {Value}", _botOnlyCount);
                     _botOnlyCount--;
+                }
             }
         });
+
         _repeatByTimeTask = Task.Run(async () =>
         {
             while (true)
@@ -192,15 +183,30 @@ public sealed class FoulBot : IFoulBot
                 if (waitMinutes < 120)
                     waitMinutes = _random.Next(60, 720);
 
-                _logger.LogInformation("Prepairing to wait for a message based on time, {waitMinutes} minutes. Bot {bot}, chat {chat}.", waitMinutes, _botIdName, _chat?.ChatId);
+                _logger.LogInformation("Prepairing to wait for a message based on time, {waitMinutes} minutes. Bot {bot}, chat {chat}.", waitMinutes, _config.BotId, _chat?.ChatId);
                 await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
-                _logger.LogInformation("Sending a message based on time, {waitMinutes} minutes passed. Bot {bot}, chat {chat}.", waitMinutes, _botIdName, _chat?.ChatId);
+                _logger.LogInformation("Sending a message based on time, {waitMinutes} minutes passed. Bot {bot}, chat {chat}.", waitMinutes, _config.BotId, _chat?.ChatId);
                 await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
         });
     }
 
-    public string BotId => _botIdName;
+    // TODO: Figure out how scope goes down here and whether I need to configure this at all.
+    private IScopedLogger Logger => _logger
+        .AddScoped("ChatId", _chat.ChatId)
+        .AddScoped("BotId", _config.BotId);
+
+    private void SetupNextReplyEveryMessages()
+    {
+        _replyEveryMessagesCounter = 0;
+
+        var count = _random.Next(Math.Max(1, _config.ReplyEveryMessages - 5), _config.ReplyEveryMessages + 15);
+        _randomReplyEveryMessages = count;
+
+        _logger.LogInformation("Reset next mandatory reply after {Count} messages.", count);
+    }
+
+    public string BotId => _config.BotId;
 
     // TODO: If after restarting the solution someone REMOVES a bot from the chat - all the other bots will comment on it as if you have ADDED them.
     // This is because the chat object has not been created yet and this method is called for everyone.
@@ -221,22 +227,22 @@ public sealed class FoulBot : IFoulBot
             // Do not send status messages if bot has already been in the chat.
             if (invitedBy != null)
             {
-                if (_stickers.Any())
-                    await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_stickers[_random.Next(0, _stickers.Count)]));
+                if (_config.Stickers.Any())
+                    await _botClient.SendStickerAsync(chat.ChatId, InputFile.FromFileId(_config.Stickers.ElementAt(_random.Next(0, _config.Stickers.Count))));
 
                 var welcome = await _aiClient.GetCustomResponseAsync(
-$"{_directive}. You have just been added to a chat group with a number of people by a person named {invitedBy}, tell them hello in your manner or thank the person for adding you if you feel like it.");
+$"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy}, tell them hello in your manner or thank the person for adding you if you feel like it.");
                 await _botClient.SendTextMessageAsync(chat.ChatId, welcome);
             }
 
-            _logger.LogInformation("Bot {botName} joined chat {chatId}.", _botName, chat.ChatId);
+            _logger.LogInformation("Bot {botName} joined chat {chatId}.", _config.BotName, chat.ChatId);
             _chat.MessageReceived += OnMessageReceived;
             _subscribed = true;
             return true;
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Failed to join {botClient} to chat {chatId}.", _botName, chat.ChatId);
+            _logger.LogWarning(exception, "Failed to join {botClient} to chat {chatId}.", _config.BotName, chat.ChatId);
             return false;
         }
     }
@@ -244,9 +250,9 @@ $"{_directive}. You have just been added to a chat group with a number of people
     private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
-        _logger.LogDebug("Message received by bot {botName} in chat {chatId}, message {@message}.", _botName, _chat.ChatId, message);
+        _logger.LogDebug("Message received by bot {botName} in chat {chatId}, message {@message}.", _config.BotName, _chat.ChatId, message);
 
-        if (_replyEveryMessages > 0)
+        if (_config.ReplyEveryMessages > 0)
             _replyEveryMessagesCounter++;
 
         // TODO: Do NOT send multiple messages in a row if you just sent some. Otherwise it's possible that bot will always talk with itself.
@@ -259,7 +265,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         var snapshot = _chat.GetContextSnapshot();
 
         // Do not allow sending multiple messages. Just skip it till the next one arrives.
-        if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _botIdName)
+        if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotId)
             return;
 
         var unprocessedMessages = snapshot;
@@ -288,7 +294,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
         {
             if (_botOnlyCount >= _botOnlyMaxCount)
             {
-                LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count. Meanwhile all messages are lost.", _botOnlyDecrementIntervalSeconds);
+                LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count. Meanwhile all messages are lost.", _config.BotOnlyDecrementIntervalSeconds);
                 return;
             }
 
@@ -307,7 +313,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 snapshot = _chat.GetContextSnapshot();
 
                 // Do not allow sending multiple messages. Just skip it till the next one arrives.
-                if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _botIdName)
+                if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotId)
                     return;
 
                 unprocessedMessages = snapshot;
@@ -325,17 +331,14 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
                 if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
                 {
-                    // TODO: Add randomness here.
-                    _replyEveryMessagesCounter = 0;
-                    _randomReplyEveryMessages = _random.Next(Math.Max(1, _replyEveryMessages - 5), _replyEveryMessages + 15);
-                    LogDebug("Reset counter for N messages repeat.");
+                    SetupNextReplyEveryMessages();
                 }
 
                 if (unprocessedMessages[^1].IsOriginallyBotMessage)
                 {
                     if (_botOnlyCount >= _botOnlyMaxCount)
                     {
-                        LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count.", _botOnlyDecrementIntervalSeconds);
+                        LogDebug("Exceeded bot-to-bot messages count. Waiting for {botOnlyDecrementIntervalSeconds} seconds to decrease the count.", _config.BotOnlyDecrementIntervalSeconds);
                         return;
                     }
 
@@ -371,9 +374,9 @@ $"{_directive}. You have just been added to a chat group with a number of people
             _lastProcessedId = snapshot[^1].Id;
 
             var isAudio = false;
-            if (_messagesBetweenAudio > 0)
+            if (_config.MessagesBetweenVoice > 0)
                 _audioCounter++;
-            if (_audioCounter > _messagesBetweenAudio || _useOnlyVoice)
+            if (_audioCounter > _config.MessagesBetweenVoice || _config.UseOnlyVoice)
             {
                 isAudio = true;
                 _audioCounter = 0;
@@ -386,18 +389,21 @@ $"{_directive}. You have just been added to a chat group with a number of people
             // Get context from this bot for the AI client.
             var context = GetContextForAI(snapshot);
 
-            _logger.LogDebug("Bot {botName} in chat {chatId} is processing context {@context}", _botName, _chat.ChatId, context);
+            _logger.LogDebug("Bot {botName} in chat {chatId} is processing context {@context}", _config.BotName, _chat.ChatId, context);
 
             /*var aiGeneratedTextResponse = $"{DateTime.UtcNow} - bot reply from {_botName}";*/
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
             var contextForLogging = string.Join('\n', context.Select(c => c.ToString()));
 
-            if (_notAnAssistant)
+            if (_config.NotAnAssistant)
             {
                 var i = 0;
                 while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
                 {
-                    _logger.LogWarning("Generated broken context message: {message} from bot {botName} in chat {chatId}, trying to regenerate.", aiGeneratedTextResponse, _botName, _chat.ChatId);
+                    if (_failedContextCancellation.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
+                        break;
+
+                    _logger.LogWarning("Generated broken context message: {message} from bot {botName} in chat {chatId}, trying to regenerate.", aiGeneratedTextResponse, _config.BotName, _chat.ChatId);
 
                     i++;
                     await Task.Delay(1000);
@@ -408,8 +414,8 @@ $"{_directive}. You have just been added to a chat group with a number of people
                 }
             }
 
-            _logger.LogInformation("Generated (message, bot, chat): {message} {bot} {chat}", aiGeneratedTextResponse, _botName, _chat.ChatId);
-            if (!_useOnlyVoice)
+            _logger.LogInformation("Generated (message, bot, chat): {message} {bot} {chat}", aiGeneratedTextResponse, _config.BotName, _chat.ChatId);
+            if (!_config.UseOnlyVoice)
             {
                 if (isAudio)
                 {
@@ -434,13 +440,13 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
             // This will also cause this method to trigger again. Handle this on this level.
             // Add this message to the global context ONLY after it has been received by telegram.
-            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _botName, aiGeneratedTextResponse, DateTime.UtcNow, true));
+            _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _config.BotName, aiGeneratedTextResponse, DateTime.UtcNow, true));
 
             LogContextAndResponse(context, aiGeneratedTextResponse);
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Error while processing the message by {botName} in {chatId}.", _botName, _chat.ChatId);
+            _logger.LogError(exception, "Error while processing the message by {botName} in {chatId}.", _config.BotName, _chat.ChatId);
         }
         finally
         {
@@ -455,7 +461,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
     private void OnStatusChanged(object sender, FoulStatusChanged message) => OnStatusChangedAsync(message);
     public async Task OnStatusChangedAsync(FoulStatusChanged message)
     {
-        if (message.WhoName != _botIdName)
+        if (message.WhoName != _config.BotId)
             return;
 
         if (message.Status == ChatMemberStatus.Left
@@ -474,7 +480,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
     private void LogDebug(string message, params object[] objects)
     {
         var args = objects
-            .Append(_botName)
+            .Append(_config.BotName)
             .Append(_chat.ChatId)
             .ToArray();
 
@@ -497,7 +503,7 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
                 return message;
             })
-            .TakeLast(_contextSize)
+            .TakeLast(_config.ContextSize)
             .ToList();
 
         var allMessages = fullContext
@@ -509,16 +515,16 @@ $"{_directive}. You have just been added to a chat group with a number of people
 
                 return message;
             })
-            .TakeLast(_contextSize / 2) // Populate only second half with these messages.
+            .TakeLast(_config.ContextSize / 2) // Populate only second half with these messages.
             .ToList();
 
         var combinedContext = onlyAddressedToMe.Concat(allMessages)
             .DistinctBy(x => x.Id)
             .OrderBy(x => x.Date)
-            .TakeLast(_contextSize)
+            .TakeLast(_config.ContextSize)
             .ToList();
 
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false) }
+        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false) }
             .Concat(combinedContext)
             .ToList();
     }
@@ -526,19 +532,19 @@ $"{_directive}. You have just been added to a chat group with a number of people
     private bool IsMyOwnMessage(FoulMessage message)
     {
         return message.MessageType == FoulMessageType.Bot
-            && message.SenderName == _botName;
+            && message.SenderName == _config.BotName;
     }
 
     private bool ShouldAct(FoulMessage message)
     {
         // TODO: Determine whether the bot should act (by key words, or by time, etc).
-        if (message.SenderName == _botName)
+        if (message.SenderName == _config.BotName)
             return false;
 
-        if (message.ReplyTo == _botIdName)
+        if (message.ReplyTo == _config.BotId)
             return true;
 
-        var triggerKeyword = _keyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
+        var triggerKeyword = _config.KeyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
         if (triggerKeyword != null)
         {
             _logger.LogDebug("Trigger word for the message: {triggerWord}, {message}", triggerKeyword, message.Text);

@@ -81,7 +81,7 @@ public sealed class ChatPool
 
             var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername);
 
-            await chat.ChangeBotStatusAsync(
+            chat.ChangeBotStatus(
                 member.User.Username,
                 invitedByUsername,
                 member.Status);
@@ -107,7 +107,7 @@ public sealed class ChatPool
 
             await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory);
 
-            chat.HandleUpdate(update);
+            chat.HandleTelegramMessage(update.Message);
 
             _logger.LogInformation("Successfully handled message.");
             return;

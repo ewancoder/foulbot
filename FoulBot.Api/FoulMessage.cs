@@ -5,7 +5,7 @@ namespace FoulBot.Api;
 
 public sealed record FoulStatusChanged(
     string WhoName,
-    string ByName,
+    string? ByName,
     ChatMemberStatus Status);
 
 public sealed record FoulMessage(
