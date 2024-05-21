@@ -305,13 +305,16 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Incrementing mandatory message every {N} messages, new value: {Counter}.", _randomReplyEveryMessages, _replyEveryMessagesCounter);
         }
 
+        // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
+        // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
+        // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
         async ValueTask<List<FoulMessage>?> ProcessSnapshotAsync()
         {
             _logger.LogTrace("Getting current context snapshot.");
             var snapshot = _chat.GetContextSnapshot();
 
             // Do not allow sending multiple messages. Just skip it till the next one arrives.
-            if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotId)
+            if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotName)
             {
                 _logger.LogInformation("The last message in context is from the same bot. Skipping replying to it.");
                 return null;
