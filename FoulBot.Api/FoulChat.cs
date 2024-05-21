@@ -24,7 +24,6 @@ public sealed class FoulChat : IFoulChat
 {
     private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _chatCreatedAt;
-    private readonly HashSet<string> _processedMessages = new HashSet<string>();
     private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
@@ -98,7 +97,7 @@ public sealed class FoulChat : IFoulChat
             return null;
         }
 
-        if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
+        if (_contextMessages.ContainsKey(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
         {
             _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
             return null;
@@ -107,13 +106,13 @@ public sealed class FoulChat : IFoulChat
         lock (_lock)
         {
             _logger.LogDebug("Entered lock for adding the message to the CONTEXT. Message {messageId}", messageId);
-            if (_processedMessages.Contains(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
+            if (_contextMessages.ContainsKey(messageId) && update.Message.ReplyToMessage?.From?.Username == null)
             {
                 _logger.LogDebug("Message has already been processed and it's not a reply, skipping. Message {messageId}", messageId);
                 return null;
             }
 
-            if (_processedMessages.Contains(messageId))
+            if (_contextMessages.ContainsKey(messageId))
             {
                 _logger.LogDebug("Message has already been added by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message {messageId}.", messageId);
                 var message = _contextMessages[messageId];
@@ -133,7 +132,6 @@ public sealed class FoulChat : IFoulChat
                     ReplyTo = update.Message.ReplyToMessage?.From?.Username
                 };
                 _context.Add(message);
-                _processedMessages.Add(messageId);
                 _contextMessages.Add(messageId, message);
                 _logger.LogDebug("Added message to context and to processed messages, message {messageId} - {message}.", messageId, message);
 
@@ -177,7 +175,6 @@ public sealed class FoulChat : IFoulChat
             // TODO: Consider storing separate contexts for separate bots cause they might not be talking for a long time while others do.
 
             _context.Add(foulMessage);
-            _processedMessages.Add(foulMessage.Id);
             _contextMessages.Add(foulMessage.Id, foulMessage);
 
             CleanupContext();
@@ -204,7 +201,6 @@ public sealed class FoulChat : IFoulChat
             {
                 var msg = _context[0];
                 _context.RemoveAt(0);
-                _processedMessages.Remove(msg.Id);
                 _contextMessages.Remove(msg.Id);
             }
         }
