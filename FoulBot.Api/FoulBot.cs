@@ -39,8 +39,8 @@ public sealed record FoulBotConfiguration
     public int ReplyEveryMessages { get; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
-    public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 10;
-    public int BotOnlyDecrementIntervalSeconds { get; init; } = 60;
+    public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 3;
+    public int BotOnlyDecrementIntervalSeconds { get; init; } = 100;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
 
@@ -136,7 +136,6 @@ public sealed class FoulBot : IFoulBot
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly Task _botOnlyDecrementTask;
     private readonly Task _repeatByTimeTask;
-    private readonly int _botOnlyMaxCount = 10; // TODO: Consider moving to configuration.
 
     private int _randomReplyEveryMessages;
     private bool _subscribed = false;
@@ -344,9 +343,9 @@ public sealed class FoulBot : IFoulBot
                 return null;
             }
 
-            if (unprocessedMessages[^1].IsOriginallyBotMessage && _botOnlyCount >= _botOnlyMaxCount)
+            if (unprocessedMessages[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
             {
-                _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _botOnlyMaxCount, _config.BotOnlyDecrementIntervalSeconds);
+                _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.BotOnlyDecrementIntervalSeconds);
                 return null;
             }
 
