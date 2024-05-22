@@ -192,6 +192,22 @@ public sealed class FoulBot : IFoulBot
                 await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
         });
+
+        var celebrate = Task.Run(async () =>
+        {
+            var current = DateTime.UtcNow;
+            var release = new DateTime(2024, 5, 22, 10, 0, 0, DateTimeKind.Utc);
+            if (release < current)
+                return;
+
+            var time = release - current;
+            await Task.Delay(time);
+
+            var response = await _aiClient.GetCustomResponseAsync($"{_config.Directive}. You are a bot and you have finally been released as version 1.0. Tell people about it so that they should celebrate.");
+            var sticker = _config.Stickers.ElementAt(_random.Next(0, _config.Stickers.Count));
+            await _botClient.SendStickerAsync(_chat.ChatId, InputFile.FromFileId(sticker));
+            await _botClient.SendTextMessageAsync(_chat.ChatId, response);
+        });
     }
 
     // TODO: Figure out how scope goes down here and whether I need to configure this at all.
