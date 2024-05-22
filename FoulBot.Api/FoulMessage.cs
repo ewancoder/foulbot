@@ -16,7 +16,7 @@ public sealed record FoulMessage(
     DateTime Date,
     bool IsOriginallyBotMessage)
 {
-    public string ReplyTo { get; set; }
+    public string? ReplyTo { get; set; }
 
     public FoulMessage AsUser()
     {
@@ -31,5 +31,5 @@ public sealed record FoulMessage(
         return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
     }
 
-    public static FoulMessage ByTime() => new FoulMessage("ByTime", FoulMessageType.System, null, null, DateTime.UtcNow, false);
+    public static FoulMessage ByTime() => new FoulMessage("ByTime", FoulMessageType.System, "ByTime", "ByTime", DateTime.UtcNow, false);
 }

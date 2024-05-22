@@ -29,7 +29,7 @@ public static class LoggerExtensions
             return this;
         }
 
-        public IDisposable BeginScope()
+        public IDisposable? BeginScope()
         {
             return _logger.BeginScope(_scope);
         }

@@ -1,0 +1,310 @@
+root = true
+
+[*]
+indent_style = space
+
+[*.cs]
+indent_size = 4
+insert_final_newline = true
+charset = utf-8-bom
+
+
+
+# === LANGUAGE CONVENTIONS ===
+
+# Don't use "this" prefix.
+dotnet_style_qualification_for_field = false:error
+dotnet_style_qualification_for_property = false:error
+dotnet_style_qualification_for_method = false:error
+dotnet_style_qualification_for_event = false:error
+
+# Use aliases instead of concrete type (int instead of Int32).
+dotnet_style_predefined_type_for_locals_parameters_members = true:error
+dotnet_style_predefined_type_for_member_access = true:error
+
+# Accessibility and readonly should be specified where possible.
+dotnet_style_require_accessibility_modifiers = always:error
+dotnet_style_readonly_field = true:error
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:error
+
+# Parentheses around (2 + 2) * 2.
+dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:error
+dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:error
+dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:error
+dotnet_style_parentheses_in_other_operators = never_if_unnecessary:error
+
+# Language features preference.
+dotnet_style_object_initializer = true:error
+dotnet_style_collection_initializer = true:error
+dotnet_style_explicit_tuple_names = true:error
+dotnet_style_prefer_inferred_tuple_names = true:suggestion
+dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
+dotnet_style_prefer_auto_properties = true:error
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:error
+dotnet_style_prefer_conditional_expression_over_assignment = true:error
+dotnet_style_prefer_conditional_expression_over_return = true:suggestion
+dotnet_style_prefer_compound_assignment = true:error
+
+dotnet_style_coalesce_expression = true:error
+dotnet_style_null_propagation = true:error
+
+# Flag unused parameters of methods.
+dotnet_code_quality_unused_parameters = all:error
+
+# Use var everywhere.
+csharp_style_var_for_built_in_types = true:error
+csharp_style_var_when_type_is_apparent = true:error
+csharp_style_var_elsewhere = true:error
+
+# Expression-bodied members C# feature.
+csharp_style_expression_bodied_methods = false:silent
+csharp_style_expression_bodied_constructors = false:silent
+csharp_style_expression_bodied_operators = false:silent
+csharp_style_expression_bodied_properties = true:error
+csharp_style_expression_bodied_indexers = true:error
+csharp_style_expression_bodied_accessors = true:error
+cshapr_style_expression_bodied_lambdas = true:error
+csharp_style_expression_bodied_local_functions = false:silent
+
+# Prefer: if (object is string stringValue) { }
+csharp_style_pattern_matching_over_is_with_cast_check = true:error
+csharp_style_pattern_matching_over_as_with_null_check = true:error
+
+# Inline out variable: out var i.
+csharp_style_inlined_variable_declaration = true:error
+
+# Prefer default instead of default(T).
+csharp_prefer_simple_default_expression = true:error
+
+# _a = a ?? throw, instead of checking first.
+# func?.Invoke() instead of checking first.
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:error
+
+# Create { } blocks only around multiline statements.
+csharp_prefer_braces = when-multiline:error
+
+# Assign unused values to discard operator.
+csharp_style_unused_value_expression_statement_preference = discard_variable:suggestion
+csharp_style_unused_value_assignment_preference = discard_variable:error
+
+# Force using new C# 8 index and range features.
+cshapr_style_prefer_index_operator = true:error
+csharp_style_prefer_range_operator = true:error
+
+# Force C# 8 deconstruction and local functions.
+csharp_style_deconstructed_variable_declaration = true:error
+csharp_style_pattern_local_over_anonymous_function = true:error
+
+# Put usings outside of namespace.
+csharp_using_directive_placement = outside_namespace:error
+
+# Make local functions static.
+csharp_prefer_static_local_function = true:error
+
+# Prefer using var instead of using (var) { }.
+csharp_prefer_simple_using_statement = true:error
+
+# C# 8 switch expression.
+csharp_style_prefer_switch_expression = true:error
+
+
+
+# === FORMATTING ===
+
+# Put all usings together, after System, alphabetically.
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+csharp_indent_labels = flush_left
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents_when_block = false
+
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_between_parentheses = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_after_comma = true
+csharp_space_before_comma = false
+csharp_space_after_dot = false
+csharp_space_before_dot = false
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_around_declaration_statements = false
+csharp_space_before_open_square_brackets = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_square_brackets = false
+
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+
+# Public stuff must be capitalized.
+dotnet_naming_rule.public_members_must_be_capitalized.severity  = error
+dotnet_naming_rule.public_members_must_be_capitalized.symbols   = public_symbols
+dotnet_naming_rule.public_members_must_be_capitalized.style     = first_word_upper_case_style
+dotnet_naming_symbols.public_symbols.applicable_kinds           = property,method,field,event,delegate
+dotnet_naming_symbols.public_symbols.applicable_accessibilities = public
+dotnet_naming_symbols.public_symbols.required_modifiers         = readonly
+dotnet_naming_style.first_word_upper_case_style.capitalization  = first_word_upper
+
+# Constants must be in pascal case.
+dotnet_naming_rule.constant_fields_should_be_pascal_case.severity   = error
+dotnet_naming_rule.constant_fields_should_be_pascal_case.symbols    = constant_fields
+dotnet_naming_rule.constant_fields_should_be_pascal_case.style      = pascal_case_style
+dotnet_naming_symbols.constant_fields.applicable_kinds              = field
+dotnet_naming_symbols.constant_fields.applicable_accessibilities    = *
+dotnet_naming_symbols.constant_fields.required_modifiers            = const
+dotnet_naming_style.pascal_case_style.capitalization                = pascal_case
+
+# Private members should have _ prefix.
+dotnet_naming_rule.private_members_with_underscore.severity     = error
+dotnet_naming_rule.private_members_with_underscore.symbols      = private_fields
+dotnet_naming_rule.private_members_with_underscore.style        = prefix_underscore
+dotnet_naming_symbols.private_fields.applicable_kinds           = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.prefix_underscore.capitalization            = camel_case
+dotnet_naming_style.prefix_underscore.required_prefix           = _
+
+
+
+# === ANALYSIS ===
+
+# == Nullable reference types ==
+
+dotnet_diagnostic.CS8600.severity = error
+dotnet_diagnostic.CS8602.severity = error
+dotnet_diagnostic.CS8603.severity = error
+dotnet_diagnostic.CS8604.severity = error
+dotnet_diagnostic.CS8606.severity = error
+dotnet_diagnostic.CS8607.severity = error
+dotnet_diagnostic.CS8608.severity = error
+dotnet_diagnostic.CS8609.severity = error
+dotnet_diagnostic.CS8610.severity = error
+dotnet_diagnostic.CS8611.severity = error
+dotnet_diagnostic.CS8612.severity = error
+dotnet_diagnostic.CS8613.severity = error
+dotnet_diagnostic.CS8614.severity = error
+dotnet_diagnostic.CS8615.severity = error
+dotnet_diagnostic.CS8616.severity = error
+dotnet_diagnostic.CS8617.severity = error
+dotnet_diagnostic.CS8618.severity = error
+dotnet_diagnostic.CS8619.severity = error
+dotnet_diagnostic.CS8620.severity = error
+dotnet_diagnostic.CS8621.severity = error
+dotnet_diagnostic.CS8622.severity = error
+dotnet_diagnostic.CS8624.severity = error
+dotnet_diagnostic.CS8625.severity = error
+dotnet_diagnostic.CS8626.severity = error
+dotnet_diagnostic.CS8629.severity = error
+dotnet_diagnostic.CS8631.severity = error
+dotnet_diagnostic.CS8632.severity = error
+dotnet_diagnostic.CS8633.severity = error
+dotnet_diagnostic.CS8634.severity = error
+dotnet_diagnostic.CS8638.severity = error
+dotnet_diagnostic.CS8643.severity = error
+dotnet_diagnostic.CS8644.severity = error
+dotnet_diagnostic.CS8645.severity = error
+dotnet_diagnostic.CS8653.severity = error
+dotnet_diagnostic.CS8654.severity = error
+dotnet_diagnostic.CS8655.severity = error
+dotnet_diagnostic.CS8667.severity = error
+dotnet_diagnostic.CS8714.severity = error
+
+
+# == Explicitly enforced errors ==
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = error
+
+# Do not let unused using statements to stay.
+dotnet_diagnostic.IDE0005.severity = error
+dotnet_diagnostic.S1128.severity = error
+
+# File-scoped namespaces everywhere
+csharp_style_namespace_declarations=file_scoped:error
+
+
+# == Disabled warnings ==
+
+# Pass string literals to console & logger - I'm not planning localization for now.
+# Use localized ToString().
+dotnet_diagnostic.CA1303.severity = silent
+dotnet_diagnostic.CA1305.severity = silent
+dotnet_diagnostic.CA1307.severity = silent
+
+# We use strict NullableReferenceTypes: don't check for nulls.
+dotnet_diagnostic.CA1062.severity = silent
+
+# I don't care about logging performance.
+dotnet_diagnostic.CA1848.severity = silent
+
+# Allow builder methods (services registration, custom factories).
+dotnet_diagnostic.IDE0058.severity = silent
+
+# I don't implement unmanaged code so I don't need to conform to Disposable pattern.
+dotnet_diagnostic.CA1063.severity = silent
+dotnet_diagnostic.CA1816.severity = silent
+dotnet_diagnostic.S3881.severity = silent
+
+# Too many false positives, trying to convert if statements.
+# Review this from time to time (enable, review, disable).
+dotnet_diagnostic.IDE0046.severity = silent
+
+# Temporarily hide TODO comments for cleaner picture.
+# Review this from time to time (enable, review, disable).
+dotnet_diagnostic.S1135.severity = silent
+
+# Mandatory attribute public properties for constructor arguments.
+dotnet_diagnostic.CA1019.severity = silent
+
+# Remove missing XML documentation warnings, I'll add it where needed.
+dotnet_diagnostic.CS1591.severity = silent
+
+
+
+# === Tests ===
+[**Tests/**]
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1707: Underscores in method names
+dotnet_diagnostic.CA1707.severity = none
+
+# No need to fret over accessibility in unit tests.
+dotnet_diagnostic.CA1034.severity = none
+
+# Can be empty interfaces in tests, for testing purposes.
+dotnet_diagnostic.CA1040.severity = none
+
+# === .NET Core API ===
+[**.Api/**]
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = none
+
+# === Data Access projects for specific domain ===
+[**.DataAccess/**]
+
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = none
+

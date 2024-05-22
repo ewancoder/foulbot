@@ -1,5 +1,4 @@
-﻿using Google.Apis.Logging;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -107,7 +106,7 @@ public sealed record FoulBotConfiguration
 
 public interface IFoulBot
 {
-    ValueTask JoinChatAsync(string invitedBy);
+    ValueTask JoinChatAsync(string? invitedBy);
 }
 
 public sealed class FoulBot : IFoulBot
@@ -281,7 +280,7 @@ public sealed class FoulBot : IFoulBot
         }
     }
 
-    private void OnStatusChanged(object sender, FoulStatusChanged message) => OnStatusChangedAsync(message);
+    private void OnStatusChanged(object? sender, FoulStatusChanged message) => OnStatusChangedAsync(message);
     public async Task OnStatusChangedAsync(FoulStatusChanged message)
     {
         using var _ = Logger.BeginScope();
@@ -314,7 +313,7 @@ public sealed class FoulBot : IFoulBot
         await JoinChatAsync(message.ByName);
     }
 
-    private void OnMessageReceived(object sender, FoulMessage message) => OnMessageReceivedAsync(message);
+    private void OnMessageReceived(object? sender, FoulMessage message) => OnMessageReceivedAsync(message);
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
         using var _ = Logger.BeginScope();

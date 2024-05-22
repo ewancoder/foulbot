@@ -161,15 +161,18 @@ public sealed class FoulChat : IFoulChat
             {
                 _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
                 var message = _contextMessages[messageId];
-                message.ReplyTo = telegramMessage.ReplyToMessage.From.Username;
+                message.ReplyTo = telegramMessage.ReplyToMessage?.From?.Username;
                 return null; // Discard the message after updating existing message.
             }
 
             {
+                var senderName = GetSenderName(telegramMessage)
+                    ?? throw new InvalidOperationException("Sender name is null in the message.");
+
                 var message = new FoulMessage(
                     messageId,
                     FoulMessageType.User,
-                    GetSenderName(telegramMessage),
+                    senderName,
                     telegramMessage.Text,
                     telegramMessage.Date,
                     false)
@@ -190,7 +193,7 @@ public sealed class FoulChat : IFoulChat
 
     private string GetUniqueMessageId(Message message)
     {
-        return $"{message.From.Id}-{message.Date.Ticks}";
+        return $"{message.From?.Id}-{message.Date.Ticks}";
     }
 
     private string? GetSenderName(Message message)
