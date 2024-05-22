@@ -417,6 +417,10 @@ public sealed class FoulBot : IFoulBot
                 return;
             }
 
+            // If we get here - we are *going* to send the reply. We can reset counters if necessary.
+            if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
+                SetupNextReplyEveryMessages();
+
             _logger.LogDebug("Rechecked the context, messages need to be processed. Snapshot {@Context}.", snapshot.TakeLast(10));
 
             if (snapshot[^1].IsOriginallyBotMessage)
