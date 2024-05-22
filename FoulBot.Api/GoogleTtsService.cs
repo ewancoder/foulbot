@@ -34,8 +34,8 @@ namespace FoulBot.Api
             var audioConfig = new AudioConfig
             {
                 AudioEncoding = AudioEncoding.Mp3,
-                Pitch = -2,
-                SpeakingRate = 0.95
+                Pitch = -2.5,
+                SpeakingRate = 0.9
             };
 
             // Perform the text-to-speech request.
