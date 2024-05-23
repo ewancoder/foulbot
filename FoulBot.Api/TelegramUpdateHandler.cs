@@ -15,7 +15,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly ChatPool _chatPool;
     private readonly IFoulBotFactory _botFactory;
     private readonly FoulBotConfiguration _botConfiguration;
-    private bool _coldStarted; // Make a delay on first startup so all the bots are properly initialized.
+    private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
 
     public TelegramUpdateHandler(
         ILogger<TelegramUpdateHandler> logger,
@@ -48,12 +48,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     {
         using var _ = _logger.BeginScope(LogContext);
 
-        if (!_coldStarted)
+        if (DateTime.UtcNow < _coldStarted)
         {
-            // TODO: Rewrite it to use started datetime instead of flag, this triggers even after lots of time if nobody wrote anything.
             _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
             await Task.Delay(2000);
-            _coldStarted = true;
         }
 
         _logger.LogDebug("Received update {@Update}.", update);
