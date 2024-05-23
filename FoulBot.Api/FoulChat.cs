@@ -10,6 +10,7 @@ namespace FoulBot.Api;
 
 public interface IFoulChat
 {
+    bool IsPrivateChat { get; }
     ChatId ChatId { get; }
     event EventHandler<FoulMessage> MessageReceived;
     event EventHandler<FoulStatusChanged> StatusChanged;
@@ -22,16 +23,18 @@ public interface IFoulChat
 
 public sealed class FoulChat : IFoulChat
 {
+    private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _chatCreatedAt;
     private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
-    public FoulChat(ILogger<FoulChat> logger, ChatId chatId)
+    public FoulChat(ILogger<FoulChat> logger, ChatId chatId, bool isPrivateChat)
     {
         _logger = logger;
         ChatId = chatId;
+        IsPrivateChat = isPrivateChat;
         _chatCreatedAt = DateTime.UtcNow;
 
         using var _ = Logger.BeginScope();
@@ -39,8 +42,10 @@ public sealed class FoulChat : IFoulChat
     }
 
     private IScopedLogger Logger => _logger
+        .AddScoped("ChatInstanceId", _chatInstanceId)
         .AddScoped("ChatId", ChatId);
 
+    public bool IsPrivateChat { get; }
     public ChatId ChatId { get; }
     public event EventHandler<FoulMessage>? MessageReceived;
     public event EventHandler<FoulStatusChanged>? StatusChanged;

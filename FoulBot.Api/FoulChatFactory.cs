@@ -5,7 +5,7 @@ namespace FoulBot.Api;
 
 public interface IFoulChatFactory
 {
-    IFoulChat Create(ChatId chatId);
+    IFoulChat Create(ChatId chatId, bool isPrivate);
 }
 
 public sealed class FoulChatFactory : IFoulChatFactory
@@ -17,8 +17,8 @@ public sealed class FoulChatFactory : IFoulChatFactory
         _foulChatLogger = foulChatLogger;
     }
 
-    public IFoulChat Create(ChatId chatId)
+    public IFoulChat Create(ChatId chatId, bool isPrivate)
     {
-        return new FoulChat(_foulChatLogger, chatId);
+        return new FoulChat(_foulChatLogger, chatId, isPrivate);
     }
 }

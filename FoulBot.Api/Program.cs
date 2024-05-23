@@ -60,12 +60,12 @@ if (isDebug)
 {
     InitializeBot("EwTest1BotApiKey", new FoulBotConfiguration(
         "ew_test1bot", "First_TestBot", grumpyDirective, ["test", "bot"])
-        .WithVoiceBetween(6)
+        //.WithVoiceBetween(6)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
     InitializeBot("EwTest2BotApiKey", new FoulBotConfiguration(
         "ew_test2bot", "Second_TestBot", bostonDirective, ["test", "bot"])
-        .WithOnlyVoice()
+        //.WithOnlyVoice()
         .AddStickers(
             "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
             "CAACAgIAAxkBAAPOZkjBfS51iM9UfRvDxejQnGEahagAAhUDAALPu9QOZ9KPUWqBv7o1BA",
@@ -101,9 +101,8 @@ else
 
 void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configuration)
 {
-    var key = _configuration[apiConfigurationKeyName];
-    if (key == null)
-        throw new InvalidOperationException($"Could not get API key from the configuration for bot {configuration.BotId}.");
+    var key = _configuration[apiConfigurationKeyName]
+        ?? throw new InvalidOperationException($"Could not get API key from the configuration for bot {configuration.BotId}.");
 
     var client = new TelegramBotClient(key);
     client.StartReceiving(
@@ -118,14 +117,14 @@ public sealed class ChatLoader
 {
     private readonly IFoulBotFactory _botFactory;
     private readonly object _lock = new object();
-    private readonly HashSet<long> _chats;
+    private readonly HashSet<string> _chats;
 
     public ChatLoader(IFoulBotFactory botFactory)
     {
         _botFactory = botFactory;
         _chats = System.IO.File.Exists("chats") && System.IO.File.ReadAllText("chats") != string.Empty
-            ? System.IO.File.ReadAllText("chats").Split(',').Select(x => Convert.ToInt64(x)).ToHashSet()
-            : new HashSet<long>();
+            ? System.IO.File.ReadAllText("chats").Split(',').ToHashSet()
+            : new HashSet<string>();
     }
 
     public async Task LoadBotToChat(
@@ -133,17 +132,21 @@ public sealed class ChatLoader
         ChatPool chatPool,
         FoulBotConfiguration configuration)
     {
-        foreach (var chat in _chats)
+        foreach (var chatId in _chats)
         {
+            // If chat is private - only add the bot that belongs there.
+            if (chatId.Contains("$") && chatId.Split('$')[1] != configuration.BotId)
+                continue;
+
             await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
-                chat,
+                chatId,
                 chat => _botFactory.Create(client, configuration, chat));
         }
     }
 
     // A hacky way to avoid nasty deadlocks.
-    public void AddChat(long chatId)
+    public void AddChat(string chatId)
     {
         _ = Task.Run(() =>
         {

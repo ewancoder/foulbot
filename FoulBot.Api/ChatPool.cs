@@ -16,8 +16,8 @@ public sealed class ChatPool
     private readonly IFoulChatFactory _foulChatFactory;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly HashSet<string> _joinedBots = new HashSet<string>();
-    private readonly ConcurrentDictionary<long, IFoulChat> _chats
-        = new ConcurrentDictionary<long, IFoulChat>();
+    private readonly ConcurrentDictionary<string, IFoulChat> _chats
+        = new ConcurrentDictionary<string, IFoulChat>();
 
     public ChatPool(
         ILogger<ChatPool> logger,
@@ -31,11 +31,13 @@ public sealed class ChatPool
         _logger.LogInformation("ChatPool instance is created.");
     }
 
+    private IScopedLogger Logger => _logger.AddScoped();
+
     // This is being called from outside to join bots to chats after app restart.
     // And also from this class whenever new bot in a new chat receives a message and needs to be created.
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, long chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
     {
-        using var _ = _logger
+        using var _ = Logger
             .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
             .AddScoped("InvitedBy", invitedBy)
@@ -54,9 +56,10 @@ public sealed class ChatPool
 
     public async Task HandleUpdateAsync(string botId, Update update, Func<IFoulChat, IFoulBot> botFactory)
     {
-        _logger
+        using var _ = Logger
             .AddScoped("BotId", botId)
-            .AddScoped("ChatId", update?.MyChatMember?.Chat?.Id ?? update?.Message?.Chat?.Id);
+            .AddScoped("ChatId", update?.MyChatMember?.Chat?.Id ?? update?.Message?.Chat?.Id)
+            .BeginScope();
 
         if (update == null)
         {
@@ -76,8 +79,12 @@ public sealed class ChatPool
             }
 
             var member = update.MyChatMember.NewChatMember;
-            var chatId = update.MyChatMember.Chat.Id;
+            var chatId = update.MyChatMember.Chat.Id.ToString();
             var invitedByUsername = update.MyChatMember.From?.Username; // Who invited / kicked the bot.
+
+            // TODO: The following 2 lines of code are duplicated in couple places.
+            if (update.MyChatMember.Chat.Type == ChatType.Private)
+                chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
 
             var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername);
 
@@ -100,8 +107,12 @@ public sealed class ChatPool
                 return;
             }
 
-            var chatId = update.Message.Chat.Id;
+            var chatId = update.Message.Chat.Id.ToString();
 
+            if (update.Message.Chat.Type == ChatType.Private)
+                chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
+
+            // TODO: Here we can alter chatId to include botId in it if we need to, then the bot will have its own context separate from all the other bots.
             if (!_chats.TryGetValue(chatId, out var chat))
                 chat = await GetOrAddFoulChatAsync(chatId);
 
@@ -117,7 +128,7 @@ public sealed class ChatPool
         _logger.LogDebug("Received unnecessary update, skipping handling.");
     }
 
-    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(long chatId)
+    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(string chatId)
     {
         _chats.TryGetValue(chatId, out var chat);
         if (chat != null)
@@ -136,8 +147,14 @@ public sealed class ChatPool
             }
 
             _logger.LogInformation("Creating the chat and caching it for future.");
-            chat = _foulChatFactory.Create(chatId);
+            var longChatId = chatId.Contains("$")
+                ? Convert.ToInt64(chatId.Split("$")[0])
+                : Convert.ToInt64(chatId);
+            chat = _foulChatFactory.Create(new ChatId(longChatId), chatId.Contains("$"));
             chat = _chats.GetOrAdd(chatId, chat);
+
+            if (chatId.Contains("$"))
+                _logger.LogInformation("Created a PRIVATE chat.");
 
             _chatLoader.AddChat(chatId);
             _logger.LogInformation("Successfully created the chat.");
@@ -151,12 +168,12 @@ public sealed class ChatPool
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, long chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
 
-        using var _ = _logger
+        using var _ = Logger
             .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
             .AddScoped("InvitedBy", invitedBy)

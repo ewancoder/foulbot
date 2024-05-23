@@ -581,6 +581,9 @@ public sealed class FoulBot : IFoulBot
         if (message.ReplyTo == _config.BotId)
             return true;
 
+        if (_chat.IsPrivateChat)
+            return true; // Reply to all messages in a private chat.
+
         var triggerKeyword = _config.KeyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
         if (triggerKeyword != null)
             return true;

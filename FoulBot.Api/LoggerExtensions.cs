@@ -41,6 +41,9 @@ public static class LoggerExtensions
         }
     }
 
+    public static ScopeBuilder<T> AddScoped<T>(this ILogger<T> logger)
+        => new ScopeBuilder<T>(logger);
+
     public static ScopeBuilder<T> AddScoped<T>(this ILogger<T> logger, string key, object? value)
     {
         return new ScopeBuilder<T>(logger)
