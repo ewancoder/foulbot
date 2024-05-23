@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Telegram.Bot.Types;
 
 namespace FoulBot.Api;
 
@@ -16,10 +15,10 @@ public sealed class FoulChat : IFoulChat
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
 
-    public FoulChat(ILogger<FoulChat> logger, ChatId chatId, bool isPrivateChat)
+    public FoulChat(ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
     {
         _logger = logger;
-        ChatId = chatId.ToFoulChatId();
+        ChatId = chatId;
         IsPrivateChat = isPrivateChat;
         _chatCreatedAt = DateTime.UtcNow;
 
@@ -65,24 +64,23 @@ public sealed class FoulChat : IFoulChat
         StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
     }
 
-    public void HandleTelegramMessage(Message telegramMessage)
+    public void HandleMessage(FoulMessage message)
     {
         // TODO: Consider including Message to the scope, but filter out all non-relevant fields.
         using var l = Logger
-            .AddScoped("MessageId", telegramMessage.MessageId)
+            .AddScoped("MessageId", message.Id)
             .BeginScope();
 
         _logger.LogInformation("Received message by FoulChat");
 
         // Allow reading messages for the last minute, to not filter out the first message in the chat.
-        if (telegramMessage.Date < _chatCreatedAt.AddMinutes(-1))
+        if (message.Date < _chatCreatedAt.AddMinutes(-1))
         {
-            _logger.LogTrace("Skipping out old message since it's date {MessageTime} is less than started date {StartTime}", telegramMessage.Date, _chatCreatedAt);
+            _logger.LogTrace("Skipping out old message since it's date {MessageTime} is less than started date {StartTime}", message.Date, _chatCreatedAt);
             return;
         }
 
-        var message = GetFoulMessageAndAddToContext(telegramMessage);
-        if (message == null)
+        if (!AddFoulMessageToContext(message))
         {
             _logger.LogDebug("Skipping this message by rules.");
             return;
@@ -114,105 +112,61 @@ public sealed class FoulChat : IFoulChat
         });
     }
 
-    public void AddMessage(FoulMessage foulMessage)
+    public void AddMessage(FoulMessage message)
     {
         lock (_lock)
         {
-            _logger.LogDebug("Entered a lock for adding the message to the context manually. Chat {chatId}, message {@message}.", ChatId, foulMessage);
+            _logger.LogDebug("Entered a lock for adding the message to the context manually. Chat {ChatId}, message {@Message}.", ChatId, message);
             // TODO: Consider storing separate contexts for separate bots cause they might not be talking for a long time while others do.
 
-            _context.Add(foulMessage);
-            _contextMessages.Add(foulMessage.Id, foulMessage);
+            _context.Add(message);
+            _contextMessages.Add(message.Id, message);
 
             CleanupContext();
 
             // TODO: Consider debouncing at this level (see handleupdate method to consolidate).
-            _logger.LogDebug("Notifying bots about the manual message {@message}.", foulMessage);
-            MessageReceived?.Invoke(this, foulMessage);
+            _logger.LogDebug("Notifying bots about the manual message {@Message}.", message);
+            MessageReceived?.Invoke(this, message);
         }
     }
 
-    private FoulMessage? GetFoulMessageAndAddToContext(Message telegramMessage)
+    private bool AddFoulMessageToContext(FoulMessage message)
     {
-        var messageId = GetUniqueMessageId(telegramMessage);
-        if (telegramMessage == null || telegramMessage.Text == null || GetSenderName(telegramMessage) == null)
-        {
-            _logger.LogWarning("Message text or sender name are null, skipping the message.");
-            return null;
-        }
-
-        if (_contextMessages.ContainsKey(messageId) && telegramMessage.ReplyToMessage?.From?.Username == null)
+        if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
         {
             _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-            return null;
+            return false;
         }
 
         _logger.LogDebug("Entering lock for adding (updating) message to context.");
         lock (_lock)
         {
             _logger.LogDebug("Entered lock for adding (updating) message to context.");
-            if (_contextMessages.ContainsKey(messageId) && telegramMessage.ReplyToMessage?.From?.Username == null)
+            if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
             {
                 _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-                return null;
+                return false;
             }
 
-            if (_contextMessages.ContainsKey(messageId))
+            if (_contextMessages.ContainsKey(message.Id))
             {
                 _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
-                var message = _contextMessages[messageId];
-                message.ReplyTo = telegramMessage.ReplyToMessage?.From?.Username;
-                return null; // Discard the message after updating existing message.
+                var existing = _contextMessages[message.Id];
+                existing.ReplyTo = message.ReplyTo;
+                return false; // Discard the message after updating existing message.
             }
 
             {
-                var senderName = GetSenderName(telegramMessage)
-                    ?? throw new InvalidOperationException("Sender name is null in the message.");
-
-                var message = new FoulMessage(
-                    messageId,
-                    FoulMessageType.User,
-                    senderName,
-                    telegramMessage.Text,
-                    telegramMessage.Date,
-                    false)
-                {
-                    ReplyTo = telegramMessage.ReplyToMessage?.From?.Username
-                };
                 _context.Add(message);
-                _contextMessages.Add(messageId, message);
+                _contextMessages.Add(message.Id, message);
                 _logger.LogDebug("Added message to context.");
 
                 CleanupContext();
 
                 _logger.LogDebug("Exiting the lock for adding message to context.");
-                return message;
+                return true;
             }
         }
-    }
-
-    private string GetUniqueMessageId(Message message)
-    {
-        return $"{message.From?.Id}-{message.Date.Ticks}";
-    }
-
-    private string? GetSenderName(Message message)
-    {
-        // TODO: Remove all unsupported characters (normalize name).
-        // Maybe do this on OpenAI side.
-        if (message?.From == null)
-            return null;
-
-        if (message.From.FirstName == null && message.From.LastName == null)
-            return null;
-
-        if (message.From.FirstName == null)
-            return message.From.LastName;
-
-        if (message.From.LastName == null)
-            return message.From.FirstName;
-
-        return $"{message.From.FirstName}_{message.From.LastName}";
     }
 
     private void CleanupContext()

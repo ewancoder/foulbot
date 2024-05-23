@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Telegram.Bot.Types;
 
 namespace FoulBot.Api;
 
@@ -40,7 +39,7 @@ public interface IFoulChat
     void ChangeBotStatus(string whoName, string? byName, BotChatStatus status);
 
     // TODO: Get rid of Telegram dependency for this method. For now this is the only method left that uses it.
-    void HandleTelegramMessage(Message telegramMessage);
+    void HandleMessage(FoulMessage message);
 
-    void AddMessage(FoulMessage foulMessage);
+    void AddMessage(FoulMessage message);
 }

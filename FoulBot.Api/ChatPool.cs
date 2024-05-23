@@ -9,11 +9,71 @@ using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
+public interface IFoulMessageFactory
+{
+    FoulMessage? CreateFrom(Message telegramMessage);
+}
+
+public sealed class FoulMessageFactory : IFoulMessageFactory
+{
+    private readonly ILogger<FoulMessageFactory> _logger;
+
+    public FoulMessageFactory(ILogger<FoulMessageFactory> logger)
+    {
+        _logger = logger;
+    }
+
+    public FoulMessage? CreateFrom(Message telegramMessage)
+    {
+        var senderName = GetSenderName(telegramMessage);
+        if (telegramMessage.Text == null || senderName == null)
+        {
+            _logger.LogWarning("Message text or sender name are null, skipping the message.");
+            return null;
+        }
+
+        var messageId = GetUniqueMessageId(telegramMessage);
+
+        return new FoulMessage(
+            messageId,
+            FoulMessageType.User,
+            senderName,
+            telegramMessage.Text,
+            telegramMessage.Date,
+            false);
+    }
+
+    private string GetUniqueMessageId(Message message)
+    {
+        return $"{message.From?.Id}-{message.Date.Ticks}";
+    }
+
+    private string? GetSenderName(Message message)
+    {
+        // TODO: Remove all unsupported characters (normalize name).
+        // Maybe do this on OpenAI side.
+        if (message?.From == null)
+            return null;
+
+        if (message.From.FirstName == null && message.From.LastName == null)
+            return null;
+
+        if (message.From.FirstName == null)
+            return message.From.LastName;
+
+        if (message.From.LastName == null)
+            return message.From.FirstName;
+
+        return $"{message.From.FirstName}_{message.From.LastName}";
+    }
+}
+
 public sealed class ChatPool
 {
     private readonly ILogger<ChatPool> _logger;
     private readonly ChatLoader _chatLoader;
     private readonly IFoulChatFactory _foulChatFactory;
+    private readonly IFoulMessageFactory _foulMessageFactory;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly HashSet<string> _joinedBots = new HashSet<string>();
     private readonly ConcurrentDictionary<string, IFoulChat> _chats
@@ -22,11 +82,13 @@ public sealed class ChatPool
     public ChatPool(
         ILogger<ChatPool> logger,
         ChatLoader chatLoader,
-        IFoulChatFactory foulChatFactory)
+        IFoulChatFactory foulChatFactory,
+        IFoulMessageFactory foulMessageFactory)
     {
         _logger = logger;
         _chatLoader = chatLoader;
         _foulChatFactory = foulChatFactory;
+        _foulMessageFactory = foulMessageFactory;
 
         _logger.LogInformation("ChatPool instance is created.");
     }
@@ -118,7 +180,14 @@ public sealed class ChatPool
 
             await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory);
 
-            chat.HandleTelegramMessage(update.Message);
+            var message = _foulMessageFactory.CreateFrom(update.Message);
+            if (message == null)
+            {
+                _logger.LogDebug("FoulMessage factory returned null, skipping sending message to the chat.");
+                return;
+            }
+
+            chat.HandleMessage(message);
 
             _logger.LogInformation("Successfully handled message.");
             return;
@@ -158,7 +227,7 @@ public sealed class ChatPool
             var longChatId = chatId.Contains("$")
                 ? Convert.ToInt64(chatId.Split("$")[0])
                 : Convert.ToInt64(chatId);
-            chat = _foulChatFactory.Create(new ChatId(longChatId), chatId.Contains("$"));
+            chat = _foulChatFactory.Create(ChatIdExtensions.ToFoulChatId(new ChatId(longChatId)), chatId.Contains("$"));
             chat = _chats.GetOrAdd(chatId, chat);
 
             if (chatId.Contains("$"))
