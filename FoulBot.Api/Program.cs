@@ -38,6 +38,7 @@ builder.Host.UseSerilog((context, config) =>
         .Enrich.WithThreadId();
 });
 
+builder.Services.AddTransient<IGoogleTtsService, GoogleTtsService>();
 builder.Services.AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>();
 builder.Services.AddTransient<IFoulBotFactory, FoulBotFactory>();
 builder.Services.AddTransient<IFoulChatFactory, FoulChatFactory>();

@@ -14,13 +14,16 @@ public sealed class FoulBotFactory : IFoulBotFactory
 {
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
+    private readonly IGoogleTtsService _googleTtsService;
 
     public FoulBotFactory(
         ILogger<FoulBot> logger,
-        IFoulAIClient aiClient)
+        IFoulAIClient aiClient,
+        IGoogleTtsService googleTtsService)
     {
         _logger = logger;
         _aiClient = aiClient;
+        _googleTtsService = googleTtsService;
     }
 
     public IFoulBot Create(
@@ -31,6 +34,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         return new FoulBot(
             _logger,
             _aiClient,
+            _googleTtsService,
             botMessenger,
             configuration,
             chat);

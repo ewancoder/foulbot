@@ -127,7 +127,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IFoulAIClient _aiClient;
     private readonly IBotMessenger _botMessenger;
     private readonly FoulBotConfiguration _config;
-    private readonly GoogleTtsService _googleTts = new GoogleTtsService();
+    private readonly IGoogleTtsService _googleTtsService;
     private readonly IFoulChat _chat;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
@@ -145,12 +145,14 @@ public sealed class FoulBot : IFoulBot
     public FoulBot(
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
+        IGoogleTtsService googleTtsService,
         IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
         IFoulChat chat)
     {
         _logger = logger;
         _aiClient = aiClient;
+        _googleTtsService = googleTtsService;
         _botMessenger = botMessenger;
         _config = configuration;
         _chat = chat;
@@ -569,7 +571,7 @@ public sealed class FoulBot : IFoulBot
             else
             {
                 _logger.LogDebug("Configured to always send Voice. Using Google TTS.");
-                using var stream = await _googleTts.GetAudioAsync(aiGeneratedTextResponse);
+                using var stream = await _googleTtsService.GetAudioAsync(aiGeneratedTextResponse);
 
                 _logger.LogDebug("Finishing typing simulation just before sending reply to Telegram.");
                 await typing.FinishTypingText(aiGeneratedTextResponse);
