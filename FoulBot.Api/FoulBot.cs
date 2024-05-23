@@ -416,6 +416,27 @@ public sealed class FoulBot : IFoulBot
                 return;
             }
 
+            // TODO: This is partially duplicated code from the GetSnapshot method, just for the sake of logging.
+            string? reason = null;
+            {
+                var unprocessedMessages = snapshot;
+
+                if (_lastProcessedId != null)
+                {
+                    unprocessedMessages = unprocessedMessages
+                        .SkipWhile(message => message.Id != _lastProcessedId)
+                        .Skip(1)
+                        .ToList();
+                }
+
+                reason = unprocessedMessages
+                    .Select(m => GetReasonForResponding(m))
+                    .Where(r => r != null)
+                    .FirstOrDefault();
+
+                _logger.LogInformation("Reason (trigger) for replying: {Reason}", reason);
+            }
+
             // If we get here - we are *going* to send the reply. We can reset counters if necessary.
             if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
                 SetupNextReplyEveryMessages();
@@ -479,7 +500,7 @@ public sealed class FoulBot : IFoulBot
                 }
             }
 
-            _logger.LogInformation("Generated context and response: {@Context}, {Response}.", context, aiGeneratedTextResponse);
+            _logger.LogInformation("Context, reason and response: {@Context}, {Reason}, {Response}.", context, reason, aiGeneratedTextResponse);
             if (!_config.UseOnlyVoice)
             {
                 if (isAudio)
@@ -575,19 +596,24 @@ public sealed class FoulBot : IFoulBot
 
     private bool ShouldRespond(FoulMessage message)
     {
+        return GetReasonForResponding(message) != null;
+    }
+
+    private string? GetReasonForResponding(FoulMessage message)
+    {
         if (message.SenderName == _config.BotName)
-            return false;
+            return null;
 
         if (message.ReplyTo == _config.BotId)
-            return true;
+            return "Reply";
 
         if (_chat.IsPrivateChat)
-            return true; // Reply to all messages in a private chat.
+            return "Private chat"; // Reply to all messages in a private chat.
 
         var triggerKeyword = _config.KeyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
         if (triggerKeyword != null)
-            return true;
+            return $"Trigger word: '{triggerKeyword}'";
 
-        return false;
+        return null;
     }
 }
