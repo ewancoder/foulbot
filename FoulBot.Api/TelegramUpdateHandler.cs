@@ -11,6 +11,7 @@ namespace FoulBot.Api;
 
 public sealed class TelegramUpdateHandler : IUpdateHandler
 {
+    private readonly ILogger<BotMessenger> _botMessengerLogger;
     private readonly ILogger<TelegramUpdateHandler> _logger;
     private readonly ChatPool _chatPool;
     private readonly IFoulBotFactory _botFactory;
@@ -18,11 +19,13 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
 
     public TelegramUpdateHandler(
+        ILogger<BotMessenger> botMessengerLogger, // TODO: Move to another factory.
         ILogger<TelegramUpdateHandler> logger,
         ChatPool chatPool,
         IFoulBotFactory botFactory,
         FoulBotConfiguration botConfiguration)
     {
+        _botMessengerLogger = botMessengerLogger;
         _logger = logger;
         _chatPool = chatPool;
         _botFactory = botFactory;
@@ -48,6 +51,9 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     {
         using var _ = _logger.BeginScope(LogContext);
 
+        // Consider caching instances for every botClient instead of creating a lot of them.
+        var botMessenger = new BotMessenger(_botMessengerLogger, botClient);
+
         if (DateTime.UtcNow < _coldStarted)
         {
             _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
@@ -58,7 +64,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await _chatPool.HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botClient, _botConfiguration, chat));
+            await _chatPool.HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botMessenger, _botConfiguration, chat));
         }
         catch (Exception exception)
         {

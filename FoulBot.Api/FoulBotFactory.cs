@@ -1,12 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
-using Telegram.Bot;
 
 namespace FoulBot.Api;
 
 public interface IFoulBotFactory
 {
     public IFoulBot Create(
-        ITelegramBotClient telegramBotClient,
+        IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
         IFoulChat chat);
 }
@@ -25,14 +24,14 @@ public sealed class FoulBotFactory : IFoulBotFactory
     }
 
     public IFoulBot Create(
-        ITelegramBotClient telegramBotClient,
+        IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
         IFoulChat chat)
     {
         return new FoulBot(
             _logger,
             _aiClient,
-            telegramBotClient,
+            botMessenger,
             configuration,
             chat);
     }

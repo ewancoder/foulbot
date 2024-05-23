@@ -115,15 +115,18 @@ await app.RunAsync();
 
 public sealed class ChatLoader
 {
+    private readonly ILogger<BotMessenger> _bmLogger;
     private readonly ILogger<ChatLoader> _logger;
     private readonly IFoulBotFactory _botFactory;
     private readonly object _lock = new object();
     private readonly HashSet<string> _chats;
 
     public ChatLoader(
+        ILogger<BotMessenger> bmLogger,
         ILogger<ChatLoader> logger,
         IFoulBotFactory botFactory)
     {
+        _bmLogger = bmLogger;
         _logger = logger;
         _botFactory = botFactory;
         _chats = System.IO.File.Exists("chats") && System.IO.File.ReadAllText("chats") != string.Empty
@@ -145,7 +148,7 @@ public sealed class ChatLoader
             await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
-                chat => _botFactory.Create(client, configuration, chat));
+                chat => _botFactory.Create(new BotMessenger(_bmLogger, client), configuration, chat));
         }
     }
 

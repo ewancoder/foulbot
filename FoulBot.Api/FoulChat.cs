@@ -11,7 +11,7 @@ namespace FoulBot.Api;
 public interface IFoulChat
 {
     bool IsPrivateChat { get; }
-    ChatId ChatId { get; }
+    FoulChatId ChatId { get; }
     event EventHandler<FoulMessage> MessageReceived;
     event EventHandler<FoulStatusChanged> StatusChanged;
 
@@ -33,7 +33,7 @@ public sealed class FoulChat : IFoulChat
     public FoulChat(ILogger<FoulChat> logger, ChatId chatId, bool isPrivateChat)
     {
         _logger = logger;
-        ChatId = chatId;
+        ChatId = chatId.ToFoulChatId();
         IsPrivateChat = isPrivateChat;
         _chatCreatedAt = DateTime.UtcNow;
 
@@ -46,7 +46,7 @@ public sealed class FoulChat : IFoulChat
         .AddScoped("ChatId", ChatId);
 
     public bool IsPrivateChat { get; }
-    public ChatId ChatId { get; }
+    public FoulChatId ChatId { get; }
     public event EventHandler<FoulMessage>? MessageReceived;
     public event EventHandler<FoulStatusChanged>? StatusChanged;
 
@@ -76,7 +76,15 @@ public sealed class FoulChat : IFoulChat
 
         _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName} into status {Status}", whoName, byName, status);
 
-        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
+        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, ToBotChatStatus(status)));
+    }
+
+    private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
+    {
+        if (status == ChatMemberStatus.Left || status == ChatMemberStatus.Kicked)
+            return BotChatStatus.Left;
+
+        return BotChatStatus.Joined;
     }
 
     public void HandleTelegramMessage(Message telegramMessage)

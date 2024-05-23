@@ -1,12 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Telegram.Bot;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace FoulBot.Api;
 
@@ -128,7 +125,7 @@ public sealed class FoulBot : IFoulBot
     ];
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
-    private readonly ITelegramBotClient _botClient;
+    private readonly IBotMessenger _botMessenger;
     private readonly FoulBotConfiguration _config;
     private readonly GoogleTtsService _googleTts = new GoogleTtsService();
     private readonly IFoulChat _chat;
@@ -148,13 +145,13 @@ public sealed class FoulBot : IFoulBot
     public FoulBot(
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
-        ITelegramBotClient botClient,
+        IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
         IFoulChat chat)
     {
         _logger = logger;
         _aiClient = aiClient;
-        _botClient = botClient;
+        _botMessenger = botMessenger;
         _config = configuration;
         _chat = chat;
         _chat.StatusChanged += OnStatusChanged;
@@ -252,7 +249,13 @@ public sealed class FoulBot : IFoulBot
             _logger.LogInformation("Sending ChooseSticker action to test whether the bot has access to the chat.");
 
             // Test that bot is a member of the chat by trying to send an event.
-            await _botClient.SendChatActionAsync(_chat.ChatId, ChatAction.ChooseSticker);
+            if (!await _botMessenger.CheckCanWriteAsync(_chat.ChatId))
+            {
+                _logger.LogWarning("Failed to join bot to chat. This bot probably doesn't have access to the chat.");
+                _chat.MessageReceived -= OnMessageReceived;
+                _subscribed = false;
+                return;
+            }
 
             _logger.LogInformation("Successfully sent ChooseSticker action. It means the bot has access to the chat.");
 
@@ -264,14 +267,14 @@ public sealed class FoulBot : IFoulBot
                 if (_config.Stickers.Any())
                 {
                     var sticker = _config.Stickers.ElementAt(_random.Next(0, _config.Stickers.Count));
-                    await _botClient.SendStickerAsync(_chat.ChatId, InputFile.FromFileId(sticker));
+                    await _botMessenger.SendStickerAsync(_chat.ChatId, sticker);
 
                     _logger.LogInformation("Sent welcome sticker {StickerId}.", sticker);
                 }
 
                 var directive = $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy}, tell them hello in your manner or thank the person for adding you if you feel like it.";
                 var welcome = await _aiClient.GetCustomResponseAsync(directive);
-                await _botClient.SendTextMessageAsync(_chat.ChatId, welcome);
+                await _botMessenger.SendTextMessageAsync(_chat.ChatId, welcome);
 
                 _logger.LogInformation("Sent welcome message '{Message}' (based on directive {Directive}).", welcome, directive);
             }
@@ -282,9 +285,7 @@ public sealed class FoulBot : IFoulBot
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Failed to join bot to chat. This bot probably doesn't have access to the chat.");
-            _chat.MessageReceived -= OnMessageReceived;
-            _subscribed = false;
+            _logger.LogError(exception, "Failed to send welcome message to chat.");
         }
     }
 
@@ -319,8 +320,7 @@ public sealed class FoulBot : IFoulBot
             return;
         }
 
-        if (message.Status == ChatMemberStatus.Left
-            || message.Status == ChatMemberStatus.Kicked)
+        if (message.Status == BotChatStatus.Left)
         {
             _logger.LogDebug("The bot has been kicked from the group. Unsubscribing from updates.");
             _chat.MessageReceived -= OnMessageReceived;
@@ -328,8 +328,10 @@ public sealed class FoulBot : IFoulBot
             return;
         }
 
-        // For any other status.
+        if (message.Status != BotChatStatus.Joined)
+            throw new InvalidOperationException("Unknown status.");
 
+        // For Joined status.
         if (_subscribed)
         {
             _logger.LogDebug("The bot status has changed but its already subscribed. Skipping.");
@@ -513,7 +515,7 @@ public sealed class FoulBot : IFoulBot
             }
 
             _logger.LogTrace("Initiating Typing or Voice sending imitator.");
-            using var typing = new TypingImitator(_botClient, _chat.ChatId, isAudio ? ChatAction.RecordVoice : ChatAction.Typing);
+            using var typing = new TypingImitator(_botMessenger, _chat.ChatId, isAudio);
 
             // Get context for this bot for the AI client.
             var context = GetContextForAI(snapshot);
@@ -555,13 +557,13 @@ public sealed class FoulBot : IFoulBot
 
                     _logger.LogDebug("Finishing typing simulation just before sending reply to Telegram.");
                     await typing.FinishTypingText(aiGeneratedTextResponse);
-                    await _botClient.SendVoiceAsync(_chat.ChatId, InputFile.FromStream(stream));
+                    await _botMessenger.SendVoiceMessageAsync(_chat.ChatId, stream);
                 }
                 else
                 {
                     _logger.LogDebug("Finishing typing simulation just before sending reply to Telegram.");
                     await typing.FinishTypingText(aiGeneratedTextResponse);
-                    await _botClient.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse);
+                    await _botMessenger.SendTextMessageAsync(_chat.ChatId, aiGeneratedTextResponse);
                 }
             }
             else
@@ -571,7 +573,7 @@ public sealed class FoulBot : IFoulBot
 
                 _logger.LogDebug("Finishing typing simulation just before sending reply to Telegram.");
                 await typing.FinishTypingText(aiGeneratedTextResponse);
-                await _botClient.SendVoiceAsync(_chat.ChatId, InputFile.FromStream(stream));
+                await _botMessenger.SendVoiceMessageAsync(_chat.ChatId, stream);
             }
 
             _logger.LogDebug("Successfully replied to Telegram. Sending the Response as the next message to context.");
