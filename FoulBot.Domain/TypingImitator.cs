@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
@@ -10,17 +8,17 @@ public sealed class TypingImitator : IDisposable
 {
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
     private readonly IBotMessenger _messenger;
-    private readonly ChatId _chat;
+    private readonly FoulChatId _chat;
     private readonly Task _typing;
     private readonly DateTime _startedAt;
-    private readonly ChatAction _action;
+    private readonly bool _isVoice;
     private string? _text = null;
 
     public TypingImitator(IBotMessenger messenger, FoulChatId chatId, bool isVoice)
     {
-        _action = isVoice ? ChatAction.RecordVoice : ChatAction.Typing;
+        _isVoice = isVoice;
         _messenger = messenger;
-        _chat = chatId.ToTelegramChatId();
+        _chat = chatId;
 
         _startedAt = DateTime.UtcNow;
         _typing = ImitateTypingAsync();
@@ -35,10 +33,10 @@ public sealed class TypingImitator : IDisposable
             if (DateTime.UtcNow - _startedAt > TimeSpan.FromMinutes(1))
                 return;
 
-            if (_action == ChatAction.RecordVoice)
-                await _messenger.NotifyRecordingVoiceAsync(_chat.ToFoulChatId());
+            if (_isVoice)
+                await _messenger.NotifyRecordingVoiceAsync(_chat);
             else
-                await _messenger.NotifyTyping(_chat.ToFoulChatId());
+                await _messenger.NotifyTyping(_chat);
 
             try
             {
@@ -58,10 +56,10 @@ public sealed class TypingImitator : IDisposable
             if (remainingSeconds <= 0)
                 remainingSeconds = 1;
 
-            if (_action == ChatAction.RecordVoice)
-                await _messenger.NotifyRecordingVoiceAsync(_chat.ToFoulChatId());
+            if (_isVoice)
+                await _messenger.NotifyRecordingVoiceAsync(_chat);
             else
-                await _messenger.NotifyTyping(_chat.ToFoulChatId());
+                await _messenger.NotifyTyping(_chat);
 
             await Task.Delay(random.Next(2000, Convert.ToInt32(Math.Floor(Math.Min(10000, remainingSeconds))) + 2000));
         }

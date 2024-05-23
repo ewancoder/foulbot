@@ -91,7 +91,7 @@ public sealed class ChatPool
             chat.ChangeBotStatus(
                 member.User.Username,
                 invitedByUsername,
-                member.Status);
+                ToBotChatStatus(member.Status));
 
             _logger.LogInformation("Successfully handled message.");
             return;
@@ -126,6 +126,14 @@ public sealed class ChatPool
 
         // TODO: Configure to only receive necessary types of updates.
         _logger.LogDebug("Received unnecessary update, skipping handling.");
+    }
+
+    private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
+    {
+        if (status == ChatMemberStatus.Left || status == ChatMemberStatus.Kicked)
+            return BotChatStatus.Left;
+
+        return BotChatStatus.Joined;
     }
 
     private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(string chatId)

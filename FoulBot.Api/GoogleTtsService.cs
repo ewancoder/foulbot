@@ -5,11 +5,6 @@ using Google.Cloud.TextToSpeech.V1;
 
 namespace FoulBot.Api;
 
-public interface IGoogleTtsService
-{
-    Task<Stream> GetAudioAsync(string text);
-}
-
 public sealed class GoogleTtsService : IGoogleTtsService
 {
     public GoogleTtsService()

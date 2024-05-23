@@ -282,7 +282,8 @@ dotnet_diagnostic.CS1591.severity = silent
 
 
 # === Tests ===
-[**Tests/**]
+[
+  **Tests/**]
 
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
@@ -299,6 +300,11 @@ dotnet_diagnostic.CA1040.severity = none
 # === .NET Core API ===
 [**.Api/**]
 
+# CA2007: Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = none
+
+# Temporarily disable.
+[FoulBot.Domain/**]
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
 

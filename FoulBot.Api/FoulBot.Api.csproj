@@ -18,4 +18,8 @@
     <PackageReference Include="UnidecodeSharpFork" Version="1.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FoulBot.Domain\FoulBot.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

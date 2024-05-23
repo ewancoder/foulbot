@@ -4,22 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
-
-public interface IFoulChat
-{
-    bool IsPrivateChat { get; }
-    FoulChatId ChatId { get; }
-    event EventHandler<FoulMessage> MessageReceived;
-    event EventHandler<FoulStatusChanged> StatusChanged;
-
-    List<FoulMessage> GetContextSnapshot();
-    void ChangeBotStatus(string whoName, string? byName, ChatMemberStatus status);
-    void HandleTelegramMessage(Message telegramMessage);
-    void AddMessage(FoulMessage foulMessage);
-}
 
 public sealed class FoulChat : IFoulChat
 {
@@ -70,21 +56,13 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    public void ChangeBotStatus(string whoName, string? byName, ChatMemberStatus status)
+    public void ChangeBotStatus(string whoName, string? byName, BotChatStatus status)
     {
         using var _ = Logger.BeginScope();
 
-        _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName} into status {Status}", whoName, byName, status);
+        _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName}, {Status}", whoName, byName, status);
 
-        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, ToBotChatStatus(status)));
-    }
-
-    private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
-    {
-        if (status == ChatMemberStatus.Left || status == ChatMemberStatus.Kicked)
-            return BotChatStatus.Left;
-
-        return BotChatStatus.Joined;
+        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
     }
 
     public void HandleTelegramMessage(Message telegramMessage)
@@ -103,7 +81,7 @@ public sealed class FoulChat : IFoulChat
             return;
         }
 
-        var message = GetFoulMessage(telegramMessage);
+        var message = GetFoulMessageAndAddToContext(telegramMessage);
         if (message == null)
         {
             _logger.LogDebug("Skipping this message by rules.");
@@ -154,7 +132,7 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    private FoulMessage? GetFoulMessage(Message telegramMessage)
+    private FoulMessage? GetFoulMessageAndAddToContext(Message telegramMessage)
     {
         var messageId = GetUniqueMessageId(telegramMessage);
         if (telegramMessage == null || telegramMessage.Text == null || GetSenderName(telegramMessage) == null)
