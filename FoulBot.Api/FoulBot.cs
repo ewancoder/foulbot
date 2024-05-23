@@ -188,7 +188,15 @@ public sealed class FoulBot : IFoulBot
                 _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
                 await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
                 _logger.LogInformation("Sending a message based on time, {WaitMinutes} minutes passed.", waitMinutes);
-                await OnMessageReceivedAsync(FoulMessage.ByTime());
+
+                try
+                {
+                    await OnMessageReceivedAsync(FoulMessage.ByTime());
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Error when trying to trigger reply by time passed.");
+                }
             }
         });
 
@@ -280,7 +288,26 @@ public sealed class FoulBot : IFoulBot
         }
     }
 
-    private void OnStatusChanged(object? sender, FoulStatusChanged message) => OnStatusChangedAsync(message);
+    private void OnStatusChanged(object? sender, FoulStatusChanged message)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                await OnStatusChangedAsync(message);
+            }
+            catch (Exception exception)
+            {
+                using var _ = Logger
+                    .AddScoped("Message", message)
+                    .BeginScope();
+
+                _logger.LogError(exception, "Error when handling the status changed message.");
+            }
+        });
+    }
+
+
     public async Task OnStatusChangedAsync(FoulStatusChanged message)
     {
         using var _ = Logger.BeginScope();
@@ -313,7 +340,25 @@ public sealed class FoulBot : IFoulBot
         await JoinChatAsync(message.ByName);
     }
 
-    private void OnMessageReceived(object? sender, FoulMessage message) => OnMessageReceivedAsync(message);
+    private void OnMessageReceived(object? sender, FoulMessage message)
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                await OnMessageReceivedAsync(message);
+            }
+            catch (Exception exception)
+            {
+                using var _ = Logger
+                    .AddScoped("Message", message)
+                    .BeginScope();
+
+                _logger.LogError(exception, "Error when handling the message.");
+            }
+        });
+    }
+
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
         using var _ = Logger.BeginScope();

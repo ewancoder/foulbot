@@ -115,12 +115,16 @@ await app.RunAsync();
 
 public sealed class ChatLoader
 {
+    private readonly ILogger<ChatLoader> _logger;
     private readonly IFoulBotFactory _botFactory;
     private readonly object _lock = new object();
     private readonly HashSet<string> _chats;
 
-    public ChatLoader(IFoulBotFactory botFactory)
+    public ChatLoader(
+        ILogger<ChatLoader> logger,
+        IFoulBotFactory botFactory)
     {
+        _logger = logger;
         _botFactory = botFactory;
         _chats = System.IO.File.Exists("chats") && System.IO.File.ReadAllText("chats") != string.Empty
             ? System.IO.File.ReadAllText("chats").Split(',').ToHashSet()
@@ -150,10 +154,17 @@ public sealed class ChatLoader
     {
         _ = Task.Run(() =>
         {
-            lock (_lock)
+            try
             {
-                _chats.Add(chatId);
-                System.IO.File.WriteAllText("chats", string.Join(',', _chats));
+                lock (_lock)
+                {
+                    _chats.Add(chatId);
+                    System.IO.File.WriteAllText("chats", string.Join(',', _chats));
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error when trying to cache chats to file.");
             }
         });
     }
