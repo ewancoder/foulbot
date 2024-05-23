@@ -88,7 +88,8 @@ public sealed class FoulChat : IFoulChat
 
         _logger.LogInformation("Received message by FoulChat");
 
-        if (telegramMessage.Date < _chatCreatedAt)
+        // Allow reading messages for the last minute, to not filter out the first message in the chat.
+        if (telegramMessage.Date < _chatCreatedAt.AddMinutes(-1))
         {
             _logger.LogTrace("Skipping out old message since it's date {MessageTime} is less than started date {StartTime}", telegramMessage.Date, _chatCreatedAt);
             return;
