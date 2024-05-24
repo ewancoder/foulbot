@@ -1,4 +1,5 @@
 ﻿using FoulBot.Api;
+using FoulBot.Domain;
 using FoulBot.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,7 +49,7 @@ builder.Services.AddSingleton<ChatLoader>();
 builder.Services.AddSingleton<ChatPool>();
 
 var app = builder.Build();
-var logger = app.Services.GetRequiredService<ILogger<FoulBot.Api.FoulBot>>();
+var logger = app.Services.GetRequiredService<ILogger<FoulBot.Domain.FoulBot>>();
 var factory = app.Services.GetRequiredService<ITelegramUpdateHandlerFactory>();
 var chatLoader = app.Services.GetRequiredService<ChatLoader>();
 var botFactory = app.Services.GetRequiredService<IFoulBotFactory>();

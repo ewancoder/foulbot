@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using FoulBot.Domain;
 using Google.Cloud.TextToSpeech.V1;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure;
 
 public sealed class GoogleTtsService : IGoogleTtsService
 {

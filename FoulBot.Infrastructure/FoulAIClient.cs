@@ -1,4 +1,5 @@
 ﻿using Azure.AI.OpenAI;
+using FoulBot.Domain;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnidecodeSharpCore;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure;
 
 public sealed class FoulAIClient : IFoulAIClient
 {

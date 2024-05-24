@@ -1,4 +1,4 @@
-﻿using FoulBot.Api;
+﻿using FoulBot.Domain;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.Infrastructure;

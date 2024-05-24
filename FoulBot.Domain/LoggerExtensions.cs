@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
-namespace FoulBot.Api;
+namespace FoulBot.Domain;
 
 public interface IScopedLogger
 {

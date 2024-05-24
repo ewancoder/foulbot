@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using FoulBot.Domain;
+using FoulBot.Infrastructure;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot.Polling;
 
 namespace FoulBot.Api;

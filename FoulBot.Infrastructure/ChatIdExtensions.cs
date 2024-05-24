@@ -1,7 +1,8 @@
 ﻿using System;
+using FoulBot.Domain;
 using Telegram.Bot.Types;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure;
 
 public static class ChatIdExtensions
 {
