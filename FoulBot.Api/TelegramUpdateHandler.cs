@@ -11,7 +11,7 @@ namespace FoulBot.Api;
 
 public sealed class TelegramUpdateHandler : IUpdateHandler
 {
-    private readonly ILogger<BotMessenger> _botMessengerLogger;
+    private readonly ILogger<TelegramBotMessenger> _botMessengerLogger;
     private readonly ILogger<TelegramUpdateHandler> _logger;
     private readonly ChatPool _chatPool;
     private readonly IFoulBotFactory _botFactory;
@@ -19,7 +19,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
 
     public TelegramUpdateHandler(
-        ILogger<BotMessenger> botMessengerLogger, // TODO: Move to another factory.
+        ILogger<TelegramBotMessenger> botMessengerLogger, // TODO: Move to another factory.
         ILogger<TelegramUpdateHandler> logger,
         ChatPool chatPool,
         IFoulBotFactory botFactory,
@@ -52,7 +52,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         using var _ = _logger.BeginScope(LogContext);
 
         // Consider caching instances for every botClient instead of creating a lot of them.
-        var botMessenger = new BotMessenger(_botMessengerLogger, botClient);
+        var botMessenger = new TelegramBotMessenger(_botMessengerLogger, botClient);
 
         if (DateTime.UtcNow < _coldStarted)
         {

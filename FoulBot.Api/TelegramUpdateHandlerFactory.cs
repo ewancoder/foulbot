@@ -10,13 +10,13 @@ public interface ITelegramUpdateHandlerFactory
 
 public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
 {
-    private readonly ILogger<BotMessenger> _bmLogger;
+    private readonly ILogger<TelegramBotMessenger> _bmLogger;
     private readonly ILogger<TelegramUpdateHandler> _logger;
     private readonly ChatPool _chatPool;
     private readonly IFoulBotFactory _botFactory;
 
     public TelegramUpdateHandlerFactory(
-        ILogger<BotMessenger> bmLogger,
+        ILogger<TelegramBotMessenger> bmLogger,
         ILogger<TelegramUpdateHandler> logger,
         ChatPool chatPool,
         IFoulBotFactory botFactory)

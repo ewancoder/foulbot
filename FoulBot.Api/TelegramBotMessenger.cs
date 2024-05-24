@@ -8,13 +8,13 @@ using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
-public sealed class BotMessenger : IBotMessenger
+public sealed class TelegramBotMessenger : IBotMessenger
 {
-    private readonly ILogger<BotMessenger> _logger;
+    private readonly ILogger<TelegramBotMessenger> _logger;
     private readonly ITelegramBotClient _client;
 
-    public BotMessenger(
-        ILogger<BotMessenger> logger,
+    public TelegramBotMessenger(
+        ILogger<TelegramBotMessenger> logger,
         ITelegramBotClient client)
     {
         _logger = logger;
