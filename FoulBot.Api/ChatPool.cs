@@ -97,8 +97,6 @@ public sealed class ChatPool
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    // This is being called from outside to join bots to chats after app restart.
-    // And also from this class whenever new bot in a new chat receives a message and needs to be created.
     public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
     {
         using var _ = Logger
@@ -107,6 +105,7 @@ public sealed class ChatPool
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
+        // TODO: Here we can alter chatId to include botId in it if we need to, then the bot will have its own context separate from all the other bots.
         if (!_chats.TryGetValue(chatId, out var chat))
         {
             _logger.LogInformation("Did not find the chat, creating it.");
@@ -176,11 +175,7 @@ public sealed class ChatPool
             if (update.Message.Chat.Type == ChatType.Private)
                 chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
 
-            // TODO: Here we can alter chatId to include botId in it if we need to, then the bot will have its own context separate from all the other bots.
-            if (!_chats.TryGetValue(chatId, out var chat))
-                chat = await GetOrAddFoulChatAsync(chatId);
-
-            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory);
+            var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory);
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
             if (message == null)
