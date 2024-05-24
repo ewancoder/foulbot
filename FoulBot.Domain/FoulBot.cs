@@ -31,12 +31,12 @@ public sealed record FoulBotConfiguration
     public string BotName { get; }
     public string Directive { get; }
     public HashSet<string> KeyWords { get; }
-    public int ContextSize { get; } = 20;
+    public int ContextSize { get; } = 14;
     public int ReplyEveryMessages { get; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
     public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 3;
-    public int BotOnlyDecrementIntervalSeconds { get; init; } = 100;
+    public int BotOnlyDecrementIntervalSeconds { get; init; } = 130;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
 

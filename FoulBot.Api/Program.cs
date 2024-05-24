@@ -83,7 +83,7 @@ else
     InitializeBot("EwPidorBotApiKey", new FoulBotConfiguration(
         "ew_pidorbot", "Pidor_Bot", grumpyDirective,
         ["пидор", "бот"])
-        .WithVoiceBetween(6)
+        .WithVoiceBetween(10)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
     InitializeBot("EwMeatBagsBotApiKey", new FoulBotConfiguration(
