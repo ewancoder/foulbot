@@ -13,15 +13,18 @@ public interface IFoulBotFactory
 public sealed class FoulBotFactory : IFoulBotFactory
 {
     private readonly ILogger<FoulBot> _logger;
+    private readonly ILogger<TypingImitator> _typingImitatorLogger;
     private readonly IFoulAIClient _aiClient;
     private readonly IGoogleTtsService _googleTtsService;
 
     public FoulBotFactory(
         ILogger<FoulBot> logger,
+        ILogger<TypingImitator> typingImitatorLogger,
         IFoulAIClient aiClient,
         IGoogleTtsService googleTtsService)
     {
         _logger = logger;
+        _typingImitatorLogger = typingImitatorLogger;
         _aiClient = aiClient;
         _googleTtsService = googleTtsService;
     }
@@ -31,12 +34,16 @@ public sealed class FoulBotFactory : IFoulBotFactory
         FoulBotConfiguration configuration,
         IFoulChat chat)
     {
+        var typingImitatorFactory = new TypingImitatorFactory(
+            _typingImitatorLogger, botMessenger);
+
         return new FoulBot(
             _logger,
             _aiClient,
             _googleTtsService,
             botMessenger,
             configuration,
+            typingImitatorFactory,
             chat);
     }
 }
