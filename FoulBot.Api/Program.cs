@@ -1,4 +1,5 @@
 ﻿using FoulBot.Api;
+using FoulBot.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -38,14 +39,13 @@ builder.Host.UseSerilog((context, config) =>
         .Enrich.WithThreadId();
 });
 
+builder.Services.AddFoulBotInfrastructure();
 builder.Services.AddTransient<IFoulMessageFactory, FoulMessageFactory>();
-builder.Services.AddTransient<IGoogleTtsService, GoogleTtsService>();
 builder.Services.AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>();
 builder.Services.AddTransient<IFoulBotFactory, FoulBotFactory>();
 builder.Services.AddTransient<IFoulChatFactory, FoulChatFactory>();
 builder.Services.AddSingleton<ChatLoader>();
 builder.Services.AddSingleton<ChatPool>();
-builder.Services.AddSingleton<IFoulAIClient, FoulAIClient>();
 
 var app = builder.Build();
 var logger = app.Services.GetRequiredService<ILogger<FoulBot.Api.FoulBot>>();
@@ -117,20 +117,20 @@ await app.RunAsync();
 
 public sealed class ChatLoader
 {
-    private readonly ILogger<TelegramBotMessenger> _bmLogger;
     private readonly ILogger<ChatLoader> _logger;
     private readonly IFoulBotFactory _botFactory;
+    private readonly ITelegramBotMessengerFactory _messengerFactory;
     private readonly object _lock = new object();
     private readonly HashSet<string> _chats;
 
     public ChatLoader(
-        ILogger<TelegramBotMessenger> bmLogger,
         ILogger<ChatLoader> logger,
-        IFoulBotFactory botFactory)
+        IFoulBotFactory botFactory,
+        ITelegramBotMessengerFactory messengerFactory)
     {
-        _bmLogger = bmLogger;
         _logger = logger;
         _botFactory = botFactory;
+        _messengerFactory = messengerFactory;
         _chats = System.IO.File.Exists("chats") && System.IO.File.ReadAllText("chats") != string.Empty
             ? System.IO.File.ReadAllText("chats").Split(',').ToHashSet()
             : new HashSet<string>();
@@ -150,7 +150,7 @@ public sealed class ChatLoader
             await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
-                chat => _botFactory.Create(new TelegramBotMessenger(_bmLogger, client), configuration, chat));
+                chat => _botFactory.Create(_messengerFactory.Create(client), configuration, chat));
         }
     }
 

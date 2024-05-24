@@ -7,8 +7,9 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Build.props", "Directory.Build.props"]
-COPY ["FoulBot.Domain/FoulBot.Domain.csproj", "FoulBot.Domain/"]
 COPY ["FoulBot.Api/FoulBot.Api.csproj", "FoulBot.Api/"]
+COPY ["FoulBot.Domain/FoulBot.Domain.csproj", "FoulBot.Domain/"]
+COPY ["FoulBot.Infrastructure/FoulBot.Infrastructure.csproj", "FoulBot.Infrastructure/"]
 RUN dotnet restore "./FoulBot.Api/FoulBot.Api.csproj"
 COPY . .
 WORKDIR "/src/FoulBot.Api"

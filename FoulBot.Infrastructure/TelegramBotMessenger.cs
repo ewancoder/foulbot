@@ -8,6 +8,24 @@ using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
+public interface ITelegramBotMessengerFactory
+{
+    IBotMessenger Create(ITelegramBotClient client);
+}
+
+public sealed class TelegramBotMessengerFactory : ITelegramBotMessengerFactory
+{
+    private readonly ILogger<TelegramBotMessenger> _logger;
+
+    public TelegramBotMessengerFactory(ILogger<TelegramBotMessenger> logger)
+    {
+        _logger = logger;
+    }
+
+    public IBotMessenger Create(ITelegramBotClient client)
+        => new TelegramBotMessenger(_logger, client);
+}
+
 public sealed class TelegramBotMessenger : IBotMessenger
 {
     private readonly ILogger<TelegramBotMessenger> _logger;
