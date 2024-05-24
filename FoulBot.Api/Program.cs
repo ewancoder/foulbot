@@ -46,6 +46,7 @@ builder.Services.AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandl
 builder.Services.AddTransient<IFoulBotFactory, FoulBotFactory>();
 builder.Services.AddTransient<IFoulChatFactory, FoulChatFactory>();
 builder.Services.AddSingleton<ChatLoader>();
+builder.Services.AddSingleton<IChatCache>(x => x.GetRequiredService<ChatLoader>());
 builder.Services.AddSingleton<ChatPool>();
 
 var app = builder.Build();
@@ -116,7 +117,7 @@ void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configur
 
 await app.RunAsync();
 
-public sealed class ChatLoader
+public sealed class ChatLoader : IChatCache
 {
     private readonly ILogger<ChatLoader> _logger;
     private readonly IFoulBotFactory _botFactory;
