@@ -9,13 +9,6 @@ using UnidecodeSharpFork;
 
 namespace FoulBot.Api;
 
-public interface IFoulAIClient
-{
-    ValueTask<string> GetTextResponseAsync(IEnumerable<FoulMessage> context);
-    ValueTask<string> GetCustomResponseAsync(string directive);
-    ValueTask<Stream> GetAudioResponseAsync(string text);
-}
-
 public sealed class FoulAIClient : IFoulAIClient
 {
     private readonly OpenAIClient _client;

@@ -8,23 +8,13 @@ using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Api;
 
-public interface IBotMessenger
+public sealed class TelegramBotMessenger : IBotMessenger
 {
-    ValueTask<bool> CheckCanWriteAsync(FoulChatId chatId);
-    ValueTask SendStickerAsync(FoulChatId chatId, string stickerId);
-    ValueTask SendTextMessageAsync(FoulChatId chatId, string message);
-    ValueTask SendVoiceMessageAsync(FoulChatId chatId, Stream message);
-    ValueTask NotifyRecordingVoiceAsync(FoulChatId chatId);
-    ValueTask NotifyTyping(FoulChatId chatId);
-}
-
-public sealed class BotMessenger : IBotMessenger
-{
-    private readonly ILogger<BotMessenger> _logger;
+    private readonly ILogger<TelegramBotMessenger> _logger;
     private readonly ITelegramBotClient _client;
 
-    public BotMessenger(
-        ILogger<BotMessenger> logger,
+    public TelegramBotMessenger(
+        ILogger<TelegramBotMessenger> logger,
         ITelegramBotClient client)
     {
         _logger = logger;

@@ -128,6 +128,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IBotMessenger _botMessenger;
     private readonly FoulBotConfiguration _config;
     private readonly IGoogleTtsService _googleTtsService;
+    private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly IFoulChat _chat;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
@@ -148,6 +149,7 @@ public sealed class FoulBot : IFoulBot
         IGoogleTtsService googleTtsService,
         IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
+        ITypingImitatorFactory typingImitatorFactory,
         IFoulChat chat)
     {
         _logger = logger;
@@ -155,6 +157,7 @@ public sealed class FoulBot : IFoulBot
         _googleTtsService = googleTtsService;
         _botMessenger = botMessenger;
         _config = configuration;
+        _typingImitatorFactory = typingImitatorFactory;
         _chat = chat;
         _chat.StatusChanged += OnStatusChanged;
 
@@ -502,7 +505,7 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Updating last processed ID: {PreviousLastProcessed} to {NewLastProcessed}.", _lastProcessedId, snapshot[^1].Id);
             _lastProcessedId = snapshot[^1].Id;
 
-            var isAudio = false;
+            var isVoice = false;
             if (_config.MessagesBetweenVoice > 0)
             {
                 _audioCounter++;
@@ -512,12 +515,12 @@ public sealed class FoulBot : IFoulBot
             if (_audioCounter > _config.MessagesBetweenVoice || _config.UseOnlyVoice)
             {
                 _logger.LogTrace("Audio counter {Counter} exceeded configured value, or UseOnlyVoice is set. Replying with voice and resetting the counter.", _audioCounter);
-                isAudio = true;
+                isVoice = true;
                 _audioCounter = 0;
             }
 
             _logger.LogTrace("Initiating Typing or Voice sending imitator.");
-            using var typing = new TypingImitator(_botMessenger, _chat.ChatId, isAudio);
+            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, isVoice);
 
             // Get context for this bot for the AI client.
             var context = GetContextForAI(snapshot);
@@ -552,7 +555,7 @@ public sealed class FoulBot : IFoulBot
             _logger.LogInformation("Context, reason and response: {@Context}, {Reason}, {Response}.", context, reason, aiGeneratedTextResponse);
             if (!_config.UseOnlyVoice)
             {
-                if (isAudio)
+                if (isVoice)
                 {
                     _logger.LogDebug("Sending audio instead of text based on audio rules.");
                     using var stream = await _aiClient.GetAudioResponseAsync(aiGeneratedTextResponse);
