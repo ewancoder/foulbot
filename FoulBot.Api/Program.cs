@@ -100,7 +100,8 @@ else
 
     InitializeBot("EwVovaBotApiKey", new FoulBotConfiguration(
         "ew_vovabot", "Vova", vovaDirective,
-        keyWords: ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"]));
+        keyWords: ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"])
+            .SetContextSize(30));
 }
 
 void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configuration)

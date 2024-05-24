@@ -31,7 +31,7 @@ public sealed record FoulBotConfiguration
     public string BotName { get; }
     public string Directive { get; }
     public HashSet<string> KeyWords { get; }
-    public int ContextSize { get; } = 14;
+    public int ContextSize { get; init; } = 14;
     public int ReplyEveryMessages { get; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
@@ -39,6 +39,14 @@ public sealed record FoulBotConfiguration
     public int BotOnlyDecrementIntervalSeconds { get; init; } = 130;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
+
+    public FoulBotConfiguration SetContextSize(int contextSize)
+    {
+        return this with
+        {
+            ContextSize = contextSize
+        };
+    }
 
     public FoulBotConfiguration WithVoiceBetween(int messages)
     {
