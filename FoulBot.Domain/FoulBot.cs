@@ -529,9 +529,10 @@ public sealed class FoulBot : IFoulBot
 
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
 
+            var isBadResponse = false;
             if (_config.NotAnAssistant)
             {
-                var i = 0;
+                var i = 1;
                 while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
                 {
                     if (_failedContextCancellation.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
@@ -542,13 +543,18 @@ public sealed class FoulBot : IFoulBot
 
                     _logger.LogWarning("Generated broken context message: {Message}. Trying to re-generate.", aiGeneratedTextResponse);
 
-
                     i++;
                     await Task.Delay(_random.Next(1100, 2300));
                     aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
 
-                    if (i > 5)
-                        throw new InvalidOperationException("Could not generate a valid response.");
+                    // When we generated 3 responses already, and they are all bad.
+                    if (i >= 3)
+                    {
+                        // Used in order not to add this message to the context. It will spoil the context for future requests.
+                        isBadResponse = true;
+                        _logger.LogWarning("Generated broken context message: {Message}. NOT adding it to context, but sending it to the user cause it was the last attempt.", aiGeneratedTextResponse);
+                        break;
+                    }
                 }
             }
 
@@ -582,6 +588,9 @@ public sealed class FoulBot : IFoulBot
             }
 
             _logger.LogDebug("Successfully replied to Telegram. Sending the Response as the next message to context.");
+
+            if (isBadResponse)
+                return; // Do not add this message to the context / process it, because it will spoil the context for all the subsequent requests.
 
             // This will also cause this method to trigger again. Handle this on this level.
             // Adding this message to the global context ONLY after it has been received by telegram.
