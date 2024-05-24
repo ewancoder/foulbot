@@ -1,6 +1,8 @@
-﻿using Azure.AI.OpenAI;
+﻿using Azure;
+using Azure.AI.OpenAI;
 using FoulBot.Domain;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,10 +14,15 @@ namespace FoulBot.Infrastructure;
 
 public sealed class FoulAIClient : IFoulAIClient
 {
+    private readonly Random _random = new Random();
+    private readonly ILogger<FoulAIClient> _logger;
     private readonly OpenAIClient _client;
 
-    public FoulAIClient(IConfiguration configuration)
+    public FoulAIClient(
+        ILogger<FoulAIClient> logger,
+        IConfiguration configuration)
     {
+        _logger = logger;
         _client = new OpenAIClient(configuration["OpenAIKey"]);
     }
 
@@ -69,10 +76,39 @@ public sealed class FoulAIClient : IFoulAIClient
         };
 
         var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
-        var response = await _client.GetChatCompletionsAsync(options);
-        var responseMessage = response.Value.Choices[0].Message;
-        var content = responseMessage.Content;
 
-        return content;
+        return await GetCustomResponseWithRetriesAsync(options);
+    }
+
+    private async ValueTask<string> GetCustomResponseWithRetriesAsync(ChatCompletionsOptions options)
+    {
+        var i = 0;
+        while (i < 3)
+        {
+            i++;
+
+            try
+            {
+                var response = await _client.GetChatCompletionsAsync(options);
+                var responseMessage = response.Value.Choices[0].Message;
+                var content = responseMessage.Content;
+
+                return content;
+            }
+            catch (RequestFailedException exception)
+            {
+                var delay = _random.Next(500, 1800);
+                _logger.LogWarning(exception, "OpenAI returned exception. Retrying up to 3 times with a delay {Delay} ms.", delay);
+                await Task.Delay(delay);
+
+                if (i == 3)
+                {
+                    _logger.LogError(exception, "OpenAI returned exception 3 times in a row. Cannot get a response.");
+                    throw;
+                }
+            }
+        }
+
+        throw new InvalidOperationException("Logic never comes here.");
     }
 }
