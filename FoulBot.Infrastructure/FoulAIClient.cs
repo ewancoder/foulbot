@@ -61,11 +61,8 @@ public sealed class FoulAIClient : IFoulAIClient
         }).ToList();
 
         var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
-        var response = await _client.GetChatCompletionsAsync(options);
-        var responseMessage = response.Value.Choices[0].Message;
-        var content = responseMessage.Content;
 
-        return content;
+        return await GetTextResponseWithRetriesAsync(options);
     }
 
     public async ValueTask<string> GetCustomResponseAsync(string directive)
@@ -77,10 +74,10 @@ public sealed class FoulAIClient : IFoulAIClient
 
         var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
 
-        return await GetCustomResponseWithRetriesAsync(options);
+        return await GetTextResponseWithRetriesAsync(options);
     }
 
-    private async ValueTask<string> GetCustomResponseWithRetriesAsync(ChatCompletionsOptions options)
+    private async ValueTask<string> GetTextResponseWithRetriesAsync(ChatCompletionsOptions options)
     {
         var i = 0;
         while (i < 3)
