@@ -52,6 +52,12 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        if (update.Message?.Text == "$collect_garbage")
+        {
+            GC.Collect();
+            return;
+        }
+
         using var _ = Logger.BeginScope();
 
         // Consider caching instances for every botClient instead of creating a lot of them.
