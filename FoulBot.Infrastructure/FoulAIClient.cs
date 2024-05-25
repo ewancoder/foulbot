@@ -90,6 +90,14 @@ public sealed class FoulAIClient : IFoulAIClient
                 var responseMessage = response.Value.Choices[0].Message;
                 var content = responseMessage.Content;
 
+                _logger.LogDebug(
+                    "OpenAI tokens usage data: {@Options}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
+                    options,
+                    content,
+                    response.Value.Usage.PromptTokens,
+                    response.Value.Usage.CompletionTokens,
+                    response.Value.Usage.TotalTokens);
+
                 return content;
             }
             catch (RequestFailedException exception)
