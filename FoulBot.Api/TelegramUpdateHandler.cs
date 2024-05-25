@@ -115,6 +115,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         using var _ = Logger
             .AddScoped("BotId", botId)
             .AddScoped("ChatId", update?.MyChatMember?.Chat?.Id ?? update?.Message?.Chat?.Id)
+            .AddScoped("ChatName", update?.MyChatMember?.Chat?.Username ?? update?.Message?.Chat?.Username
+                ?? update?.MyChatMember?.Chat?.Title ?? update?.Message?.Chat?.Title)
             .BeginScope();
 
         if (update == null)
