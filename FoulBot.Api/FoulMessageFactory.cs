@@ -35,7 +35,10 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
             senderName,
             telegramMessage.Text,
             telegramMessage.Date,
-            false);
+            false)
+        {
+            ReplyTo = telegramMessage.ReplyToMessage?.From?.Username
+        };
     }
 
     private string GetUniqueMessageId(Message message)
