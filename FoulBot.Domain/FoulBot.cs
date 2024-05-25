@@ -378,6 +378,13 @@ public sealed class FoulBot : IFoulBot
     {
         using var _ = Logger.BeginScope();
 
+        // This method is called on a timer too. We need to skip it if the bot is not in chat.
+        if (!_subscribed)
+        {
+            _logger.LogDebug("Message received method has been triggered (probably by time) but the bot is not subscribed (not in chat). Skipping.");
+            return;
+        }
+
         _logger.LogInformation("Handling received message: {@Message}.", message);
 
         if (_config.ReplyEveryMessages > 0)

@@ -177,7 +177,7 @@ public sealed class ChatPool
             var bot = botFactory(chat);
             await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
             _joinedBots.Add($"{botId}{chatId}");
-            _logger.LogInformation("The bot is successfully added to chat.");
+            _logger.LogInformation("Adding bot to chat operation was performed.");
         }
         finally
         {
