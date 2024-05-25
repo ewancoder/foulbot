@@ -8,4 +8,9 @@ public sealed class FoulChatId
     }
 
     public string Value { get; }
+
+    public override string ToString()
+    {
+        return Value.ToString();
+    }
 }
