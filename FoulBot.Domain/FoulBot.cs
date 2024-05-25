@@ -129,7 +129,8 @@ public sealed class FoulBot : IFoulBot
         "не буду продолжать", "призываю вас к уважению", "уважению друг к другу"
     ];
     private static readonly string[] _failedContextCancellation = [
-        "ссылок", "ссылк", "просматривать ссыл", "просматривать содерж", "просматривать контент"
+        "ссылок", "ссылк", "просматривать ссыл", "просматривать содерж",
+        "просматривать контент", "прости, но"
     ];
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
@@ -556,12 +557,6 @@ public sealed class FoulBot : IFoulBot
                         break;
                     }
 
-                    _logger.LogWarning("Generated broken context message: {Message}. Trying to re-generate.", aiGeneratedTextResponse);
-
-                    i++;
-                    await Task.Delay(_random.Next(1100, 2300));
-                    aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
-
                     // When we generated 3 responses already, and they are all bad.
                     if (i >= 3)
                     {
@@ -570,6 +565,12 @@ public sealed class FoulBot : IFoulBot
                         _logger.LogWarning("Generated broken context message: {Message}. NOT adding it to context, but sending it to the user cause it was the last attempt.", aiGeneratedTextResponse);
                         break;
                     }
+
+                    _logger.LogWarning("Generated broken context message: {Message}. Trying to re-generate.", aiGeneratedTextResponse);
+
+                    i++;
+                    await Task.Delay(_random.Next(1100, 2300));
+                    aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
                 }
             }
 
