@@ -3,13 +3,17 @@ using System.IO;
 using System.Threading.Tasks;
 using FoulBot.Domain;
 using Google.Cloud.TextToSpeech.V1;
+using Microsoft.Extensions.Logging;
 
 namespace FoulBot.Infrastructure;
 
 public sealed class GoogleTtsService : IGoogleTtsService
 {
-    public GoogleTtsService()
+    private readonly ILogger<GoogleTtsService> _logger;
+
+    public GoogleTtsService(ILogger<GoogleTtsService> logger)
     {
+        _logger = logger;
         Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "key.json");
     }
 
@@ -38,6 +42,8 @@ public sealed class GoogleTtsService : IGoogleTtsService
             Pitch = -2.5,
             SpeakingRate = 0.9
         };
+
+        _logger.LogDebug("Synthesizing speech in google, {Count} characters long.", input.Text.Length);
 
         // Perform the text-to-speech request.
         var response = await client.SynthesizeSpeechAsync(input, voiceSelection, audioConfig);
