@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using FoulBot.Domain;
 using FoulBot.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -43,10 +45,37 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private IScopedLogger Logger => _logger
         .AddScoped("BotId", _botConfiguration.BotId);
 
+    private int _scheduledPollingError;
+
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
+        // This thing happens for couple second every two days with Bad Gateway error during midnight.
+        // Handle this separately.
         using var _ = Logger.BeginScope();
+
+        if (DateTime.UtcNow.Hour <= 2
+            && exception is ApiRequestException arException
+            && arException.HttpStatusCode == HttpStatusCode.BadGateway)
+        {
+            var now = Interlocked.Exchange(ref _scheduledPollingError, 1);
+            if (now == 0) // This should happen only once per 10 seconds during the outburst of the error.
+            {
+                // This was the first exchange.
+                // Intentionally not awaited.
+                Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10));
+                    _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
+                    now = 0;
+                });
+            }
+
+            // Ignore duplicate exceptions.
+            return Task.CompletedTask;
+        }
+
         _logger.LogError(exception, "Polling error occurred.");
+
         return Task.CompletedTask;
     }
 
