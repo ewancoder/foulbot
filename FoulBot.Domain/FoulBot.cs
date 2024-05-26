@@ -566,10 +566,13 @@ public sealed class FoulBot : IFoulBot
                         break;
                     }
 
-                    _logger.LogWarning("Generated broken context message: {Message}. Trying to re-generate.", aiGeneratedTextResponse);
+                    _logger.LogWarning("Generated broken context message: {Message}. Repeating main directive and trying to re-generate.", aiGeneratedTextResponse);
 
                     i++;
                     await Task.Delay(_random.Next(1100, 2300));
+                    context.Add(new FoulMessage(
+                        "Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false));
+
                     aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
                 }
             }
