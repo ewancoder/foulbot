@@ -89,15 +89,36 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         return Task.CompletedTask;
     }
 
+    private bool _shutup;
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        using var _ = Logger.BeginScope();
+        _logger.LogDebug("Received update {@Update}.", update);
+
         if (update.Message?.Text == "$collect_garbage")
         {
+            _logger.LogDebug("Collect garbage commant has been issued. Collecting garbage.");
             GC.Collect();
             return;
         }
 
-        using var _ = Logger.BeginScope();
+        if (update.Message?.Text == "$shutup")
+        {
+            _shutup = true;
+            return;
+        }
+
+        if (update.Message?.Text == "$unshutup")
+        {
+            _shutup = false;
+            return;
+        }
+
+        if (_shutup)
+        {
+            _logger.LogDebug("Shutup command has been issued. Skipping all communication.");
+            return;
+        }
 
         // Consider caching instances for every botClient instead of creating a lot of them.
         var botMessenger = new TelegramBotMessenger(_botMessengerLogger, botClient);
@@ -107,8 +128,6 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
             await Task.Delay(2000);
         }
-
-        _logger.LogDebug("Received update {@Update}.", update);
 
         try
         {
