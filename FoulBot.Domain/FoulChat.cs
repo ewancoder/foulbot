@@ -99,7 +99,7 @@ public sealed class FoulChat : IFoulChat
 
             // TODO: Consider debouncing at this level.
             _logger.LogTrace("Finished waiting for 2 seconds in super-hack, now notifying bots about the message.");
-            _logger.LogInformation("Notifying bots about the message: {Message}", message);
+            _logger.LogInformation("Notifying bots about the message: {@Message}, From {SenderName}, Text {MessageText}", message, message.SenderName, message.Text);
 
             try
             {
