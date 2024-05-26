@@ -356,8 +356,29 @@ public sealed class FoulBot : IFoulBot
         await JoinChatAsync(message.ByName);
     }
 
+    private bool _shutup;
     private void OnMessageReceived(object? sender, FoulMessage message)
     {
+        if (message.Text == "$shutup")
+        {
+            _shutup = true;
+            return;
+        }
+
+        if (message.Text == "$unshutup")
+        {
+            _shutup = false;
+            return;
+        }
+
+        if (_shutup)
+        {
+            _logger.LogDebug("Shutup command has been issued. Skipping all communication.");
+            return;
+        }
+
+
+
         Task.Run(async () =>
         {
             try

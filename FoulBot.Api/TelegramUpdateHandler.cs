@@ -89,7 +89,6 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         return Task.CompletedTask;
     }
 
-    private bool _shutup;
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
         using var _ = Logger.BeginScope();
@@ -99,24 +98,6 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         {
             _logger.LogDebug("Collect garbage commant has been issued. Collecting garbage.");
             GC.Collect();
-            return;
-        }
-
-        if (update.Message?.Text == "$shutup")
-        {
-            _shutup = true;
-            return;
-        }
-
-        if (update.Message?.Text == "$unshutup")
-        {
-            _shutup = false;
-            return;
-        }
-
-        if (_shutup)
-        {
-            _logger.LogDebug("Shutup command has been issued. Skipping all communication.");
             return;
         }
 
