@@ -47,27 +47,38 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
     private int _scheduledPollingError;
 
+    private bool _midnightErrorSent;
+    private readonly object _lock = new object();
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         // This thing happens for couple second every two days with Bad Gateway error during midnight.
         // Handle this separately.
         using var _ = Logger.BeginScope();
 
-        if (DateTime.UtcNow.Hour <= 2
+        if (DateTime.UtcNow.Hour <= 13
             && exception is ApiRequestException arException
-            && arException.HttpStatusCode == HttpStatusCode.BadGateway)
+            && arException.ErrorCode == 502)
         {
             var now = Interlocked.Exchange(ref _scheduledPollingError, 1);
-            if (now == 0) // This should happen only once per 10 seconds during the outburst of the error.
+            if (now == 0 && !_midnightErrorSent) // This should happen only once per 10 seconds during the outburst of the error.
             {
-                // This was the first exchange.
-                // Intentionally not awaited.
-                Task.Run(async () =>
+                lock (_lock)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(10));
-                    _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
-                    now = 0;
-                });
+                    if (_midnightErrorSent)
+                        return Task.CompletedTask;
+
+                    _midnightErrorSent = true;
+
+                    // This was the first exchange.
+                    // Intentionally not awaited.
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(10));
+                        _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
+                        now = 0;
+                        _midnightErrorSent = false;
+                    });
+                }
             }
 
             // Ignore duplicate exceptions.
