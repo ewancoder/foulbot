@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FoulBot.Domain;
@@ -44,44 +45,34 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private IScopedLogger Logger => _logger
         .AddScoped("BotId", _botConfiguration.BotId);
 
-    private int _scheduledPollingError;
-
-    private bool _midnightErrorSent;
-    private readonly object _lock = new object();
+    private HashSet<int> _pollingErrorCodes = new HashSet<int>();
+    private readonly object _pollingErrorLock = new object();
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         // This thing happens for couple second every two days with Bad Gateway error during midnight.
         // Handle this separately.
         using var _ = Logger.BeginScope();
 
-        if (DateTime.UtcNow.Hour <= 13
-            && exception is ApiRequestException arException
-            && arException.ErrorCode == 502)
+        if (exception is ApiRequestException arException)
         {
-            var now = Interlocked.Exchange(ref _scheduledPollingError, 1);
-            if (now == 0 && !_midnightErrorSent) // This should happen only once per 10 seconds during the outburst of the error.
+            if (_pollingErrorCodes.Contains(arException.ErrorCode))
+                return Task.CompletedTask; // Ignore duplicate exceptions;
+
+            lock (_pollingErrorLock)
             {
-                lock (_lock)
+                if (_pollingErrorCodes.Contains(arException.ErrorCode))
+                    return Task.CompletedTask; // Ignore duplicate exceptions;
+
+                _pollingErrorCodes.Add(arException.ErrorCode);
+
+                // Intentionally not awaited.
+                Task.Run(async () =>
                 {
-                    if (_midnightErrorSent)
-                        return Task.CompletedTask;
-
-                    _midnightErrorSent = true;
-
-                    // This was the first exchange.
-                    // Intentionally not awaited.
-                    Task.Run(async () =>
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(10));
-                        _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
-                        now = 0;
-                        _midnightErrorSent = false;
-                    });
-                }
+                    await Task.Delay(TimeSpan.FromSeconds(10));
+                    _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
+                    _pollingErrorCodes.Remove(arException.ErrorCode);
+                });
             }
-
-            // Ignore duplicate exceptions.
-            return Task.CompletedTask;
         }
 
         _logger.LogError(exception, "Polling error occurred.");
