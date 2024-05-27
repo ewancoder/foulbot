@@ -45,7 +45,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private IScopedLogger Logger => _logger
         .AddScoped("BotId", _botConfiguration.BotId);
 
-    private HashSet<int> _pollingErrorCodes = new HashSet<int>();
+    private readonly HashSet<int> _pollingErrorCodes = new HashSet<int>();
     private readonly object _pollingErrorLock = new object();
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
