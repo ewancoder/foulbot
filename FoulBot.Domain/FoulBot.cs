@@ -377,7 +377,35 @@ public sealed class FoulBot : IFoulBot
             return;
         }
 
+        if (message.Text.StartsWith(_config.BotId) && message.Text.Replace(_config.BotId, string.Empty).Trim().StartsWith("напомни через"))
+        {
+            _logger.LogDebug("Reminder command has been issued. Setting up a reminder.");
+            // Test code.
+            try
+            {
+                var command = message.Text.Replace(_config.BotId, string.Empty).Trim().Replace("напомни через", string.Empty).Trim();
+                var number = Convert.ToInt32(command.Split(' ')[0]);
+                var units = command.Split(' ')[1];
 
+                Task.Run(async () =>
+                {
+                    if (units.StartsWith("сек"))
+                        await Task.Delay(TimeSpan.FromSeconds(number));
+                    if (units.StartsWith("мин"))
+                        await Task.Delay(TimeSpan.FromMinutes(number));
+                    if (units.StartsWith("час"))
+                        await Task.Delay(TimeSpan.FromHours(number));
+                    if (units.StartsWith("де") || units.StartsWith("дн"))
+                        await Task.Delay(TimeSpan.FromDays(number));
+
+                    await RemindAsync(string.Join(' ', command.Split(' ').Skip(2)));
+                });
+            }
+            catch
+            {
+            }
+            return;
+        }
 
         Task.Run(async () =>
         {
@@ -394,6 +422,13 @@ public sealed class FoulBot : IFoulBot
                 _logger.LogError(exception, "Error when handling the message.");
             }
         });
+    }
+
+    private async Task RemindAsync(string message)
+    {
+        var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Some time ago they asked you to remind them this. Remind people about this: {message}");
+
+        await _botMessenger.SendTextMessageAsync(_chat.ChatId, response);
     }
 
     private async Task OnMessageReceivedAsync(FoulMessage message)
