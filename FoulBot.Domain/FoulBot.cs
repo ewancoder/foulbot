@@ -1,11 +1,121 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace FoulBot.Domain;
+
+public sealed record Reminder(
+    DateTime AtUtc,
+    string Request)
+{
+    public string? Id { get; set; }
+}
+
+public sealed class ReminderCreator
+{
+    private readonly FoulChatId _chatId;
+    private readonly string _botId;
+    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private Dictionary<string, Reminder> _reminders = new Dictionary<string, Reminder>();
+
+    public ReminderCreator(
+        FoulChatId chatId,
+        string botId)
+    {
+        _chatId = chatId;
+        _botId = botId;
+
+        // Load everything.
+        Task.Run(() =>
+        {
+            lock (_lock)
+            {
+                if (!Directory.Exists("reminders"))
+                    Directory.CreateDirectory("reminders");
+
+                if (!File.Exists($"reminders/{chatId}---{_botId}"))
+                    File.WriteAllText($"reminders/{chatId}---{botId}", "[]");
+
+                var content = File.ReadAllText($"reminders/{_chatId}---{_botId}");
+                _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
+                    .ToDictionary(x => x.Id!);
+
+                foreach (var reminder in _reminders.Values)
+                {
+                    InitializeReminder(reminder.Id!);
+                }
+            }
+        });
+    }
+
+    public EventHandler<string>? Remind;
+
+    public void AddReminder(Reminder reminder)
+    {
+        lock (_lock)
+        {
+            var id = Guid.NewGuid().ToString();
+            reminder.Id = id;
+            _reminders.Add(id, reminder);
+            SaveRemindersAsync().GetAwaiter().GetResult();
+            InitializeReminder(id);
+        }
+    }
+
+    public void AddReminder(string message)
+    {
+        var command = message.Replace("через", string.Empty).Trim();
+        var number = Convert.ToInt32(command.Split(' ')[0]);
+        var units = command.Split(' ')[1];
+        var request = string.Join(' ', command.Split(' ').Skip(2));
+
+        var time = DateTime.UtcNow;
+        if (units.StartsWith("сек"))
+            time = DateTime.UtcNow + TimeSpan.FromSeconds(number);
+        if (units.StartsWith("мин"))
+            time = DateTime.UtcNow + TimeSpan.FromMinutes(number);
+        if (units.StartsWith("час"))
+            time = DateTime.UtcNow + TimeSpan.FromHours(number);
+        if (units.StartsWith("де") || units.StartsWith("дн"))
+            time = DateTime.UtcNow + TimeSpan.FromDays(number);
+
+        AddReminder(new Reminder(time, request));
+    }
+
+    private void InitializeReminder(string id)
+    {
+        // Very simple implementation.
+        Task.Run(async () =>
+        {
+            var reminder = _reminders[id];
+            if (reminder.AtUtc > DateTime.UtcNow)
+                await Task.Delay(reminder.AtUtc - DateTime.UtcNow);
+
+            _reminders.Remove(id);
+            await SaveRemindersAsync();
+
+            TriggerReminder(reminder);
+        });
+    }
+
+    private void TriggerReminder(Reminder reminder)
+    {
+        Task.Run(() =>
+        {
+            Remind?.Invoke(this, reminder.Request);
+        });
+    }
+
+    private async ValueTask SaveRemindersAsync()
+    {
+        await File.WriteAllTextAsync($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
+    }
+}
 
 public sealed record FoulBotConfiguration
 {
@@ -141,6 +251,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IFoulChat _chat;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private readonly ReminderCreator _reminderCreator;
     private readonly Task _botOnlyDecrementTask;
     private readonly Task _repeatByTimeTask;
 
@@ -169,6 +280,10 @@ public sealed class FoulBot : IFoulBot
         _typingImitatorFactory = typingImitatorFactory;
         _chat = chat;
         _chat.StatusChanged += OnStatusChanged;
+
+        _reminderCreator = new ReminderCreator(
+            _chat.ChatId, _config.BotId);
+        _reminderCreator.Remind += OnRemind;
 
         using var _ = Logger.BeginScope();
 
@@ -233,6 +348,8 @@ public sealed class FoulBot : IFoulBot
         });
         */
     }
+
+    private void OnRemind(object? sender, string request) => RemindAsync(request);
 
     // TODO: Figure out how scope goes down here and whether I need to configure this at all.
     private IScopedLogger Logger => _logger
@@ -377,8 +494,9 @@ public sealed class FoulBot : IFoulBot
             return;
         }
 
-        if (message.Text.StartsWith(_config.BotId) && message.Text.Replace(_config.BotId, string.Empty).Trim().StartsWith("напомни через"))
+        if (message.Text.StartsWith($"@{_config.BotId}"))
         {
+            _reminderCreator.AddReminder(message.Text.Replace($"@{_config.BotId}", string.Empty).Trim());
             _logger.LogDebug("Reminder command has been issued. Setting up a reminder.");
             // Test code.
             try
@@ -426,7 +544,7 @@ public sealed class FoulBot : IFoulBot
 
     private async Task RemindAsync(string message)
     {
-        var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Some time ago they asked you to remind them this. Remind people about this: {message}");
+        var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Ты должен сделать следующее: {message}");
 
         await _botMessenger.SendTextMessageAsync(_chat.ChatId, response);
     }
