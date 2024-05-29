@@ -20,6 +20,7 @@ services:
       - ./key.json:/app/key.json
       - ./chats:/app/chats
       - /data/foulbot-logs:/app/logs
+      - /data/foulbot-reminders:/app/reminders
 
   #seq:
   #  image: datalust/seq:latest
