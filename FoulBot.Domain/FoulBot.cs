@@ -11,7 +11,8 @@ namespace FoulBot.Domain;
 
 public sealed record Reminder(
     DateTime AtUtc,
-    string Request)
+    string Request,
+    bool EveryDay)
 {
     public string? Id { get; set; }
 }
@@ -69,6 +70,13 @@ public sealed class ReminderCreator
 
     public void AddReminder(string message)
     {
+        var everyDay = false;
+        if (message.StartsWith("каждый день"))
+        {
+            everyDay = true;
+            message = message.Replace("каждый день", string.Empty);
+        }
+
         var command = message.Replace("через", string.Empty).Trim();
         var number = Convert.ToInt32(command.Split(' ')[0]);
         var units = command.Split(' ')[1];
@@ -84,7 +92,7 @@ public sealed class ReminderCreator
         if (units.StartsWith("де") || units.StartsWith("дн"))
             time = DateTime.UtcNow + TimeSpan.FromDays(number);
 
-        AddReminder(new Reminder(time, request));
+        AddReminder(new Reminder(time, request, everyDay));
     }
 
     private void InitializeReminder(string id)
@@ -97,6 +105,13 @@ public sealed class ReminderCreator
                 await Task.Delay(reminder.AtUtc - DateTime.UtcNow);
 
             _reminders.Remove(id);
+            if (reminder.EveryDay)
+            {
+                _reminders.Add(id, reminder with
+                {
+                    AtUtc = reminder.AtUtc + TimeSpan.FromDays(1)
+                });
+            }
             await SaveRemindersAsync();
 
             TriggerReminder(reminder);
