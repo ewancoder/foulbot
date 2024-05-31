@@ -12,7 +12,8 @@ namespace FoulBot.Domain;
 public sealed record Reminder(
     DateTime AtUtc,
     string Request,
-    bool EveryDay)
+    bool EveryDay,
+    string From)
 {
     public string? Id { get; set; }
 }
@@ -54,7 +55,7 @@ public sealed class ReminderCreator
         });
     }
 
-    public EventHandler<string>? Remind;
+    public EventHandler<Reminder>? Remind;
 
     public void AddReminder(Reminder reminder)
     {
@@ -68,8 +69,11 @@ public sealed class ReminderCreator
         }
     }
 
-    public void AddReminder(string message)
+    public void AddReminder(FoulMessage foulMessage)
     {
+        var message = foulMessage.Text.Replace($"@{_botId}", string.Empty).Trim();
+        var from = foulMessage.SenderName;
+
         var everyDay = false;
         if (message.StartsWith("каждый день"))
         {
@@ -92,7 +96,7 @@ public sealed class ReminderCreator
         if (units.StartsWith("де") || units.StartsWith("дн"))
             time = DateTime.UtcNow + TimeSpan.FromDays(number);
 
-        AddReminder(new Reminder(time, request, everyDay));
+        AddReminder(new Reminder(time, request, everyDay, from));
     }
 
     private void InitializeReminder(string id)
@@ -122,7 +126,7 @@ public sealed class ReminderCreator
     {
         Task.Run(() =>
         {
-            Remind?.Invoke(this, reminder.Request);
+            Remind?.Invoke(this, reminder);
         });
     }
 
@@ -364,7 +368,7 @@ public sealed class FoulBot : IFoulBot
         */
     }
 
-    private void OnRemind(object? sender, string request) => RemindAsync(request);
+    private void OnRemind(object? sender, Reminder reminder) => RemindAsync(reminder);
 
     // TODO: Figure out how scope goes down here and whether I need to configure this at all.
     private IScopedLogger Logger => _logger
@@ -511,34 +515,9 @@ public sealed class FoulBot : IFoulBot
 
         if (message.Text.StartsWith($"@{_config.BotId}"))
         {
-            _reminderCreator.AddReminder(message.Text.Replace($"@{_config.BotId}", string.Empty).Trim());
-            _logger.LogDebug("Reminder command has been issued. Setting up a reminder.");
-            // Test code.
-            try
-            {
-                var command = message.Text.Replace(_config.BotId, string.Empty).Trim().Replace("напомни через", string.Empty).Trim();
-                var number = Convert.ToInt32(command.Split(' ')[0]);
-                var units = command.Split(' ')[1];
-
-                Task.Run(async () =>
-                {
-                    if (units.StartsWith("сек"))
-                        await Task.Delay(TimeSpan.FromSeconds(number));
-                    if (units.StartsWith("мин"))
-                        await Task.Delay(TimeSpan.FromMinutes(number));
-                    if (units.StartsWith("час"))
-                        await Task.Delay(TimeSpan.FromHours(number));
-                    if (units.StartsWith("де") || units.StartsWith("дн"))
-                        await Task.Delay(TimeSpan.FromDays(number));
-
-                    await RemindAsync(string.Join(' ', command.Split(' ').Skip(2)));
-                });
-            }
-            catch
-            {
-            }
+            _logger.LogDebug("Reminder command has been issued. Setting up a reminder: {Message}", message);
+            _reminderCreator.AddReminder(message);
             // Do not return - add the ask to set up a reminder as a message to context.
-            //return;
         }
 
         Task.Run(async () =>
@@ -558,9 +537,11 @@ public sealed class FoulBot : IFoulBot
         });
     }
 
-    private async Task RemindAsync(string message)
+    private async Task RemindAsync(Reminder reminder)
     {
-        var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Ты должен сделать следующее: {message}");
+        // TODO: Add shared code from OnMessageReceived method, like NOT processing this if bot is NOT added to the chat anymore (unsubscribed).
+
+        var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Ты должен сделать следующее ({reminder.From} попросил): {reminder.Request}");
 
         await _botMessenger.SendTextMessageAsync(_chat.ChatId, response);
     }
