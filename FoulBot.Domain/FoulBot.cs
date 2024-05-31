@@ -537,7 +537,8 @@ public sealed class FoulBot : IFoulBot
             catch
             {
             }
-            return;
+            // Do not return - add the ask to set up a reminder as a message to context.
+            //return;
         }
 
         Task.Run(async () =>
