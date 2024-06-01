@@ -540,10 +540,15 @@ public sealed class FoulBot : IFoulBot
     private async Task RemindAsync(Reminder reminder)
     {
         // TODO: Add shared code from OnMessageReceived method, like NOT processing this if bot is NOT added to the chat anymore (unsubscribed).
+        // TODO: Log everything and log amount of tokens.
 
         var response = await _aiClient.GetCustomResponseAsync(_config.Directive + $" Ты должен сделать следующее ({reminder.From} попросил): {reminder.Request}");
 
         await _botMessenger.SendTextMessageAsync(_chat.ChatId, response);
+
+        // Send currently generated message to context.
+        // TODO: Make sure it is inserted in the right order.
+        _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _config.BotName, response, DateTime.UtcNow, true));
     }
 
     private async Task OnMessageReceivedAsync(FoulMessage message)
