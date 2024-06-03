@@ -94,7 +94,7 @@ else
     InitializeBot("EwMeatBagsBotApiKey", new FoulBotConfiguration(
         //"ew_meatbagsbot", "Robot", bostonDirective,
         //["робот", "человек", "ии", "ai", "кожан", "ублюд"])
-        "ew_meatbagsbot", "Славный_Парень", slavnyDirective,
+        "ew_meatbagsbot", "Cool_Guy", slavnyDirective,
         ["славный", "парень", "спасибо", "пожалуйста", "сенкс", "плиз"])
         .WithOnlyVoice());
         /*.AddStickers(
