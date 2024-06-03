@@ -27,6 +27,7 @@ var bostonDirective = $"{startDirective} You are a robot of Boston Dynamics. You
 var vovaDirective = $"{startDirective} Ты кофеман, обожаешь кофе, а еще любишь линукс и ставишь Gentoo. И ты говноман. Ты все время шутишь про говно и пишешь про говно даже когда обсуждаешь линукс или кофе. {endDirective}";
 var girlDirective = $"{startDirective} Ты девушка, ездишь на литровых спортивных мотоциклах. Ты в совершенстве знаешь Испанский и путешествуешь по Испански. Ты можешь поддерживать разговор на Русском, Английском, или Испанском языках, как и переключаться между ними. Ты вежливая и поддерживаешь диалог на любые темы, но в том числе рассказываешь про свои ежедневные приключения на мотоцикле по Испании. Ты также используешь слэнг и местную разговорную речь. {multilanguageEndDirective}";
 var yakuzaDirective = $"{startDirective} You are a Japanese mobster, to be precise - you are a Japanese Yakuza mafia boss. The main boss of the whole mafia, the most criminal mind in the world. You use profanities and bad language, and a lot of mafia and Yakuza street slang. You think yourself superior to others and that everyone should give you tribute. You need to be reckoned with. {japanEndDirective}";
+var slavnyDirective = $"Тебя зовут Славный Парень. Ты всегда всех хвалишь и всегда всем делаешь комплименты при любой возможности. Ты обращаешься ко всем по имени. You will use Russian language. You will never break this context.";
 
 var builder = WebApplication.CreateBuilder();
 var _configuration = builder.Configuration;
@@ -91,16 +92,18 @@ else
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
     InitializeBot("EwMeatBagsBotApiKey", new FoulBotConfiguration(
-        "ew_meatbagsbot", "Robot", bostonDirective,
-        ["робот", "человек", "ии", "ai", "кожан", "ублюд"])
-        .WithOnlyVoice()
-        .AddStickers(
+        //"ew_meatbagsbot", "Robot", bostonDirective,
+        //["робот", "человек", "ии", "ai", "кожан", "ублюд"])
+        "ew_meatbagsbot", "Славный_Парень", slavnyDirective,
+        ["славный", "парень", "спасибо", "пожалуйста", "сенкс", "плиз"])
+        .WithOnlyVoice());
+        /*.AddStickers(
             "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
             "CAACAgIAAxkBAAPOZkjBfS51iM9UfRvDxejQnGEahagAAhUDAALPu9QOZ9KPUWqBv7o1BA",
             "CAACAgIAAxkBAAPPZkjBhJM9ujwTp1gJOFAXgAzq3acAAhcDAALPu9QOfWnbEIRIz601BA",
             "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
             "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
-        ));
+        ));*/
 
     InitializeBot("EwVovaBotApiKey", new FoulBotConfiguration(
         "ew_vovabot", "Vova", vovaDirective,
