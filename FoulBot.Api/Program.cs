@@ -95,8 +95,8 @@ else
         //"ew_meatbagsbot", "Robot", bostonDirective,
         //["робот", "человек", "ии", "ai", "кожан", "ублюд"])
         "ew_meatbagsbot", "Cool_Guy", slavnyDirective,
-        ["славный", "парень", "спасибо", "пожалуйста", "сенкс", "плиз"])
-        .WithOnlyVoice());
+        ["славный", "парень", "спасибо", "пожалуйста", "сенкс", "плиз"]));
+        //.WithOnlyVoice());
         /*.AddStickers(
             "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
             "CAACAgIAAxkBAAPOZkjBfS51iM9UfRvDxejQnGEahagAAhUDAALPu9QOZ9KPUWqBv7o1BA",
