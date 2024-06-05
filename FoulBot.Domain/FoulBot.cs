@@ -161,6 +161,7 @@ public sealed record FoulBotConfiguration
     public string Directive { get; }
     public HashSet<string> KeyWords { get; }
     public int ContextSize { get; init; } = 14;
+    public int MaxContextSizeInCharacters = 3000;
     public int ReplyEveryMessages { get; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
@@ -821,6 +822,11 @@ public sealed class FoulBot : IFoulBot
             .TakeLast(_config.ContextSize)
             .ToList();
 
+        while (onlyAddressedToMe.Sum(x => x.Text.Length) > _config.MaxContextSizeInCharacters && onlyAddressedToMe.Count > 2)
+        {
+            onlyAddressedToMe.RemoveAt(0);
+        }
+
         var allMessages = fullContext
             .Where(message => !ShouldRespond(message) && !IsMyOwnMessage(message))
             .Select(message =>
@@ -832,6 +838,11 @@ public sealed class FoulBot : IFoulBot
             })
             .TakeLast(_config.ContextSize / 2) // Populate only second half with these messages.
             .ToList();
+
+        while (allMessages.Sum(x => x.Text.Length) > _config.MaxContextSizeInCharacters / 2 && allMessages.Count > 2)
+        {
+            allMessages.RemoveAt(0);
+        }
 
         var combinedContext = onlyAddressedToMe.Concat(allMessages)
             .DistinctBy(x => x.Id)
