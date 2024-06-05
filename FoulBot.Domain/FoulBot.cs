@@ -21,9 +21,10 @@ public sealed record Reminder(
 public sealed class ReminderCreator
 {
     private readonly FoulChatId _chatId;
+
     private readonly string _botId;
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
-    private Dictionary<string, Reminder> _reminders = new Dictionary<string, Reminder>();
+    private readonly object _lock = new object();
+    private readonly Dictionary<string, Reminder> _reminders;
 
     public ReminderCreator(
         FoulChatId chatId,
@@ -32,41 +33,34 @@ public sealed class ReminderCreator
         _chatId = chatId;
         _botId = botId;
 
-        // Load everything.
-        Task.Run(() =>
-        {
-            lock (_lock)
-            {
-                if (!Directory.Exists("reminders"))
-                    Directory.CreateDirectory("reminders");
+        if (!Directory.Exists("reminders"))
+            Directory.CreateDirectory("reminders");
 
-                if (!File.Exists($"reminders/{chatId}---{_botId}"))
-                    File.WriteAllText($"reminders/{chatId}---{botId}", "[]");
+        if (!File.Exists($"reminders/{chatId}---{_botId}"))
+            File.WriteAllText($"reminders/{chatId}---{botId}", "[]");
 
-                var content = File.ReadAllText($"reminders/{_chatId}---{_botId}");
-                _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
-                    .ToDictionary(x => x.Id!);
+        var content = File.ReadAllText($"reminders/{_chatId}---{_botId}");
+        _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
+            .ToDictionary(x => x.Id!);
 
-                foreach (var reminder in _reminders.Values)
-                {
-                    InitializeReminder(reminder.Id!);
-                }
-            }
-        });
+        _ = Task.WhenAll(_reminders.Values.Select(
+            reminder => InitializeReminderAsync(reminder.Id!)));
     }
 
     public EventHandler<Reminder>? Remind;
 
     public void AddReminder(Reminder reminder)
     {
+        var id = Guid.NewGuid().ToString();
+
         lock (_lock)
         {
-            var id = Guid.NewGuid().ToString();
             reminder.Id = id;
             _reminders.Add(id, reminder);
-            SaveRemindersAsync().GetAwaiter().GetResult();
-            InitializeReminder(id);
+            SaveReminders();
         }
+
+        _ = InitializeReminderAsync(id);
     }
 
     public void AddReminder(FoulMessage foulMessage)
@@ -99,15 +93,14 @@ public sealed class ReminderCreator
         AddReminder(new Reminder(time, request, everyDay, from));
     }
 
-    private void InitializeReminder(string id)
+    private async Task InitializeReminderAsync(string id)
     {
-        // Very simple implementation.
-        Task.Run(async () =>
-        {
-            var reminder = _reminders[id];
-            if (reminder.AtUtc > DateTime.UtcNow)
-                await Task.Delay(reminder.AtUtc - DateTime.UtcNow);
+        var reminder = _reminders[id];
+        if (reminder.AtUtc + TimeSpan.FromSeconds(1) > DateTime.UtcNow)
+            await Task.Delay(reminder.AtUtc + TimeSpan.FromSeconds(1) - DateTime.UtcNow);
 
+        lock (_lock)
+        {
             _reminders.Remove(id);
             if (reminder.EveryDay)
             {
@@ -116,23 +109,20 @@ public sealed class ReminderCreator
                     AtUtc = reminder.AtUtc + TimeSpan.FromDays(1)
                 });
             }
-            await SaveRemindersAsync();
+            SaveReminders();
+        }
 
-            TriggerReminder(reminder);
-        });
+        TriggerReminder(reminder);
     }
 
     private void TriggerReminder(Reminder reminder)
     {
-        Task.Run(() =>
-        {
-            Remind?.Invoke(this, reminder);
-        });
+        Remind?.Invoke(this, reminder);
     }
 
-    private async ValueTask SaveRemindersAsync()
+    private void SaveReminders()
     {
-        await File.WriteAllTextAsync($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
+        File.WriteAllText($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
     }
 }
 
