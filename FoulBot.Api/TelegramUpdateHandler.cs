@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FoulBot.Domain;
@@ -22,6 +23,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly IFoulMessageFactory _foulMessageFactory;
     private readonly FoulBotConfiguration _botConfiguration;
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
+    private readonly IEnumerable<string> _allowedChats;
 
     public TelegramUpdateHandler(
         ILogger<TelegramBotMessenger> botMessengerLogger, // TODO: Move to another factory.
@@ -29,7 +31,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         ChatPool chatPool,
         IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
-        FoulBotConfiguration botConfiguration)
+        FoulBotConfiguration botConfiguration,
+        IEnumerable<string> allowedChats)
     {
         _botMessengerLogger = botMessengerLogger;
         _logger = logger;
@@ -37,6 +40,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _botFactory = botFactory;
         _foulMessageFactory = foulMessageFactory;
         _botConfiguration = botConfiguration;
+        _allowedChats = allowedChats;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Initialized TelegramUpdateHandler with configuration {@Configuration}.", _botConfiguration);
@@ -165,6 +169,13 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             var chatId = update.Message.Chat.Id.ToString();
+            if (!_allowedChats.Contains(chatId))
+            {
+                _logger.LogWarning("Received a message from not allowed chat.");
+                return; // Bot is not allowed to write to this chat.
+                        // This is a temporary measure so that bots don't reply to random people.
+                        // In future this will be improved so that they still write 5-10 messages per day, unless allowed.
+            }
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
             if (message == null)
