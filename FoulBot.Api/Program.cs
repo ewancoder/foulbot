@@ -119,7 +119,7 @@ else
 
     InitializeBot("EwYakuzaBotApiKey", new FoulBotConfiguration(
         "ew_yakuzabot", "Yakuza_Boss", yakuzaDirective,
-        keyWords: ["якудза", "yakuza", "mob", "моб", "босс", "boss", "mafia", "мафия"])
+        keyWords: ["босс"])
             .SetContextSize(10));
 
     InitializeBot("EwStathemBotApiKey", new FoulBotConfiguration(
