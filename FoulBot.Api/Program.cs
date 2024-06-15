@@ -64,6 +64,16 @@ var botFactory = app.Services.GetRequiredService<IFoulBotFactory>();
 var chatPool = app.Services.GetRequiredService<ChatPool>();
 await Task.Delay(10); // Chat pool needs to have a slightly different timestamp from other later actions.
 
+app.MapGet("/api/reminders", () =>
+{
+    return chatPool.AllBots.SelectMany(x => x.AllReminders.Select(reminder => new
+    {
+        Bot = x.BotId,
+        Chat = x.ChatId,
+        Reminder = reminder
+    }));
+});
+
 var aiClient = app.Services.GetRequiredService<IFoulAIClient>();
 
 if (isDebug)

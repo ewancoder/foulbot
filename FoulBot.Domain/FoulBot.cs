@@ -47,6 +47,7 @@ public sealed class ReminderCreator
             reminder => InitializeReminderAsync(reminder.Id!)));
     }
 
+    public IEnumerable<Reminder> AllReminders => _reminders.Values;
     public EventHandler<Reminder>? Remind;
 
     public void AddReminder(Reminder reminder)
@@ -231,7 +232,10 @@ public sealed record FoulBotConfiguration
 
 public interface IFoulBot
 {
+    string BotId { get; }
+    string ChatId { get; }
     ValueTask JoinChatAsync(string? invitedBy);
+    IEnumerable<Reminder> AllReminders { get; }
 }
 
 public sealed class FoulBot : IFoulBot
@@ -358,6 +362,10 @@ public sealed class FoulBot : IFoulBot
         });
         */
     }
+
+    public string BotId => _config.BotId;
+    public string ChatId => _chat.ChatId.ToString();
+    public IEnumerable<Reminder> AllReminders => _reminderCreator.AllReminders;
 
     private void OnRemind(object? sender, Reminder reminder) => RemindAsync(reminder);
 

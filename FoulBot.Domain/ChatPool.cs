@@ -15,6 +15,7 @@ public sealed class ChatPool
     private readonly IFoulChatFactory _foulChatFactory;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly HashSet<string> _joinedBots = new HashSet<string>();
+    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = new Dictionary<string, IFoulBot>();
     private readonly ConcurrentDictionary<string, IFoulChat> _chats
         = new ConcurrentDictionary<string, IFoulChat>();
 
@@ -29,6 +30,8 @@ public sealed class ChatPool
 
         _logger.LogInformation("ChatPool instance is created.");
     }
+
+    public IEnumerable<IFoulBot> AllBots => _joinedBotsObjects.Values;
 
     private IScopedLogger Logger => _logger.AddScoped();
 
@@ -177,6 +180,7 @@ public sealed class ChatPool
             var bot = botFactory(chat);
             await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
             _joinedBots.Add($"{botId}{chatId}");
+            _joinedBotsObjects.Add($"{botId}{chatId}", bot);
             _logger.LogInformation("Adding bot to chat operation was performed.");
         }
         finally
