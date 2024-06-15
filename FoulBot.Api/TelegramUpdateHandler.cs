@@ -172,9 +172,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             if (!_allowedChats.Contains(chatId))
             {
                 _logger.LogWarning("Received a message from not allowed chat.");
+#if !DEBUG
                 return; // Bot is not allowed to write to this chat.
                         // This is a temporary measure so that bots don't reply to random people.
                         // In future this will be improved so that they still write 5-10 messages per day, unless allowed.
+#endif
             }
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
