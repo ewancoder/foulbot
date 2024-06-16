@@ -128,6 +128,8 @@ public sealed class ReminderCreator
 }
 
 public sealed record FoulBotConfiguration
+    : IContextReducerConfiguration,
+    IRespondStrategyConfiguration
 {
     public FoulBotConfiguration(
         string botId,
@@ -150,9 +152,9 @@ public sealed record FoulBotConfiguration
     public string BotId { get; }
     public string BotName { get; }
     public string Directive { get; }
-    public HashSet<string> KeyWords { get; }
+    public IEnumerable<string> KeyWords { get; }
     public int ContextSize { get; init; } = 14;
-    public int MaxContextSizeInCharacters = 3000;
+    public int MaxContextSizeInCharacters { get; } = 3000;
     public int ReplyEveryMessages { get; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;

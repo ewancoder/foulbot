@@ -1,7 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace FoulBot.Domain;
+
+public interface IRespondStrategyConfiguration
+{
+    public string BotId { get; }
+    public string BotName { get; }
+    public IEnumerable<string> KeyWords { get; }
+}
 
 public interface IRespondStrategy
 {
@@ -10,11 +18,11 @@ public interface IRespondStrategy
 
 public sealed class RespondStrategy : IRespondStrategy
 {
-    private readonly FoulBotConfiguration _config;
+    private readonly IRespondStrategyConfiguration _config;
     private readonly bool _isPrivateChat;
 
     public RespondStrategy(
-        FoulBotConfiguration config,
+        IRespondStrategyConfiguration config,
         bool isPrivateChat)
     {
         _config = config;

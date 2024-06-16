@@ -4,6 +4,14 @@ using System.Linq;
 
 namespace FoulBot.Domain;
 
+public interface IContextReducerConfiguration
+{
+    public string BotName { get; }
+    public string Directive { get; }
+    public int ContextSize { get; }
+    public int MaxContextSizeInCharacters { get; }
+}
+
 public interface IContextReducer
 {
     public List<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext);
@@ -12,11 +20,11 @@ public interface IContextReducer
 public sealed class ContextReducer : IContextReducer
 {
     private readonly IRespondStrategy _respondStrategy;
-    private readonly FoulBotConfiguration _config;
+    private readonly IContextReducerConfiguration _config;
 
     public ContextReducer(
         IRespondStrategy respondStrategy,
-        FoulBotConfiguration config)
+        IContextReducerConfiguration config)
     {
         _respondStrategy = respondStrategy;
         _config = config;
