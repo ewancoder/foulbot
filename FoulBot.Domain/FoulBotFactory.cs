@@ -37,6 +37,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var typingImitatorFactory = new TypingImitatorFactory(
             _typingImitatorLogger, botMessenger);
 
+        var respondStrategy = new RespondStrategy(
+            configuration, chat.IsPrivateChat);
+
         return new FoulBot(
             _logger,
             _aiClient,
@@ -44,6 +47,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             botMessenger,
             configuration,
             typingImitatorFactory,
-            chat);
+            chat,
+            respondStrategy);
     }
 }

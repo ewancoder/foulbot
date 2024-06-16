@@ -263,6 +263,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IGoogleTtsService _googleTtsService;
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly IFoulChat _chat;
+    private readonly IRespondStrategy _respondStrategy;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
@@ -284,7 +285,8 @@ public sealed class FoulBot : IFoulBot
         IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
         ITypingImitatorFactory typingImitatorFactory,
-        IFoulChat chat)
+        IFoulChat chat,
+        IRespondStrategy respondStrategy)
     {
         _logger = logger;
         _aiClient = aiClient;
@@ -293,6 +295,7 @@ public sealed class FoulBot : IFoulBot
         _config = configuration;
         _typingImitatorFactory = typingImitatorFactory;
         _chat = chat;
+        _respondStrategy = respondStrategy;
         _chat.StatusChanged += OnStatusChanged;
 
         _reminderCreator = new ReminderCreator(
@@ -673,7 +676,7 @@ public sealed class FoulBot : IFoulBot
                 }
 
                 reason = unprocessedMessages
-                    .Select(m => GetReasonForResponding(m))
+                    .Select(m => _respondStrategy.GetReasonForResponding(m))
                     .Where(r => r != null)
                     .FirstOrDefault();
 
@@ -861,24 +864,6 @@ public sealed class FoulBot : IFoulBot
 
     private bool ShouldRespond(FoulMessage message)
     {
-        return GetReasonForResponding(message) != null;
-    }
-
-    private string? GetReasonForResponding(FoulMessage message)
-    {
-        if (message.SenderName == _config.BotName)
-            return null;
-
-        if (message.ReplyTo == _config.BotId)
-            return "Reply";
-
-        if (_chat.IsPrivateChat)
-            return "Private chat"; // Reply to all messages in a private chat.
-
-        var triggerKeyword = _config.KeyWords.FirstOrDefault(k => message.Text.ToLowerInvariant().Contains(k.ToLowerInvariant().Trim()));
-        if (triggerKeyword != null)
-            return $"Trigger word: '{triggerKeyword}'";
-
-        return null;
+        return _respondStrategy.GetReasonForResponding(message) != null;
     }
 }
