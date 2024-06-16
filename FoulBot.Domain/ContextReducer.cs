@@ -19,11 +19,11 @@ public interface IContextReducer
 
 public sealed class ContextReducer : IContextReducer
 {
-    private readonly IRespondStrategy _respondStrategy;
+    private readonly IMessageRespondStrategy _respondStrategy;
     private readonly IContextReducerConfiguration _config;
 
     public ContextReducer(
-        IRespondStrategy respondStrategy,
+        IMessageRespondStrategy respondStrategy,
         IContextReducerConfiguration config)
     {
         _respondStrategy = respondStrategy;

@@ -265,7 +265,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IGoogleTtsService _googleTtsService;
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly IFoulChat _chat;
-    private readonly IRespondStrategy _respondStrategy;
+    private readonly IMessageRespondStrategy _respondStrategy;
     private readonly IContextReducer _contextReducer;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
@@ -289,7 +289,7 @@ public sealed class FoulBot : IFoulBot
         FoulBotConfiguration configuration,
         ITypingImitatorFactory typingImitatorFactory,
         IFoulChat chat,
-        IRespondStrategy respondStrategy,
+        IMessageRespondStrategy respondStrategy,
         IContextReducer contextReducer)
     {
         _logger = logger;

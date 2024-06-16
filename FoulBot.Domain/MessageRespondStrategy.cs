@@ -11,17 +11,21 @@ public interface IRespondStrategyConfiguration
     public IEnumerable<string> KeyWords { get; }
 }
 
-public interface IRespondStrategy
+/// <summary>
+/// Determines whether the message should be replied to.
+/// If any of the messages from context match this, then the bot should reply to the context.
+/// </summary>
+public interface IMessageRespondStrategy
 {
     string? GetReasonForResponding(FoulMessage message);
 }
 
-public sealed class RespondStrategy : IRespondStrategy
+public sealed class MessageRespondStrategy : IMessageRespondStrategy
 {
     private readonly IRespondStrategyConfiguration _config;
     private readonly bool _isPrivateChat;
 
-    public RespondStrategy(
+    public MessageRespondStrategy(
         IRespondStrategyConfiguration config,
         bool isPrivateChat)
     {

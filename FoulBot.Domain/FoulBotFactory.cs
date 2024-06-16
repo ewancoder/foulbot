@@ -37,7 +37,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var typingImitatorFactory = new TypingImitatorFactory(
             _typingImitatorLogger, botMessenger);
 
-        var respondStrategy = new RespondStrategy(
+        var respondStrategy = new MessageRespondStrategy(
             configuration, chat.IsPrivateChat);
 
         var contextReducer = new ContextReducer(

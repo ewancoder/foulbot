@@ -2,6 +2,6 @@
 
 public static class RespondStrategyExtensions
 {
-    public static bool ShouldRespond(this IRespondStrategy strategy, FoulMessage message)
+    public static bool ShouldRespond(this IMessageRespondStrategy strategy, FoulMessage message)
         => strategy.GetReasonForResponding(message) != null;
 }
