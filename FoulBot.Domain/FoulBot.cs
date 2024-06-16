@@ -43,7 +43,7 @@ public sealed class ReminderCreator
         _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
             .ToDictionary(x => x.Id!);
 
-        _ = Task.WhenAll(_reminders.Values.Select(
+        _ = Task.WhenAll(_reminders.Values.ToList().Select(
             reminder => InitializeReminderAsync(reminder.Id!)));
     }
 

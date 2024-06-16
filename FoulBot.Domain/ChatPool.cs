@@ -50,7 +50,15 @@ public sealed class ChatPool
             chat = await GetOrAddFoulChatAsync(chatId);
         }
 
-        await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory, invitedBy);
+        try
+        {
+            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory, invitedBy);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Error when trying to add bot to chat.");
+            throw;
+        }
 
         return chat;
     }
