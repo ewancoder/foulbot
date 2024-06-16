@@ -605,7 +605,7 @@ public sealed class FoulBot : IFoulBot
                 return null;
             }
 
-            if (!unprocessedMessages.Exists(ShouldRespond) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
+            if (!unprocessedMessages.Exists(_respondStrategy.ShouldRespond) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
             {
                 _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
                 return null;
@@ -812,7 +812,7 @@ public sealed class FoulBot : IFoulBot
     private List<FoulMessage> GetContextForAI(List<FoulMessage> fullContext)
     {
         var onlyAddressedToMe = fullContext
-            .Where(message => ShouldRespond(message) || IsMyOwnMessage(message))
+            .Where(message => _respondStrategy.ShouldRespond(message) || IsMyOwnMessage(message))
             .Select(message =>
             {
                 if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
@@ -829,7 +829,7 @@ public sealed class FoulBot : IFoulBot
         }
 
         var allMessages = fullContext
-            .Where(message => !ShouldRespond(message) && !IsMyOwnMessage(message))
+            .Where(message => !_respondStrategy.ShouldRespond(message) && !IsMyOwnMessage(message))
             .Select(message =>
             {
                 if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
@@ -860,10 +860,5 @@ public sealed class FoulBot : IFoulBot
     {
         return message.MessageType == FoulMessageType.Bot
             && message.SenderName == _config.BotName;
-    }
-
-    private bool ShouldRespond(FoulMessage message)
-    {
-        return _respondStrategy.GetReasonForResponding(message) != null;
     }
 }
