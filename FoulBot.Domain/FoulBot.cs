@@ -267,6 +267,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IFoulChat _chat;
     private readonly IMessageRespondStrategy _respondStrategy;
     private readonly IContextReducer _contextReducer;
+    private readonly IFoulBotContext _botContext;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
@@ -278,7 +279,6 @@ public sealed class FoulBot : IFoulBot
     private int _botOnlyCount = 0;
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
-    private string? _lastProcessedId;
 
     // TODO: Consider whether I can make Chat a field of the constructor.
     public FoulBot(
@@ -290,8 +290,10 @@ public sealed class FoulBot : IFoulBot
         ITypingImitatorFactory typingImitatorFactory,
         IFoulChat chat,
         IMessageRespondStrategy respondStrategy,
-        IContextReducer contextReducer)
+        IContextReducer contextReducer,
+        IFoulBotContext botContext)
     {
+        _botContext = botContext;
         _logger = logger;
         _aiClient = aiClient;
         _googleTtsService = googleTtsService;
@@ -583,7 +585,13 @@ public sealed class FoulBot : IFoulBot
         async ValueTask<List<FoulMessage>?> ProcessSnapshotAsync()
         {
             _logger.LogTrace("Getting current context snapshot.");
-            var snapshot = _chat.GetContextSnapshot();
+            var snapshot = _botContext.GetUnprocessedSnapshot();
+
+            if (!snapshot.Any())
+            {
+                _logger.LogDebug("There are no unprocessed messages. Skipping replying.");
+                return null;
+            }
 
             // Do not allow sending multiple messages. Just skip it till the next one arrives.
             if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotName)
@@ -592,31 +600,13 @@ public sealed class FoulBot : IFoulBot
                 return null;
             }
 
-            var unprocessedMessages = snapshot;
-
-            if (_lastProcessedId != null)
-            {
-                unprocessedMessages = unprocessedMessages
-                    .SkipWhile(message => message.Id != _lastProcessedId)
-                    .Skip(1)
-                    .ToList();
-
-                _logger.LogDebug("{LastProcessedId} is not null, checking only unprocessed messages. There are {Count} of them.", _lastProcessedId, unprocessedMessages.Count);
-            }
-
-            if (!unprocessedMessages.Any())
-            {
-                _logger.LogDebug("There are no unprocessed messages. Skipping replying.");
-                return null;
-            }
-
-            if (!unprocessedMessages.Exists(_respondStrategy.ShouldRespond) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
+            if (!snapshot.Exists(_respondStrategy.ShouldRespond) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
             {
                 _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
                 return null;
             }
 
-            if (unprocessedMessages[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
+            if (snapshot[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
             {
                 _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.BotOnlyDecrementIntervalSeconds);
                 return null;
@@ -670,17 +660,7 @@ public sealed class FoulBot : IFoulBot
             // TODO: This is partially duplicated code from the GetSnapshot method, just for the sake of logging.
             string? reason = null;
             {
-                var unprocessedMessages = snapshot;
-
-                if (_lastProcessedId != null)
-                {
-                    unprocessedMessages = unprocessedMessages
-                        .SkipWhile(message => message.Id != _lastProcessedId)
-                        .Skip(1)
-                        .ToList();
-                }
-
-                reason = unprocessedMessages
+                reason = snapshot
                     .Select(m => _respondStrategy.GetReasonForResponding(m))
                     .Where(r => r != null)
                     .FirstOrDefault();
@@ -701,8 +681,8 @@ public sealed class FoulBot : IFoulBot
             }
 
             // TODO: Consider doing that at the very end.
-            _logger.LogDebug("Updating last processed ID: {PreviousLastProcessed} to {NewLastProcessed}.", _lastProcessedId, snapshot[^1].Id);
-            _lastProcessedId = snapshot[^1].Id;
+            _logger.LogDebug("Marking context as processed.");
+            _botContext.Process(snapshot);
 
             var isVoice = false;
             if (_config.MessagesBetweenVoice > 0)
@@ -722,7 +702,8 @@ public sealed class FoulBot : IFoulBot
             await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, isVoice);
 
             // Get context for this bot for the AI client.
-            var context = _contextReducer.GetReducedContext(snapshot);
+            var fullContext = _chat.GetContextSnapshot();
+            var context = _contextReducer.GetReducedContext(fullContext);
 
             _logger.LogDebug("Context for AI: {@Context}", context);
 
@@ -812,5 +793,48 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Releasing the message handling lock.");
             _lock.Release();
         }
+    }
+}
+
+public interface IFoulBotContext
+{
+    List<FoulMessage> GetUnprocessedSnapshot();
+    void Process(List<FoulMessage> context);
+}
+
+public sealed class FoulBotContext : IFoulBotContext
+{
+    private readonly ILogger<FoulBotContext> _logger;
+    private readonly IFoulChat _chat;
+    private string? _lastProcessedMessageId;
+
+    public FoulBotContext(
+        ILogger<FoulBotContext> logger,
+        IFoulChat chat)
+    {
+        _logger = logger;
+        _chat = chat;
+    }
+
+    public List<FoulMessage> GetUnprocessedSnapshot()
+    {
+        var snapshot = _chat.GetContextSnapshot();
+        if (_lastProcessedMessageId != null)
+        {
+            snapshot = snapshot
+                .SkipWhile(message => message.Id != _lastProcessedMessageId)
+                .Skip(1)
+                .ToList();
+
+            _logger.LogDebug("{LastProcessedId} is not null, checking only unprocessed messages. There are {Count} of them.", _lastProcessedMessageId, snapshot.Count);
+        }
+
+        return snapshot;
+    }
+
+    public void Process(List<FoulMessage> context)
+    {
+        _logger.LogDebug("Updating last processed ID: {PreviousLastProcessed} to {NewLastProcessed}.", _lastProcessedMessageId, context[^1].Id);
+        _lastProcessedMessageId = context[^1].Id;
     }
 }
