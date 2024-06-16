@@ -264,6 +264,7 @@ public sealed class FoulBot : IFoulBot
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly IFoulChat _chat;
     private readonly IRespondStrategy _respondStrategy;
+    private readonly IContextReducer _contextReducer;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
@@ -286,7 +287,8 @@ public sealed class FoulBot : IFoulBot
         FoulBotConfiguration configuration,
         ITypingImitatorFactory typingImitatorFactory,
         IFoulChat chat,
-        IRespondStrategy respondStrategy)
+        IRespondStrategy respondStrategy,
+        IContextReducer contextReducer)
     {
         _logger = logger;
         _aiClient = aiClient;
@@ -296,6 +298,7 @@ public sealed class FoulBot : IFoulBot
         _typingImitatorFactory = typingImitatorFactory;
         _chat = chat;
         _respondStrategy = respondStrategy;
+        _contextReducer = contextReducer;
         _chat.StatusChanged += OnStatusChanged;
 
         _reminderCreator = new ReminderCreator(
@@ -717,7 +720,7 @@ public sealed class FoulBot : IFoulBot
             await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, isVoice);
 
             // Get context for this bot for the AI client.
-            var context = GetContextForAI(snapshot);
+            var context = _contextReducer.GetReducedContext(snapshot);
 
             _logger.LogDebug("Context for AI: {@Context}", context);
 
@@ -807,58 +810,5 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Releasing the message handling lock.");
             _lock.Release();
         }
-    }
-
-    private List<FoulMessage> GetContextForAI(List<FoulMessage> fullContext)
-    {
-        var onlyAddressedToMe = fullContext
-            .Where(message => _respondStrategy.ShouldRespond(message) || IsMyOwnMessage(message))
-            .Select(message =>
-            {
-                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
-                    return message.AsUser();
-
-                return message;
-            })
-            .TakeLast(_config.ContextSize)
-            .ToList();
-
-        while (onlyAddressedToMe.Sum(x => x.Text.Length) > _config.MaxContextSizeInCharacters && onlyAddressedToMe.Count > 2)
-        {
-            onlyAddressedToMe.RemoveAt(0);
-        }
-
-        var allMessages = fullContext
-            .Where(message => !_respondStrategy.ShouldRespond(message) && !IsMyOwnMessage(message))
-            .Select(message =>
-            {
-                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
-                    return message.AsUser();
-
-                return message;
-            })
-            .TakeLast(_config.ContextSize / 2) // Populate only second half with these messages.
-            .ToList();
-
-        while (allMessages.Sum(x => x.Text.Length) > _config.MaxContextSizeInCharacters / 2 && allMessages.Count > 2)
-        {
-            allMessages.RemoveAt(0);
-        }
-
-        var combinedContext = onlyAddressedToMe.Concat(allMessages)
-            .DistinctBy(x => x.Id)
-            .OrderBy(x => x.Date)
-            .TakeLast(_config.ContextSize)
-            .ToList();
-
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false) }
-            .Concat(combinedContext)
-            .ToList();
-    }
-
-    private bool IsMyOwnMessage(FoulMessage message)
-    {
-        return message.MessageType == FoulMessageType.Bot
-            && message.SenderName == _config.BotName;
     }
 }

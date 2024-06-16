@@ -40,6 +40,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var respondStrategy = new RespondStrategy(
             configuration, chat.IsPrivateChat);
 
+        var contextReducer = new ContextReducer(
+            respondStrategy, configuration);
+
         return new FoulBot(
             _logger,
             _aiClient,
@@ -48,6 +51,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             configuration,
             typingImitatorFactory,
             chat,
-            respondStrategy);
+            respondStrategy,
+            contextReducer);
     }
 }
