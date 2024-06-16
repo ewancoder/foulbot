@@ -582,7 +582,7 @@ public sealed class FoulBot : IFoulBot
         // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
         // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
         // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
-        async ValueTask<List<FoulMessage>?> ProcessSnapshotAsync()
+        List<FoulMessage>? GetSnapshotIfNeedToReply()
         {
             _logger.LogTrace("Getting current context snapshot.");
             var snapshot = _botContext.GetUnprocessedSnapshot();
@@ -615,7 +615,7 @@ public sealed class FoulBot : IFoulBot
             return snapshot;
         }
 
-        if ((await ProcessSnapshotAsync()) == null)
+        if (GetSnapshotIfNeedToReply() == null)
             return;
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
@@ -627,7 +627,7 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Acquired lock for replying to the message.");
 
-            if ((await ProcessSnapshotAsync()) == null)
+            if (GetSnapshotIfNeedToReply() == null)
                 return;
 
             _logger.LogDebug("Checked the context, it does contain messages that need a reply from the bot.");
@@ -650,7 +650,7 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
             await Task.Delay(delay);
 
-            var snapshot = await ProcessSnapshotAsync();
+            var snapshot = GetSnapshotIfNeedToReply();
             if (snapshot == null)
             {
                 _logger.LogDebug("Rechecked the context, it doesn't contain valid messages for processing anymore. Skipping.");
