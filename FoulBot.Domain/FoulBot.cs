@@ -281,7 +281,6 @@ public sealed class FoulBot : IFoulBot
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
 
-    // TODO: Consider whether I can make Chat a field of the constructor.
     public FoulBot(
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
