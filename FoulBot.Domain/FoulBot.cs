@@ -265,9 +265,10 @@ public sealed class FoulBot : IFoulBot
     private readonly IGoogleTtsService _googleTtsService;
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly IFoulChat _chat;
-    private readonly IMessageRespondStrategy _respondStrategy;
+    private readonly IMessageRespondStrategy _messageRespondStrategy;
     private readonly IContextReducer _contextReducer;
     private readonly IFoulBotContext _botContext;
+    private readonly IBotDelayStrategy _delayStrategy;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
@@ -291,7 +292,8 @@ public sealed class FoulBot : IFoulBot
         IFoulChat chat,
         IMessageRespondStrategy respondStrategy,
         IContextReducer contextReducer,
-        IFoulBotContext botContext)
+        IFoulBotContext botContext,
+        IBotDelayStrategy delayStrategy)
     {
         _botContext = botContext;
         _logger = logger;
@@ -301,8 +303,9 @@ public sealed class FoulBot : IFoulBot
         _config = configuration;
         _typingImitatorFactory = typingImitatorFactory;
         _chat = chat;
-        _respondStrategy = respondStrategy;
+        _messageRespondStrategy = respondStrategy;
         _contextReducer = contextReducer;
+        _delayStrategy = delayStrategy;
         _chat.StatusChanged += OnStatusChanged;
 
         _reminderCreator = new ReminderCreator(
@@ -579,43 +582,7 @@ public sealed class FoulBot : IFoulBot
             _logger.LogDebug("Incrementing mandatory message every {N} messages, new value: {Counter}.", _randomReplyEveryMessages, _replyEveryMessagesCounter);
         }
 
-        // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
-        // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
-        // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
-        List<FoulMessage>? GetSnapshotIfNeedToReply()
-        {
-            _logger.LogTrace("Getting current context snapshot.");
-            var snapshot = _botContext.GetUnprocessedSnapshot();
-
-            if (!snapshot.Any())
-            {
-                _logger.LogDebug("There are no unprocessed messages. Skipping replying.");
-                return null;
-            }
-
-            // Do not allow sending multiple messages. Just skip it till the next one arrives.
-            if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotName)
-            {
-                _logger.LogInformation("The last message in context is from the same bot. Skipping replying to it.");
-                return null;
-            }
-
-            if (!snapshot.Exists(_respondStrategy.ShouldRespond) && _replyEveryMessagesCounter < _randomReplyEveryMessages && message.Id != "ByTime")
-            {
-                _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
-                return null;
-            }
-
-            if (snapshot[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
-            {
-                _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.BotOnlyDecrementIntervalSeconds);
-                return null;
-            }
-
-            return snapshot;
-        }
-
-        if (GetSnapshotIfNeedToReply() == null)
+        if (GetSnapshotIfNeedToReply(message) == null)
             return;
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
@@ -627,30 +594,15 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Acquired lock for replying to the message.");
 
-            if (GetSnapshotIfNeedToReply() == null)
+            if (GetSnapshotIfNeedToReply(message) == null)
                 return;
 
             _logger.LogDebug("Checked the context, it does contain messages that need a reply from the bot.");
 
             // Delay to "read" the messages.
-            var delay = _random.Next(1, 100);
-            if (delay > 90)
-            {
-                delay = _random.Next(5000, 20000);
-            }
-            if (delay <= 90 && delay > 70)
-            {
-                delay = _random.Next(1500, 5000);
-            }
-            if (delay <= 70)
-            {
-                delay = _random.Next(200, 1200);
-            }
+            await _delayStrategy.DelayAsync();
 
-            _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
-            await Task.Delay(delay);
-
-            var snapshot = GetSnapshotIfNeedToReply();
+            var snapshot = GetSnapshotIfNeedToReply(message);
             if (snapshot == null)
             {
                 _logger.LogDebug("Rechecked the context, it doesn't contain valid messages for processing anymore. Skipping.");
@@ -661,7 +613,7 @@ public sealed class FoulBot : IFoulBot
             string? reason = null;
             {
                 reason = snapshot
-                    .Select(m => _respondStrategy.GetReasonForResponding(m))
+                    .Select(m => _messageRespondStrategy.GetReasonForResponding(m))
                     .Where(r => r != null)
                     .FirstOrDefault();
 
@@ -794,6 +746,42 @@ public sealed class FoulBot : IFoulBot
             _lock.Release();
         }
     }
+
+    // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
+    // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
+    // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
+    private List<FoulMessage>? GetSnapshotIfNeedToReply(FoulMessage triggeredByMessage)
+    {
+        _logger.LogTrace("Getting current context snapshot.");
+        var snapshot = _botContext.GetUnprocessedSnapshot();
+
+        if (!snapshot.Any())
+        {
+            _logger.LogDebug("There are no unprocessed messages. Skipping replying.");
+            return null;
+        }
+
+        // Do not allow sending multiple messages. Just skip it till the next one arrives.
+        if (snapshot.LastOrDefault() != null && snapshot[^1].SenderName == _config.BotName)
+        {
+            _logger.LogInformation("The last message in context is from the same bot. Skipping replying to it.");
+            return null;
+        }
+
+        if (!_messageRespondStrategy.ShouldRespond(snapshot) && _replyEveryMessagesCounter < _randomReplyEveryMessages && triggeredByMessage.Id != "ByTime")
+        {
+            _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
+            return null;
+        }
+
+        if (snapshot[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
+        {
+            _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.BotOnlyDecrementIntervalSeconds);
+            return null;
+        }
+
+        return snapshot;
+    }
 }
 
 public interface IFoulBotContext
@@ -836,5 +824,44 @@ public sealed class FoulBotContext : IFoulBotContext
     {
         _logger.LogDebug("Updating last processed ID: {PreviousLastProcessed} to {NewLastProcessed}.", _lastProcessedMessageId, context[^1].Id);
         _lastProcessedMessageId = context[^1].Id;
+    }
+}
+
+public interface IBotDelayStrategy
+{
+    /// <summary>
+    /// Delays processing message, creating a fictional "reading messages" pause.
+    /// </summary>
+    ValueTask DelayAsync();
+}
+
+public sealed class BotDelayStrategy : IBotDelayStrategy
+{
+    private readonly Random _random = new Random();
+    private readonly ILogger<BotDelayStrategy> _logger;
+
+    public BotDelayStrategy(ILogger<BotDelayStrategy> logger)
+    {
+        _logger = logger;
+    }
+
+    public async ValueTask DelayAsync()
+    {
+        var delay = _random.Next(1, 100);
+        if (delay > 90)
+        {
+            delay = _random.Next(5000, 20000);
+        }
+        if (delay <= 90 && delay > 70)
+        {
+            delay = _random.Next(1500, 5000);
+        }
+        if (delay <= 70)
+        {
+            delay = _random.Next(200, 1200);
+        }
+
+        _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
+        await Task.Delay(delay);
     }
 }

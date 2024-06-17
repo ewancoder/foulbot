@@ -10,6 +10,7 @@ public static class RegistrationExtensions
         return services
             .AddTransient<IFoulAIClient, FoulAIClient>()
             .AddTransient<IGoogleTtsService, GoogleTtsService>()
-            .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>();
+            .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>()
+            .AddSingleton<IBotDelayStrategy, BotDelayStrategy>();
     }
 }

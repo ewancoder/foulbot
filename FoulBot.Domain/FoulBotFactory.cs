@@ -17,19 +17,22 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ILogger<FoulBotContext> _botContextLogger;
     private readonly IFoulAIClient _aiClient;
     private readonly IGoogleTtsService _googleTtsService;
+    private readonly IBotDelayStrategy _delayStrategy;
 
     public FoulBotFactory(
         ILogger<FoulBot> logger,
         ILogger<TypingImitator> typingImitatorLogger,
         ILogger<FoulBotContext> botContextLogger,
         IFoulAIClient aiClient,
-        IGoogleTtsService googleTtsService)
+        IGoogleTtsService googleTtsService,
+        IBotDelayStrategy delayStrategy)
     {
         _logger = logger;
         _typingImitatorLogger = typingImitatorLogger;
         _botContextLogger = botContextLogger;
         _aiClient = aiClient;
         _googleTtsService = googleTtsService;
+        _delayStrategy = delayStrategy;
     }
 
     public IFoulBot Create(
@@ -59,6 +62,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             chat,
             respondStrategy,
             contextReducer,
-            botContext);
+            botContext,
+            _delayStrategy);
     }
 }
