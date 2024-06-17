@@ -17,22 +17,6 @@ public interface IFoulBot
 
 public sealed class FoulBot : IFoulBot
 {
-    private static readonly string[] _failedContext = [
-        "извините", "sorry", "простите", "не могу продолжать",
-        "не могу участвовать", "давайте воздержимся", "прошу прощения",
-        "прошу вас выражаться", "извини", "прости", "не могу помочь",
-        "не могу обсуждать", "мои извинения", "нужно быть доброжелательным",
-        "не думаю, что это хороший тон", "уважительным по отношению к другим",
-        "поведения не терплю",
-        "stop it right there", "I'm here to help", "with any questions",
-        "can assist", "не будем оскорблять", "не буду оскорблять", "не могу оскорблять",
-        "нецензурн", "готов помочь", "с любыми вопросами", "за грубость",
-        "не буду продолжать", "призываю вас к уважению", "уважению друг к другу"
-    ];
-    private static readonly string[] _failedContextCancellation = [
-        "ссылок", "ссылк", "просматривать ссыл", "просматривать содерж",
-        "просматривать контент", "прости, но"
-    ];
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
     private readonly IBotMessenger _botMessenger;
@@ -44,6 +28,7 @@ public sealed class FoulBot : IFoulBot
     private readonly IContextReducer _contextReducer;
     private readonly IFoulBotContext _botContext;
     private readonly IBotDelayStrategy _delayStrategy;
+    private readonly IContextPreserverClient _contextPreserverClient;
     private readonly Random _random = new Random();
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
@@ -67,7 +52,8 @@ public sealed class FoulBot : IFoulBot
         IMessageRespondStrategy respondStrategy,
         IContextReducer contextReducer,
         IFoulBotContext botContext,
-        IBotDelayStrategy delayStrategy)
+        IBotDelayStrategy delayStrategy,
+        IContextPreserverClient contextPreserverClient)
     {
         _botContext = botContext;
         _logger = logger;
@@ -80,6 +66,7 @@ public sealed class FoulBot : IFoulBot
         _messageRespondStrategy = respondStrategy;
         _contextReducer = contextReducer;
         _delayStrategy = delayStrategy;
+        _contextPreserverClient = contextPreserverClient;
         _reminderCreator = new ReminderCreator(
             _chat.ChatId, _config.BotId);
 
@@ -424,39 +411,9 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Context for AI: {@Context}", context);
 
-            var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
-
-            var isBadResponse = false;
-            if (_config.NotAnAssistant)
-            {
-                var i = 1;
-                while (_failedContext.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
-                {
-                    if (_failedContextCancellation.Any(keyword => aiGeneratedTextResponse.ToLowerInvariant().Contains(keyword.ToLowerInvariant())))
-                    {
-                        _logger.LogWarning("Generated broken context message: {Message}, but it's actually OK. Continuing.", aiGeneratedTextResponse);
-                        break;
-                    }
-
-                    // When we generated 3 responses already, and they are all bad.
-                    if (i >= 3)
-                    {
-                        // Used in order not to add this message to the context. It will spoil the context for future requests.
-                        isBadResponse = true;
-                        _logger.LogWarning("Generated broken context message: {Message}. NOT adding it to context, but sending it to the user cause it was the last attempt.", aiGeneratedTextResponse);
-                        break;
-                    }
-
-                    _logger.LogWarning("Generated broken context message: {Message}. Repeating main directive and trying to re-generate.", aiGeneratedTextResponse);
-
-                    i++;
-                    await Task.Delay(_random.Next(1100, 2300));
-                    context.Add(new FoulMessage(
-                        "Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false));
-
-                    aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
-                }
-            }
+            var aiGeneratedTextResponse = _config.NotAnAssistant
+                ? await _contextPreserverClient.GetTextResponseAsync(context)
+                : await _aiClient.GetTextResponseAsync(context);
 
             _logger.LogInformation("Context, reason and response: {@Context}, {Reason}, {Response}.", context, reason, aiGeneratedTextResponse);
             if (!_config.UseOnlyVoice)
@@ -489,7 +446,7 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Successfully replied to Telegram. Sending the Response as the next message to context.");
 
-            if (isBadResponse)
+            if (_config.NotAnAssistant && _contextPreserverClient.IsBadResponse(aiGeneratedTextResponse))
                 return; // Do not add this message to the context / process it, because it will spoil the context for all the subsequent requests.
 
             // This will also cause this method to trigger again. Handle this on this level.
