@@ -159,7 +159,7 @@ public sealed record FoulBotConfiguration
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
     public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 3;
-    public int BotOnlyDecrementIntervalSeconds { get; init; } = 130;
+    public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 130;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
 
@@ -200,7 +200,7 @@ public sealed record FoulBotConfiguration
         return this with
         {
             BotOnlyMaxMessagesBetweenDebounce = botOnlyMaxMessagesBetweenDebounce,
-            BotOnlyDecrementIntervalSeconds = botOnlyDecrementIntervalSeconds
+            DecrementBotToBotCommunicationCounterIntervalSeconds = botOnlyDecrementIntervalSeconds
         };
     }
 
@@ -273,11 +273,11 @@ public sealed class FoulBot : IFoulBot
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
     private readonly Task _botOnlyDecrementTask;
-    private readonly Task _repeatByTimeTask;
+    private readonly Task _talkByTime;
 
     private int _randomReplyEveryMessages;
     private bool _subscribed = false;
-    private int _botOnlyCount = 0;
+    private int _botToBotCommunicationCounter = 0;
     private int _audioCounter = 0;
     private int _replyEveryMessagesCounter = 0;
 
@@ -305,74 +305,55 @@ public sealed class FoulBot : IFoulBot
         _messageRespondStrategy = respondStrategy;
         _contextReducer = contextReducer;
         _delayStrategy = delayStrategy;
-        _chat.StatusChanged += OnStatusChanged;
-
         _reminderCreator = new ReminderCreator(
             _chat.ChatId, _config.BotId);
+
+        _chat.StatusChanged += OnStatusChanged;
         _reminderCreator.Remind += OnRemind;
 
         using var _ = Logger.BeginScope();
 
         SetupNextReplyEveryMessages();
 
-        _botOnlyDecrementTask = Task.Run(async () =>
+        _botOnlyDecrementTask = DecrementBotToBotCommunicationCounterAsync();
+        _talkByTime = TalkByTimeAsync();
+    }
+
+    private async Task DecrementBotToBotCommunicationCounterAsync()
+    {
+        while (true)
         {
-            while (true)
+            await Task.Delay(TimeSpan.FromSeconds(_config.DecrementBotToBotCommunicationCounterIntervalSeconds));
+
+            if (_botToBotCommunicationCounter > 0)
             {
-                await Task.Delay(TimeSpan.FromSeconds(_config.BotOnlyDecrementIntervalSeconds));
-
-                if (_botOnlyCount > 0)
-                {
-                    _logger.LogTrace("Reduced bot-to-bot debounce to -1, current value {Value}", _botOnlyCount);
-                    _botOnlyCount--;
-                }
+                _logger.LogTrace("Reduced bot-to-bot debounce to -1, current value {Value}", _botToBotCommunicationCounter);
+                _botToBotCommunicationCounter--;
             }
-        });
+        }
+    }
 
-        _repeatByTimeTask = Task.Run(async () =>
+    private async Task TalkByTimeAsync()
+    {
+        while (true)
         {
-            while (true)
+            var waitMinutes = _random.Next(60, 720);
+            if (waitMinutes < 120)
+                waitMinutes = _random.Next(60, 720);
+
+            _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
+            await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
+            _logger.LogInformation("Sending a message based on time, {WaitMinutes} minutes passed.", waitMinutes);
+
+            try
             {
-                var waitMinutes = _random.Next(60, 720);
-                if (waitMinutes < 120)
-                    waitMinutes = _random.Next(60, 720);
-
-                _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
-                await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
-                _logger.LogInformation("Sending a message based on time, {WaitMinutes} minutes passed.", waitMinutes);
-
-                try
-                {
-                    await OnMessageReceivedAsync(FoulMessage.ByTime());
-                }
-                catch (Exception exception)
-                {
-                    _logger.LogError(exception, "Error when trying to trigger reply by time passed.");
-                }
+                await OnMessageReceivedAsync(FoulMessage.ByTime());
             }
-        });
-
-        /*
-        var celebrate = Task.Run(async () =>
-        {
-            var current = DateTime.UtcNow;
-            var release = new DateTime(2024, 5, 22, 10, 0, 0, DateTimeKind.Utc);
-            if (release < current)
-                return;
-
-            var time = release - current;
-            await Task.Delay(time);
-
-            var response = await _aiClient.GetCustomResponseAsync($"{_config.Directive}. You are a bot and you have finally been released as version 1.0. Tell people about it so that they should celebrate.");
-
-            if (_config.Stickers.Count > 0)
+            catch (Exception exception)
             {
-                var sticker = _config.Stickers.ElementAt(_random.Next(0, _config.Stickers.Count));
-                await _botClient.SendStickerAsync(_chat.ChatId, InputFile.FromFileId(sticker));
+                _logger.LogError(exception, "Error when trying to trigger reply by time passed.");
             }
-            await _botClient.SendTextMessageAsync(_chat.ChatId, response);
-        });
-        */
+        }
     }
 
     public string BotId => _config.BotId;
@@ -580,8 +561,8 @@ public sealed class FoulBot : IFoulBot
 
         if (snapshot[^1].IsOriginallyBotMessage)
         {
-            _botOnlyCount++;
-            _logger.LogDebug("Last message is from a bot. Increasing bot-to-bot count. New value is {Count}.", _botOnlyCount);
+            _botToBotCommunicationCounter++;
+            _logger.LogDebug("Last message is from a bot. Increasing bot-to-bot count. New value is {Count}.", _botToBotCommunicationCounter);
         }
 
         if (_config.MessagesBetweenVoice > 0)
@@ -783,9 +764,9 @@ public sealed class FoulBot : IFoulBot
             return null;
         }
 
-        if (snapshot[^1].IsOriginallyBotMessage && _botOnlyCount >= _config.BotOnlyMaxMessagesBetweenDebounce)
+        if (snapshot[^1].IsOriginallyBotMessage && _botToBotCommunicationCounter >= _config.BotOnlyMaxMessagesBetweenDebounce)
         {
-            _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.BotOnlyDecrementIntervalSeconds);
+            _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.DecrementBotToBotCommunicationCounterIntervalSeconds);
             return null;
         }
 
