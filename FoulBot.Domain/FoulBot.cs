@@ -563,6 +563,43 @@ public sealed class FoulBot : IFoulBot
         _chat.AddMessage(new FoulMessage(Guid.NewGuid().ToString(), FoulMessageType.Bot, _config.BotName, response, DateTime.UtcNow, true));
     }
 
+    private void HandleAnyMessageReceived()
+    {
+        if (_config.ReplyEveryMessages > 0)
+        {
+            _replyEveryMessagesCounter++;
+            _logger.LogDebug(
+                "Incrementing mandatory message every {N} messages, new value: {Counter}.",
+                _randomReplyEveryMessages, _replyEveryMessagesCounter);
+        }
+    }
+
+    private void HandlePrepairingReply(List<FoulMessage> snapshot, out bool isVoice)
+    {
+        if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
+            SetupNextReplyEveryMessages();
+
+        if (snapshot[^1].IsOriginallyBotMessage)
+        {
+            _botOnlyCount++;
+            _logger.LogDebug("Last message is from a bot. Increasing bot-to-bot count. New value is {Count}.", _botOnlyCount);
+        }
+
+        if (_config.MessagesBetweenVoice > 0)
+        {
+            _audioCounter++;
+            _logger.LogTrace("Messages between voice is configured, increasing the count to {Count}", _audioCounter);
+        }
+
+        // If audio counter is due, or OnlyVoice is true - set isVoice to true.
+        isVoice = _audioCounter > _config.MessagesBetweenVoice || _config.UseOnlyVoice;
+        if (isVoice)
+        {
+            _logger.LogTrace("Audio counter {Counter} exceeded configured value, or UseOnlyVoice is set. Replying with voice and resetting the counter.", _audioCounter);
+            _audioCounter = 0;
+        }
+    }
+
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
         using var _ = Logger.BeginScope();
@@ -576,12 +613,12 @@ public sealed class FoulBot : IFoulBot
 
         _logger.LogInformation("Handling received message: {@Message}.", message);
 
-        if (_config.ReplyEveryMessages > 0)
-        {
-            _replyEveryMessagesCounter++;
-            _logger.LogDebug("Incrementing mandatory message every {N} messages, new value: {Counter}.", _randomReplyEveryMessages, _replyEveryMessagesCounter);
-        }
+        // Handle all counters and other logic when ANY message has been received,
+        // even the one we don't need to reply to.
+        _logger.LogDebug("Handling ANY message received.");
+        HandleAnyMessageReceived();
 
+        // This checks all the logic including counters, whether we should reply.
         if (GetSnapshotIfNeedToReply(message) == null)
             return;
 
@@ -594,14 +631,6 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Acquired lock for replying to the message.");
 
-            if (GetSnapshotIfNeedToReply(message) == null)
-                return;
-
-            _logger.LogDebug("Checked the context, it does contain messages that need a reply from the bot.");
-
-            // Delay to "read" the messages.
-            await _delayStrategy.DelayAsync();
-
             var snapshot = GetSnapshotIfNeedToReply(message);
             if (snapshot == null)
             {
@@ -609,46 +638,27 @@ public sealed class FoulBot : IFoulBot
                 return;
             }
 
-            // TODO: This is partially duplicated code from the GetSnapshot method, just for the sake of logging.
-            string? reason = null;
-            {
-                reason = snapshot
-                    .Select(m => _messageRespondStrategy.GetReasonForResponding(m))
-                    .Where(r => r != null)
-                    .FirstOrDefault();
-
-                _logger.LogInformation("Reason (trigger) for replying: {Reason}", reason);
-            }
-
             // If we get here - we are *going* to send the reply. We can reset counters if necessary.
-            if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
-                SetupNextReplyEveryMessages();
+            _logger.LogDebug("Checked the context, it does contain messages that need a reply from the bot. Snapshot {@Context}.", snapshot.TakeLast(10));
+            _logger.LogDebug("Handling prepairing reply.");
+            HandlePrepairingReply(snapshot, out var isVoice);
 
-            _logger.LogDebug("Rechecked the context, messages need to be processed. Snapshot {@Context}.", snapshot.TakeLast(10));
+            // Delay to simulate "reading" the messages by the bot.
+            await _delayStrategy.DelayAsync();
 
-            if (snapshot[^1].IsOriginallyBotMessage)
-            {
-                _botOnlyCount++;
-                _logger.LogDebug("Last message is from a bot. Increasing bot-to-bot count. New value is {Count}.", _botOnlyCount);
-            }
+            // Get the exact reason why we are replying to that message.
+            var reason = snapshot
+                .Select(_messageRespondStrategy.GetReasonForResponding)
+                .FirstOrDefault(reason => reason != null);
+
+            // If the reason is null - it means that no triggers were present in the messages itself.
+            // Then it's possible that we are replying based on time or counters or other triggers.
+            // TODO: Log the other reasons too.
+            _logger.LogInformation("Reason (trigger) for replying: {Reason}", reason);
 
             // TODO: Consider doing that at the very end.
             _logger.LogDebug("Marking context as processed.");
             _botContext.Process(snapshot);
-
-            var isVoice = false;
-            if (_config.MessagesBetweenVoice > 0)
-            {
-                _audioCounter++;
-                _logger.LogTrace("Messages between voice is configured, increasing the count to {Count}", _audioCounter);
-            }
-
-            if (_audioCounter > _config.MessagesBetweenVoice || _config.UseOnlyVoice)
-            {
-                _logger.LogTrace("Audio counter {Counter} exceeded configured value, or UseOnlyVoice is set. Replying with voice and resetting the counter.", _audioCounter);
-                isVoice = true;
-                _audioCounter = 0;
-            }
 
             _logger.LogTrace("Initiating Typing or Voice sending imitator.");
             await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, isVoice);
