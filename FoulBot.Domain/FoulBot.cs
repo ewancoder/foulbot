@@ -75,11 +75,14 @@ public sealed class FoulBot : IFoulBot
 
         using var _ = Logger.BeginScope();
 
-        SetupNextReplyEveryMessages();
+        if (_config.ReplyEveryMessages > 0)
+            SetupNextReplyEveryMessages();
 
         _botOnlyDecrementTask = DecrementBotToBotCommunicationCounterAsync();
         _talkByTime = TalkByTimeAsync();
     }
+
+    private bool ShouldReplyByCount() => _config.ReplyEveryMessages > 0 && _replyEveryMessagesCounter >= _config.ReplyEveryMessages;
 
     private async Task DecrementBotToBotCommunicationCounterAsync()
     {
@@ -318,7 +321,7 @@ public sealed class FoulBot : IFoulBot
 
     private void HandlePrepairingReply(List<FoulMessage> snapshot, out bool isVoice)
     {
-        if (_replyEveryMessagesCounter >= _randomReplyEveryMessages)
+        if (_config.ReplyEveryMessages > 0 && _replyEveryMessagesCounter >= _randomReplyEveryMessages)
             SetupNextReplyEveryMessages();
 
         if (snapshot[^1].IsOriginallyBotMessage)
@@ -490,7 +493,7 @@ public sealed class FoulBot : IFoulBot
             return null;
         }
 
-        if (!_messageRespondStrategy.ShouldRespond(snapshot) && _replyEveryMessagesCounter < _randomReplyEveryMessages && triggeredByMessage.Id != "ByTime")
+        if (!_messageRespondStrategy.ShouldRespond(snapshot) && (_config.ReplyEveryMessages == 0 || _replyEveryMessagesCounter < _randomReplyEveryMessages) && triggeredByMessage.Id != "ByTime")
         {
             _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
             return null;

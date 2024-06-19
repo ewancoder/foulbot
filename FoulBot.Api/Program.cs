@@ -82,6 +82,7 @@ if (isDebug)
 {
     InitializeBot("EwTest1BotApiKey", new FoulBotConfiguration(
         "ew_test1bot", "First_TestBot", stathemDirective, ["test", "bot"])
+        .NeverReplyOutOfTurn()
         //.WithVoiceBetween(6)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
@@ -132,7 +133,7 @@ else
     InitializeBot("EwYakuzaBotApiKey", new FoulBotConfiguration(
         "ew_yakuzabot", "Yakuza_Boss", yakuzaDirective,
         keyWords: ["босс"])
-            .SetContextSize(10));
+            .SetContextSize(10).NeverReplyOutOfTurn());
 
     InitializeBot("EwStathemBotApiKey", new FoulBotConfiguration(
         "ew_stathembot", "Jason_Stathah", stathemDirective,
@@ -147,7 +148,7 @@ else
     InitializeBot("EwGggBotApiKey", new FoulBotConfiguration(
         "ew_gggbot", "Assistant", assistantDirective,
         keyWords: ["ggg"])
-            .SetContextSize(20));
+            .SetContextSize(20).NeverReplyOutOfTurn());
 }
 
 void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configuration)

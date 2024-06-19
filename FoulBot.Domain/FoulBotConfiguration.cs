@@ -32,13 +32,24 @@ public sealed record FoulBotConfiguration
     public IEnumerable<string> KeyWords { get; }
     public int ContextSize { get; init; } = 14;
     public int MaxContextSizeInCharacters { get; } = 3000;
-    public int ReplyEveryMessages { get; } = 20;
+    public int ReplyEveryMessages { get; init; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
     public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 3;
     public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 130;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
+
+    /// <summary>
+    /// Do not Reply without user triggering the bot.
+    /// </summary>
+    public FoulBotConfiguration NeverReplyOutOfTurn()
+    {
+        return this with
+        {
+            ReplyEveryMessages = 0
+        };
+    }
 
     public FoulBotConfiguration SetContextSize(int contextSize)
     {
