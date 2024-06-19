@@ -83,6 +83,7 @@ if (isDebug)
     InitializeBot("EwTest1BotApiKey", new FoulBotConfiguration(
         "ew_test1bot", "First_TestBot", stathemDirective, ["test", "bot"])
         .NeverReplyOutOfTurn()
+        .SetOnlyReadAddressedToBotMessages()
         //.WithVoiceBetween(6)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 

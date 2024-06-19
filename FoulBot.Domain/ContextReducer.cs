@@ -83,3 +83,53 @@ public sealed class ContextReducer : IContextReducer
             && message.SenderName == _config.BotName;
     }
 }
+
+public sealed class AddressedToMeContextReducer : IContextReducer
+{
+    private readonly IMessageRespondStrategy _respondStrategy;
+    private readonly IContextReducerConfiguration _config;
+
+    public AddressedToMeContextReducer(
+        IMessageRespondStrategy respondStrategy,
+        IContextReducerConfiguration config)
+    {
+        _respondStrategy = respondStrategy;
+        _config = config;
+    }
+
+    public List<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext)
+    {
+        var onlyAddressedToMe = fullContext
+            .Where(message => _respondStrategy.ShouldRespond(message) || IsMyOwnMessage(message))
+            .Select(message =>
+            {
+                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
+                    return message.AsUser();
+
+                return message;
+            })
+            .TakeLast(_config.ContextSize)
+            .ToList();
+
+        while (onlyAddressedToMe.Sum(x => x.Text.Length) > _config.MaxContextSizeInCharacters && onlyAddressedToMe.Count > 2)
+        {
+            onlyAddressedToMe.RemoveAt(0);
+        }
+
+        var combinedContext = onlyAddressedToMe
+            .DistinctBy(x => x.Id)
+            .OrderBy(x => x.Date)
+            .TakeLast(_config.ContextSize)
+            .ToList();
+
+        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false) }
+            .Concat(combinedContext)
+            .ToList();
+    }
+
+    private bool IsMyOwnMessage(FoulMessage message)
+    {
+        return message.MessageType == FoulMessageType.Bot
+            && message.SenderName == _config.BotName;
+    }
+}

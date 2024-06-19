@@ -39,6 +39,15 @@ public sealed record FoulBotConfiguration
     public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 130;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
+    public bool OnlyReadAddressedToBotMessages { get; init; }
+
+    public FoulBotConfiguration SetOnlyReadAddressedToBotMessages()
+    {
+        return this with
+        {
+            OnlyReadAddressedToBotMessages = true
+        };
+    }
 
     /// <summary>
     /// Do not Reply without user triggering the bot.

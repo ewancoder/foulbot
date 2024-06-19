@@ -49,8 +49,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var respondStrategy = new MessageRespondStrategy(
             configuration, chat.IsPrivateChat);
 
-        var contextReducer = new ContextReducer(
-            respondStrategy, configuration);
+        IContextReducer contextReducer = configuration.OnlyReadAddressedToBotMessages
+            ? new AddressedToMeContextReducer(respondStrategy, configuration)
+            : new ContextReducer(respondStrategy, configuration);
 
         var botContext = new FoulBotContext(
             _botContextLogger, chat);
