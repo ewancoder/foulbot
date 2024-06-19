@@ -41,8 +41,10 @@ public sealed class ReminderCreator
         _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
             .ToDictionary(x => x.Id!);
 
-        _ = Task.WhenAll(_reminders.Values.ToList().Select(
-            reminder => InitializeReminderAsync(reminder.Id!)));
+        var copyOfReminders = _reminders.Values.ToList();
+
+        _ = Task.WhenAll(copyOfReminders.Select(
+            reminder => InitializeReminderAsync(reminder.Id!)).ToList());
     }
 
     public IEnumerable<Reminder> AllReminders => _reminders.Values;
@@ -94,9 +96,11 @@ public sealed class ReminderCreator
 
     private async Task InitializeReminderAsync(string id)
     {
+        await Task.Yield();
+
         var reminder = _reminders[id];
         if (reminder.AtUtc + TimeSpan.FromSeconds(1) > DateTime.UtcNow)
-            await Task.Delay(reminder.AtUtc + TimeSpan.FromSeconds(1) - DateTime.UtcNow);
+            await Task.Delay(reminder.AtUtc + TimeSpan.FromSeconds(2) - DateTime.UtcNow);
 
         lock (_lock)
         {
@@ -121,6 +125,13 @@ public sealed class ReminderCreator
 
     private void SaveReminders()
     {
-        File.WriteAllText($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
+        try
+        {
+            File.WriteAllText($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
+        }
+        catch
+        {
+            // TODO: Log this.
+        }
     }
 }
