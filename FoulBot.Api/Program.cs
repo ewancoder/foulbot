@@ -149,7 +149,7 @@ else
     InitializeBot("EwGggBotApiKey", new FoulBotConfiguration(
         "ew_gggbot", "Assistant", assistantDirective,
         keyWords: ["ggg"])
-            .SetContextSize(20).NeverReplyOutOfTurn());
+            .SetContextSize(20).NeverReplyOutOfTurn().DoNotWriteOnYourOwn());
 }
 
 void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configuration)

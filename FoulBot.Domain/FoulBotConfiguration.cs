@@ -40,6 +40,15 @@ public sealed record FoulBotConfiguration
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
     public bool OnlyReadAddressedToBotMessages { get; init; }
+    public bool WriteOnYourOwn { get; init; } = true;
+
+    public FoulBotConfiguration DoNotWriteOnYourOwn()
+    {
+        return this with
+        {
+            WriteOnYourOwn = false
+        };
+    }
 
     public FoulBotConfiguration SetOnlyReadAddressedToBotMessages()
     {

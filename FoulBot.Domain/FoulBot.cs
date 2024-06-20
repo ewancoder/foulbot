@@ -33,7 +33,7 @@ public sealed class FoulBot : IFoulBot
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly ReminderCreator _reminderCreator;
     private readonly Task _botOnlyDecrementTask;
-    private readonly Task _talkByTime;
+    private readonly Task? _talkByTime;
 
     private int _randomReplyEveryMessages;
     private bool _subscribed = false;
@@ -79,7 +79,9 @@ public sealed class FoulBot : IFoulBot
             SetupNextReplyEveryMessages();
 
         _botOnlyDecrementTask = DecrementBotToBotCommunicationCounterAsync();
-        _talkByTime = TalkByTimeAsync();
+
+        if (_config.WriteOnYourOwn)
+            _talkByTime = TalkByTimeAsync();
     }
 
     private bool ShouldReplyByCount() => _config.ReplyEveryMessages > 0 && _replyEveryMessagesCounter >= _config.ReplyEveryMessages;
