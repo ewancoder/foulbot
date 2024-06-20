@@ -143,7 +143,7 @@ else
 
     InitializeBot("EwRealtorBotApiKey", new FoulBotConfiguration(
         "ew_realtorbot", "Realtor", realtorDirective,
-        keyWords: ["realt", "квартир", "дом"])
+        keyWords: ["realt", "квартир", "дом", "риэлт", "реалт", "риалт", "реэлт"])
             .SetContextSize(15));
 
     InitializeBot("EwGggBotApiKey", new FoulBotConfiguration(
