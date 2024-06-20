@@ -272,7 +272,9 @@ public sealed class FoulBot : IFoulBot
             return;
         }
 
-        if (message.Text.StartsWith($"@{_config.BotId}"))
+        if (
+            message.Text.StartsWith($"@{_config.BotId} через")
+            || message.Text.StartsWith($"@{_config.BotId} каждый"))
         {
             _logger.LogDebug("Reminder command has been issued. Setting up a reminder: {Message}", message);
             _reminderCreator.AddReminder(message);
