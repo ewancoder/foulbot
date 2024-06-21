@@ -21,6 +21,7 @@ services:
     volumes:
       - ./key.json:/app/key.json
       - ./chats:/app/chats
+      - ./allowed_chats:/app/allowed_chats
       - /data/foulbot-logs:/app/logs
       - /data/foulbot-reminders:/app/reminders
 

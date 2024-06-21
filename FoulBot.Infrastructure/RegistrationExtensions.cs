@@ -11,6 +11,7 @@ public static class RegistrationExtensions
             .AddTransient<IFoulAIClient, FoulAIClient>()
             .AddTransient<IGoogleTtsService, GoogleTtsService>()
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>()
-            .AddSingleton<IBotDelayStrategy, BotDelayStrategy>();
+            .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
+            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>();
     }
 }

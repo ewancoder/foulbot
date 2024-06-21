@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FoulBot.Domain;
@@ -23,7 +22,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly IFoulMessageFactory _foulMessageFactory;
     private readonly FoulBotConfiguration _botConfiguration;
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
-    private readonly IEnumerable<string> _allowedChats;
+    private readonly IAllowedChatsProvider _allowedChatsProvider;
 
     public TelegramUpdateHandler(
         ILogger<TelegramBotMessenger> botMessengerLogger, // TODO: Move to another factory.
@@ -32,7 +31,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         FoulBotConfiguration botConfiguration,
-        IEnumerable<string> allowedChats)
+        IAllowedChatsProvider allowedChatsProvider)
     {
         _botMessengerLogger = botMessengerLogger;
         _logger = logger;
@@ -40,7 +39,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _botFactory = botFactory;
         _foulMessageFactory = foulMessageFactory;
         _botConfiguration = botConfiguration;
-        _allowedChats = allowedChats;
+        _allowedChatsProvider = allowedChatsProvider;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Initialized TelegramUpdateHandler with configuration {@Configuration}.", _botConfiguration);
@@ -169,14 +168,18 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             var chatId = update.Message.Chat.Id.ToString();
-            if (!_allowedChats.Contains(chatId))
+
+            if (update.Message.Text == "$activate")
+            {
+                _allowedChatsProvider.AddAllowedChat(new(chatId));
+            }
+
+            if (!_allowedChatsProvider.IsAllowedChat(new(chatId)))
             {
                 _logger.LogWarning("Received a message from not allowed chat: {ChatId}", chatId);
-                /*return; // Bot is not allowed to write to this chat.
+                return; // Bot is not allowed to write to this chat.
                         // This is a temporary measure so that bots don't reply to random people.
-                        // In future this will be improved so that they still write 5-10 messages per day, unless allowed.*/
-
-                // Allow writing to all chats for now. Disallow by checking logs & disallowing specific ones.
+                        // In future this will be improved so that they still write 5-10 messages per day, unless allowed.
             }
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
