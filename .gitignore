@@ -3,6 +3,7 @@
 /.vs/
 *.user
 *.chats
+allowed_chats
 /secrets.env
 **/key.json
 **/logs/
