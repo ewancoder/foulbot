@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using FoulBot.Domain;
 
 namespace FoulBot.Domain;
 
@@ -9,20 +8,22 @@ public interface IAllowedChatsProvider
 {
     bool IsAllowedChat(FoulChatId chatId);
     void AddAllowedChat(FoulChatId chatId);
+    void RemoveAllowedChat(FoulChatId chatId);
 }
 
 public sealed class AllowedChatsProvider : IAllowedChatsProvider
 {
-    private const string FileName = "allowed_chats";
+    private readonly string _fileName;
     private readonly object _lock = new object();
     private readonly List<string> _allowedChats;
 
-    public AllowedChatsProvider()
+    public AllowedChatsProvider(string fileName = "allowed_chats")
     {
-        if (!File.Exists(FileName))
-            File.WriteAllText(FileName, "[]");
+        _fileName = fileName;
+        if (!File.Exists(_fileName))
+            File.WriteAllText(_fileName, "[]");
 
-        var content = File.ReadAllText(FileName);
+        var content = File.ReadAllText(_fileName);
         _allowedChats = JsonSerializer.Deserialize<List<string>>(content)!;
     }
 
@@ -31,7 +32,16 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider
         lock (_lock)
         {
             _allowedChats.Add(chatId.ToString());
-            File.WriteAllText(FileName, JsonSerializer.Serialize(_allowedChats));
+            File.WriteAllText(_fileName, JsonSerializer.Serialize(_allowedChats));
+        }
+    }
+
+    public void RemoveAllowedChat(FoulChatId chatId)
+    {
+        lock (_lock)
+        {
+            _allowedChats.Remove(chatId.ToString());
+            File.WriteAllText(_fileName, JsonSerializer.Serialize(_allowedChats));
         }
     }
 
