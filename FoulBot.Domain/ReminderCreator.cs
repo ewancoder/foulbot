@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace FoulBot.Domain;
 
@@ -23,11 +24,15 @@ public sealed class ReminderCreator
     private readonly string _botId;
     private readonly object _lock = new object();
     private readonly Dictionary<string, Reminder> _reminders;
+    private readonly ILogger<ReminderCreator> _logger;
+    private readonly Task _running;
 
     public ReminderCreator(
+        ILogger<ReminderCreator> logger,
         FoulChatId chatId,
         string botId)
     {
+        _logger = logger;
         _chatId = chatId;
         _botId = botId;
 
@@ -41,10 +46,7 @@ public sealed class ReminderCreator
         _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
             .ToDictionary(x => x.Id!);
 
-        var copyOfReminders = _reminders.Values.ToList();
-
-        _ = Task.WhenAll(copyOfReminders.Select(
-            reminder => InitializeReminderAsync(reminder.Id!)).ToList());
+        _running = RunRemindersAsync();
     }
 
     public IEnumerable<Reminder> AllReminders => _reminders.Values;
@@ -60,8 +62,6 @@ public sealed class ReminderCreator
             _reminders.Add(id, reminder);
             SaveReminders();
         }
-
-        _ = InitializeReminderAsync(id);
     }
 
     public void AddReminder(FoulMessage foulMessage)
@@ -94,28 +94,54 @@ public sealed class ReminderCreator
         AddReminder(new Reminder(time, request, everyDay, from));
     }
 
-    private async Task InitializeReminderAsync(string id)
+    private async Task RunRemindersAsync()
     {
-        await Task.Yield();
+        using var _ = _logger
+            .AddScoped("ChatId", _chatId)
+            .AddScoped("BotId", _botId)
+            .BeginScope();
 
-        var reminder = _reminders[id];
-        if (reminder.AtUtc + TimeSpan.FromSeconds(1) > DateTime.UtcNow)
-            await Task.Delay(reminder.AtUtc + TimeSpan.FromSeconds(2) - DateTime.UtcNow);
-
-        lock (_lock)
+        while (true)
         {
-            _reminders.Remove(id);
-            if (reminder.EveryDay)
-            {
-                _reminders.Add(id, reminder with
-                {
-                    AtUtc = reminder.AtUtc + TimeSpan.FromDays(1)
-                });
-            }
-            SaveReminders();
-        }
+            await Task.Delay(TimeSpan.FromSeconds(10));
 
-        TriggerReminder(reminder);
+            try
+            {
+                var dueReminders = _reminders.Values
+                    .Where(x => x.AtUtc <= DateTime.UtcNow)
+                    .ToList();
+
+                foreach (var reminder in dueReminders)
+                {
+                    lock (_lock)
+                    {
+                        _logger.LogInformation("Reminding: {Reminder}", reminder);
+
+                        _reminders.Remove(reminder.Id!);
+                        if (reminder.EveryDay)
+                        {
+                            var newReminder = reminder;
+                            while (newReminder.AtUtc <= DateTime.UtcNow)
+                            {
+                                newReminder = newReminder with
+                                {
+                                    AtUtc = newReminder.AtUtc + TimeSpan.FromDays(1)
+                                };
+                            }
+
+                            _reminders.Add(newReminder.Id!, newReminder);
+                        }
+                        SaveReminders();
+                    }
+
+                    TriggerReminder(reminder);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Could not trigger a reminder.");
+            }
+        }
     }
 
     private void TriggerReminder(Reminder reminder)

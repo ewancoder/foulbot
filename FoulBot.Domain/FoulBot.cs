@@ -42,6 +42,7 @@ public sealed class FoulBot : IFoulBot
     private int _replyEveryMessagesCounter = 0;
 
     public FoulBot(
+        ILogger<ReminderCreator> reminderLogger,
         ILogger<FoulBot> logger,
         IFoulAIClient aiClient,
         IGoogleTtsService googleTtsService,
@@ -68,7 +69,7 @@ public sealed class FoulBot : IFoulBot
         _delayStrategy = delayStrategy;
         _contextPreserverClient = contextPreserverClient;
         _reminderCreator = new ReminderCreator(
-            _chat.ChatId, _config.BotId);
+            reminderLogger, _chat.ChatId, _config.BotId);
 
         _chat.StatusChanged += OnStatusChanged;
         _reminderCreator.Remind += OnRemind;

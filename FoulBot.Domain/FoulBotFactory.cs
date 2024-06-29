@@ -16,6 +16,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ILogger<TypingImitator> _typingImitatorLogger;
     private readonly ILogger<FoulBotContext> _botContextLogger;
     private readonly ILogger<ContextPreserverClient> _contextPreserverClientLogger;
+    private readonly ILogger<ReminderCreator> _reminderLogger;
     private readonly IFoulAIClient _aiClient;
     private readonly IGoogleTtsService _googleTtsService;
     private readonly IBotDelayStrategy _delayStrategy;
@@ -25,6 +26,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ILogger<TypingImitator> typingImitatorLogger,
         ILogger<FoulBotContext> botContextLogger,
         ILogger<ContextPreserverClient> contextPreserverClientLogger,
+        ILogger<ReminderCreator> reminderLogger,
         IFoulAIClient aiClient,
         IGoogleTtsService googleTtsService,
         IBotDelayStrategy delayStrategy)
@@ -33,6 +35,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _typingImitatorLogger = typingImitatorLogger;
         _botContextLogger = botContextLogger;
         _contextPreserverClientLogger = contextPreserverClientLogger;
+        _reminderLogger = reminderLogger;
         _aiClient = aiClient;
         _googleTtsService = googleTtsService;
         _delayStrategy = delayStrategy;
@@ -57,6 +60,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             _botContextLogger, chat);
 
         return new FoulBot(
+            _reminderLogger,
             _logger,
             _aiClient,
             _googleTtsService,
