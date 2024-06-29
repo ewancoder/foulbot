@@ -19,4 +19,14 @@ public class AllowedChatsProviderTests
 
         Assert.False(sut.IsAllowedChat(chatId));
     }
+
+    [Theory, AutoMoqData]
+    public void ShouldCreateFileIfNotExists(string fileName)
+    {
+        Assert.False(File.Exists(fileName));
+
+        _ = new AllowedChatsProvider(fileName);
+
+        Assert.True(File.Exists(fileName));
+    }
 }
