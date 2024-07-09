@@ -282,6 +282,22 @@ public sealed class FoulBot : IFoulBot
             // Do not return - add the ask to set up a reminder as a message to context.
         }
 
+        if (message.Text == "$showReminders")
+        {
+            var reminders = string.Join("\n\n", _reminderCreator.AllReminders);
+
+            // Unfortunately this method is not async so we can't await. But it's ok for this hacky functional.
+            _ = _botMessenger.SendTextMessageAsync(_chat.ChatId, reminders);
+            return;
+        }
+
+        if (message.Text.StartsWith("$cancelReminder "))
+        {
+            var reminderId = message.Text.Split(' ')[1];
+            _reminderCreator.CancelReminder(reminderId);
+            return;
+        }
+
         Task.Run(async () =>
         {
             try

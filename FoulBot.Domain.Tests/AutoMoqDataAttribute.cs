@@ -11,6 +11,6 @@ public sealed class AutoMoqDataAttribute : AutoDataAttribute
     public static IFixture CreateFixture()
     {
         return new Fixture()
-            .Customize(new AutoMoqCustomization());
+            .Customize(new AutoMoqCustomization { ConfigureMembers = true });
     }
 }

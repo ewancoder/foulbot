@@ -160,4 +160,13 @@ public sealed class ReminderCreator
             // TODO: Log this.
         }
     }
+
+    public void CancelReminder(string reminderId)
+    {
+        lock (_lock)
+        {
+            if (_reminders.ContainsKey(reminderId))
+                _reminders.Remove(reminderId);
+        }
+    }
 }
