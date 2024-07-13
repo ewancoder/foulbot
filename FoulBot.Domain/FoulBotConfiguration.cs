@@ -20,14 +20,15 @@ public sealed record FoulBotConfiguration
         if (!keyWords.Any())
             throw new ArgumentException("Should have at least one keyword.");
 
-        BotId = botId;
-        BotName = botName;
+        FoulBotId = new FoulBotId(botId, botName);
         Directive = directive;
         KeyWords = keyWords;
     }
 
-    public string BotId { get; }
-    public string BotName { get; }
+    public FoulBotId FoulBotId { get; }
+    public string BotId => FoulBotId.BotId;
+    public string BotName => FoulBotId.BotName;
+
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; }
     public int ContextSize { get; init; } = 14;

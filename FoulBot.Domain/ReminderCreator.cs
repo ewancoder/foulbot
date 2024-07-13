@@ -17,11 +17,13 @@ public sealed record Reminder(
     public string? Id { get; set; }
 }
 
+public sealed record FoulBotId(string BotId, string BotName);
+
 public sealed class ReminderCreator
 {
     private readonly FoulChatId _chatId;
+    private readonly FoulBotId _botId;
 
-    private readonly string _botId;
     private readonly object _lock = new object();
     private readonly Dictionary<string, Reminder> _reminders;
     private readonly ILogger<ReminderCreator> _logger;
@@ -30,7 +32,7 @@ public sealed class ReminderCreator
     public ReminderCreator(
         ILogger<ReminderCreator> logger,
         FoulChatId chatId,
-        string botId)
+        FoulBotId botId)
     {
         _logger = logger;
         _chatId = chatId;
@@ -39,10 +41,10 @@ public sealed class ReminderCreator
         if (!Directory.Exists("reminders"))
             Directory.CreateDirectory("reminders");
 
-        if (!File.Exists($"reminders/{chatId}---{_botId}"))
-            File.WriteAllText($"reminders/{chatId}---{botId}", "[]");
+        if (!File.Exists($"reminders/{chatId}---{_botId.BotId}"))
+            File.WriteAllText($"reminders/{chatId}---{_botId.BotId}", "[]");
 
-        var content = File.ReadAllText($"reminders/{_chatId}---{_botId}");
+        var content = File.ReadAllText($"reminders/{_chatId}---{_botId.BotId}");
         _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
             .ToDictionary(x => x.Id!);
 
@@ -66,7 +68,7 @@ public sealed class ReminderCreator
 
     public void AddReminder(FoulMessage foulMessage)
     {
-        var message = foulMessage.Text.Replace($"@{_botId}", string.Empty).Trim();
+        var message = foulMessage.Text.Replace($"@{_botId.BotId}", string.Empty).Trim();
         var from = foulMessage.SenderName;
 
         var everyDay = false;
@@ -98,7 +100,7 @@ public sealed class ReminderCreator
     {
         using var _ = _logger
             .AddScoped("ChatId", _chatId)
-            .AddScoped("BotId", _botId)
+            .AddScoped("BotId", _botId.BotId)
             .BeginScope();
 
         while (true)
@@ -153,7 +155,7 @@ public sealed class ReminderCreator
     {
         try
         {
-            File.WriteAllText($"reminders/{_chatId}---{_botId}", JsonSerializer.Serialize(_reminders.Values));
+            File.WriteAllText($"reminders/{_chatId}---{_botId.BotId}", JsonSerializer.Serialize(_reminders.Values));
         }
         catch
         {

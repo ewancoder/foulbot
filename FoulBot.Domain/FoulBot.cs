@@ -69,7 +69,7 @@ public sealed class FoulBot : IFoulBot
         _delayStrategy = delayStrategy;
         _contextPreserverClient = contextPreserverClient;
         _reminderCreator = new ReminderCreator(
-            reminderLogger, _chat.ChatId, _config.BotId);
+            reminderLogger, _chat.ChatId, _config.FoulBotId);
 
         _chat.StatusChanged += OnStatusChanged;
         _reminderCreator.Remind += OnRemind;
