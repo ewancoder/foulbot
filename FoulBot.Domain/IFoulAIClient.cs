@@ -5,6 +5,11 @@ using System.Threading.Tasks;
 
 namespace FoulBot.Domain;
 
+public interface IFoulAIClientFactory
+{
+    IFoulAIClient Create(string openAiModel);
+}
+
 public interface IFoulAIClient
 {
     ValueTask<string> GetTextResponseAsync(IEnumerable<FoulMessage> context);

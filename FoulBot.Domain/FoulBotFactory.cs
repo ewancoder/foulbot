@@ -17,7 +17,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ILogger<FoulBotContext> _botContextLogger;
     private readonly ILogger<ContextPreserverClient> _contextPreserverClientLogger;
     private readonly ILogger<ReminderCreator> _reminderLogger;
-    private readonly IFoulAIClient _aiClient;
+    private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly IGoogleTtsService _googleTtsService;
     private readonly IBotDelayStrategy _delayStrategy;
 
@@ -27,7 +27,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ILogger<FoulBotContext> botContextLogger,
         ILogger<ContextPreserverClient> contextPreserverClientLogger,
         ILogger<ReminderCreator> reminderLogger,
-        IFoulAIClient aiClient,
+        IFoulAIClientFactory aiClientFactory,
         IGoogleTtsService googleTtsService,
         IBotDelayStrategy delayStrategy)
     {
@@ -36,7 +36,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _botContextLogger = botContextLogger;
         _contextPreserverClientLogger = contextPreserverClientLogger;
         _reminderLogger = reminderLogger;
-        _aiClient = aiClient;
+        _aiClientFactory = aiClientFactory;
         _googleTtsService = googleTtsService;
         _delayStrategy = delayStrategy;
     }
@@ -62,7 +62,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         return new FoulBot(
             _reminderLogger,
             _logger,
-            _aiClient,
+            _aiClientFactory,
             _googleTtsService,
             botMessenger,
             configuration,
@@ -74,7 +74,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
             _delayStrategy,
             new ContextPreserverClient(
                 _contextPreserverClientLogger,
-                _aiClient,
-                configuration.Directive));
+                _aiClientFactory,
+                configuration.Directive,
+                configuration.OpenAIModel));
     }
 }

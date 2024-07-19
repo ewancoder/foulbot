@@ -38,11 +38,12 @@ public sealed class ContextPreserverClient : IContextPreserverClient
 
     public ContextPreserverClient(
         ILogger<ContextPreserverClient> logger,
-        IFoulAIClient client,
-        string directive)
+        IFoulAIClientFactory clientFactory,
+        string directive,
+        string openAiModel)
     {
         _logger = logger;
-        _client = client;
+        _client = clientFactory.Create(openAiModel);
         _directive = directive;
     }
 

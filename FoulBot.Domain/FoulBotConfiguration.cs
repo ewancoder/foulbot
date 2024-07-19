@@ -29,10 +29,11 @@ public sealed record FoulBotConfiguration
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
 
+    public string OpenAIModel { get; init; } = "gpt-4o-mini";
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; }
     public int ContextSize { get; init; } = 30;
-    public int MaxContextSizeInCharacters { get; } = 8000;
+    public int MaxContextSizeInCharacters { get; init; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
@@ -42,6 +43,16 @@ public sealed record FoulBotConfiguration
     public HashSet<string> Stickers { get; } = new HashSet<string>();
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool WriteOnYourOwn { get; init; } = true;
+
+    public FoulBotConfiguration UseGpt35()
+    {
+        return this with
+        {
+            OpenAIModel = "gpt-3.5-turbo",
+            ContextSize = 15,
+            MaxContextSizeInCharacters = 3000
+        };
+    }
 
     public FoulBotConfiguration DoNotWriteOnYourOwn()
     {
@@ -70,11 +81,12 @@ public sealed record FoulBotConfiguration
         };
     }
 
-    public FoulBotConfiguration SetContextSize(int contextSize)
+    public FoulBotConfiguration SetContextSize(int contextSize, int maxContextSizeInCharacters = 8000)
     {
         return this with
         {
-            ContextSize = contextSize
+            ContextSize = contextSize,
+            MaxContextSizeInCharacters = maxContextSizeInCharacters
         };
     }
 

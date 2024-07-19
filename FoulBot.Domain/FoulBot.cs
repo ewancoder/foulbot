@@ -44,7 +44,7 @@ public sealed class FoulBot : IFoulBot
     public FoulBot(
         ILogger<ReminderCreator> reminderLogger,
         ILogger<FoulBot> logger,
-        IFoulAIClient aiClient,
+        IFoulAIClientFactory aiClientFactory,
         IGoogleTtsService googleTtsService,
         IBotMessenger botMessenger,
         FoulBotConfiguration configuration,
@@ -58,7 +58,7 @@ public sealed class FoulBot : IFoulBot
     {
         _botContext = botContext;
         _logger = logger;
-        _aiClient = aiClient;
+        _aiClient = aiClientFactory.Create(configuration.OpenAIModel);
         _googleTtsService = googleTtsService;
         _botMessenger = botMessenger;
         _config = configuration;

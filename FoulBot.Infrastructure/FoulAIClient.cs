@@ -12,18 +12,38 @@ using UnidecodeSharpCore;
 
 namespace FoulBot.Infrastructure;
 
+public sealed class FoulAIClientFactory : IFoulAIClientFactory
+{
+    private readonly ILogger<FoulAIClient> _logger;
+    private readonly IConfiguration _configuration;
+
+    public FoulAIClientFactory(ILogger<FoulAIClient> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _configuration = configuration;
+    }
+
+    public IFoulAIClient Create(string openAiModel)
+    {
+        return new FoulAIClient(_logger, _configuration, openAiModel);
+    }
+}
+
 public sealed class FoulAIClient : IFoulAIClient
 {
     private readonly Random _random = new Random();
     private readonly ILogger<FoulAIClient> _logger;
     private readonly OpenAIClient _client;
+    private readonly string _openAiModel;
 
     public FoulAIClient(
         ILogger<FoulAIClient> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string openAiModel)
     {
         _logger = logger;
         _client = new OpenAIClient(configuration["OpenAIKey"]);
+        _openAiModel = openAiModel;
     }
 
     public async ValueTask<Stream> GetAudioResponseAsync(string text)
@@ -60,7 +80,7 @@ public sealed class FoulAIClient : IFoulAIClient
             throw new InvalidOperationException("Could not determine the type.");
         }).ToList();
 
-        var options = new ChatCompletionsOptions("gpt-4o-mini", aiContext);
+        var options = new ChatCompletionsOptions(_openAiModel, aiContext);
 
         return await GetTextResponseWithRetriesAsync(options);
     }
@@ -72,7 +92,7 @@ public sealed class FoulAIClient : IFoulAIClient
             new ChatRequestSystemMessage(directive)
         };
 
-        var options = new ChatCompletionsOptions("gpt-4o-mini", aiContext);
+        var options = new ChatCompletionsOptions(_openAiModel, aiContext);
 
         return await GetTextResponseWithRetriesAsync(options);
     }

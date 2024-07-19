@@ -8,7 +8,7 @@ public static class RegistrationExtensions
     public static IServiceCollection AddFoulBotInfrastructure(this IServiceCollection services)
     {
         return services
-            .AddTransient<IFoulAIClient, FoulAIClient>()
+            .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()
             .AddTransient<IGoogleTtsService, GoogleTtsService>()
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>()
             .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
