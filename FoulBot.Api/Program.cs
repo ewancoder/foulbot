@@ -124,32 +124,32 @@ else
     InitializeBot("EwVovaBotApiKey", new FoulBotConfiguration(
         "ew_vovabot", "Vova", vovaDirective,
         keyWords: ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"])
-            .SetContextSize(30));
+            .SetContextSize(40));
 
     InitializeBot("EwGirlBotApiKey", new FoulBotConfiguration(
         "ew_girlbot", "Girl_Bot", girlDirective,
         keyWords: ["girl", "мот", "испан", "вежл", "сн", "ду"])
-            .SetContextSize(30));
+            .SetContextSize(40));
 
     InitializeBot("EwYakuzaBotApiKey", new FoulBotConfiguration(
         "ew_yakuzabot", "Yakuza_Boss", yakuzaDirective,
         keyWords: ["босс"])
-            .SetContextSize(10).NeverReplyOutOfTurn());
+            .SetContextSize(20).NeverReplyOutOfTurn());
 
     InitializeBot("EwStathemBotApiKey", new FoulBotConfiguration(
         "ew_stathembot", "Jason_Stathah", stathemDirective,
         keyWords: ["стет", "стэт", "джей", "jay", "stat", "бро", "бра"])
-            .SetContextSize(10));
+            .SetContextSize(20));
 
     InitializeBot("EwRealtorBotApiKey", new FoulBotConfiguration(
         "ew_realtorbot", "Realtor", realtorDirective,
         keyWords: ["realt", "квартир", "дом", "риэлт", "реалт", "риалт", "реэлт"])
-            .SetContextSize(15));
+            .SetContextSize(35));
 
     InitializeBot("EwGggBotApiKey", new FoulBotConfiguration(
         "ew_gggbot", "Assistant", assistantDirective,
         keyWords: ["ggg"])
-            .SetContextSize(20).NeverReplyOutOfTurn().DoNotWriteOnYourOwn());
+            .SetContextSize(40).NeverReplyOutOfTurn().DoNotWriteOnYourOwn());
 }
 
 void InitializeBot(string apiConfigurationKeyName, FoulBotConfiguration configuration)

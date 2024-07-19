@@ -31,8 +31,8 @@ public sealed record FoulBotConfiguration
 
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; }
-    public int ContextSize { get; init; } = 14;
-    public int MaxContextSizeInCharacters { get; } = 3000;
+    public int ContextSize { get; init; } = 30;
+    public int MaxContextSizeInCharacters { get; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
