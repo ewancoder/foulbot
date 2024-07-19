@@ -60,7 +60,7 @@ public sealed class FoulAIClient : IFoulAIClient
             throw new InvalidOperationException("Could not determine the type.");
         }).ToList();
 
-        var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
+        var options = new ChatCompletionsOptions("gpt-4o-mini", aiContext);
 
         return await GetTextResponseWithRetriesAsync(options);
     }
@@ -72,7 +72,7 @@ public sealed class FoulAIClient : IFoulAIClient
             new ChatRequestSystemMessage(directive)
         };
 
-        var options = new ChatCompletionsOptions("gpt-3.5-turbo", aiContext);
+        var options = new ChatCompletionsOptions("gpt-4o-mini", aiContext);
 
         return await GetTextResponseWithRetriesAsync(options);
     }

@@ -88,7 +88,7 @@ if (isDebug)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
     InitializeBot("EwTest2BotApiKey", new FoulBotConfiguration(
-        "ew_test2bot", "Second_TestBot", realtorDirective, ["test", "bot"])
+        "ew_test2bot", "Second_TestBot", grumpyDirective, ["test", "bot"])
         //.WithOnlyVoice()
         .AddStickers(
             "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
