@@ -37,8 +37,8 @@ public sealed record FoulBotConfiguration
     public int ReplyEveryMessages { get; init; } = 20;
     public int MessagesBetweenVoice { get; init; } = 0;
     public bool UseOnlyVoice { get; init; } = false;
-    public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 3;
-    public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 130;
+    public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 1;
+    public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 10*120;
     public bool NotAnAssistant { get; init; } = true;
     public HashSet<string> Stickers { get; } = new HashSet<string>();
     public bool OnlyReadAddressedToBotMessages { get; init; }
