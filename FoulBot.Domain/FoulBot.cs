@@ -340,12 +340,12 @@ public sealed class FoulBot : IFoulBot
         }
     }
 
-    private void HandlePrepairingReply(List<FoulMessage> snapshot, out bool isVoice)
+    private void HandlePrepairingReply(bool isBotToBotCommunication, out bool isVoice)
     {
         if (_config.ReplyEveryMessages > 0 && _replyEveryMessagesCounter >= _randomReplyEveryMessages)
             SetupNextReplyEveryMessages();
 
-        if (snapshot[^1].IsOriginallyBotMessage)
+        if (isBotToBotCommunication)
         {
             _botToBotCommunicationCounter++;
             _logger.LogDebug("Last message is from a bot. Increasing bot-to-bot count. New value is {Count}.", _botToBotCommunicationCounter);
@@ -385,7 +385,7 @@ public sealed class FoulBot : IFoulBot
         HandleAnyMessageReceived();
 
         // This checks all the logic including counters, whether we should reply.
-        if (GetSnapshotIfNeedToReply(message) == null)
+        if (GetSnapshotIfNeedToReply(message, out var _) == null)
             return;
 
         // We are only going inside the lock when we're sure we've got a message that needs reply from this bot.
@@ -397,7 +397,7 @@ public sealed class FoulBot : IFoulBot
 
             _logger.LogDebug("Acquired lock for replying to the message.");
 
-            var snapshot = GetSnapshotIfNeedToReply(message);
+            var snapshot = GetSnapshotIfNeedToReply(message, out var isBotToBotCommunication);
             if (snapshot == null)
             {
                 _logger.LogDebug("Rechecked the context, it doesn't contain valid messages for processing anymore. Skipping.");
@@ -407,7 +407,7 @@ public sealed class FoulBot : IFoulBot
             // If we get here - we are *going* to send the reply. We can reset counters if necessary.
             _logger.LogDebug("Checked the context, it does contain messages that need a reply from the bot. Snapshot {@Context}.", snapshot.TakeLast(10));
             _logger.LogDebug("Handling prepairing reply.");
-            HandlePrepairingReply(snapshot, out var isVoice);
+            HandlePrepairingReply(isBotToBotCommunication, out var isVoice);
 
             // Delay to simulate "reading" the messages by the bot.
             await _delayStrategy.DelayAsync();
@@ -496,8 +496,9 @@ public sealed class FoulBot : IFoulBot
     // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
     // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
     // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
-    private List<FoulMessage>? GetSnapshotIfNeedToReply(FoulMessage triggeredByMessage)
+    private List<FoulMessage>? GetSnapshotIfNeedToReply(FoulMessage triggeredByMessage, out bool isBotToBotCommunication)
     {
+        isBotToBotCommunication = false;
         _logger.LogTrace("Getting current context snapshot.");
         var snapshot = _botContext.GetUnprocessedSnapshot();
 
@@ -514,15 +515,24 @@ public sealed class FoulBot : IFoulBot
             return null;
         }
 
-        if (!_messageRespondStrategy.ShouldRespond(snapshot) && (_config.ReplyEveryMessages == 0 || _replyEveryMessagesCounter < _randomReplyEveryMessages) && triggeredByMessage.Id != "ByTime")
+        var messagesThatCanContainTriggers = snapshot;
+        if (_botToBotCommunicationCounter >= _config.BotOnlyMaxMessagesBetweenDebounce)
         {
-            _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
-            return null;
+            _logger.LogInformation("Bot to Bot communication is on debounce now. Filtering out bot messages for checking triggers.");
+            messagesThatCanContainTriggers = messagesThatCanContainTriggers
+                .Where(x => !x.IsOriginallyBotMessage)
+                .ToList();
+        }
+        else
+        {
+            isBotToBotCommunication =
+                !_messageRespondStrategy.ShouldRespond(snapshot.Where(x => !x.IsOriginallyBotMessage))
+                && _messageRespondStrategy.ShouldRespond(snapshot.Where(x => x.IsOriginallyBotMessage));
         }
 
-        if (snapshot[^1].IsOriginallyBotMessage && _botToBotCommunicationCounter >= _config.BotOnlyMaxMessagesBetweenDebounce)
+        if (!_messageRespondStrategy.ShouldRespond(messagesThatCanContainTriggers) && (_config.ReplyEveryMessages == 0 || _replyEveryMessagesCounter < _randomReplyEveryMessages) && triggeredByMessage.Id != "ByTime")
         {
-            _logger.LogInformation("Last message is from a bot. Exceeded bot-to-bot messages {Count}. Waiting for {Seconds} seconds for counter to decrease by 1. Skipping replying.", _config.BotOnlyMaxMessagesBetweenDebounce, _config.DecrementBotToBotCommunicationCounterIntervalSeconds);
+            _logger.LogDebug("There are no messages that need processing (no keywords, no replies, no counters). Skipping replying.");
             return null;
         }
 

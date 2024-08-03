@@ -79,14 +79,14 @@ app.MapGet("/api/reminders", () =>
 if (isDebug)
 {
     InitializeBot("EwTest1BotApiKey", new FoulBotConfiguration(
-        "ew_test1bot", "First_TestBot", stathemDirective, ["test", "bot"])
+        "ew_test1bot", "First_TestBot", stathemDirective, ["first", "bot"])
         .NeverReplyOutOfTurn()
         .SetOnlyReadAddressedToBotMessages()
         //.WithVoiceBetween(6)
         .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
 
     InitializeBot("EwTest2BotApiKey", new FoulBotConfiguration(
-        "ew_test2bot", "Second_TestBot", grumpyDirective, ["test", "bot"])
+        "ew_test2bot", "Second_TestBot", grumpyDirective, ["second", "bot"])
         //.WithOnlyVoice()
         .AddStickers(
             "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
