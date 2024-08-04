@@ -1,6 +1,4 @@
-﻿using AutoFixture.AutoMoq;
-
-namespace FoulBot.Domain.Tests;
+﻿namespace FoulBot.Domain.Tests;
 
 public sealed class AutoMoqDataAttribute : AutoDataAttribute
 {

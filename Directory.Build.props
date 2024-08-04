@@ -33,6 +33,7 @@
         <Using Include="Xunit" />
         <Using Include="AutoFixture" />
         <Using Include="AutoFixture.Xunit2" />
+        <Using Include="AutoFixture.AutoMoq" />
       </ItemGroup>
     </When>
   </Choose>
