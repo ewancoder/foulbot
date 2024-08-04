@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup>
+    <PublishAot>true</PublishAot>
     <Nullable>enable</Nullable>
 
     <!-- All my projects here are targeting .NET 8.0 without exception. -->
