@@ -137,8 +137,8 @@ else
 
     InitializeBot("EwStathemBotApiKey", new FoulBotConfiguration(
         "ew_stathembot", "Jason_Stathah", stathemDirective,
-        keyWords: ["стет", "стэт", "джей", "jay", "stat", "бро", "бра"])
-            .SetContextSize(20));
+        keyWords: ["стетх", "стэтх", "джейс", "stath", "бро", "бра"])
+            .UseGpt35());
 
     InitializeBot("EwRealtorBotApiKey", new FoulBotConfiguration(
         "ew_realtorbot", "Realtor", realtorDirective,

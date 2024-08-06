@@ -536,6 +536,9 @@ public sealed class FoulBot : IFoulBot
             return null;
         }
 
+        if (snapshot.TakeLast(3).All(x => x.IsOriginallyBotMessage))
+            return null; // If 3 bots have written messages and no real people have replied - skip replying.
+
         return snapshot;
     }
 }
