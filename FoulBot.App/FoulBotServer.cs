@@ -14,7 +14,6 @@ public sealed class FoulBotServer
 #endif
 
         var services = new ServiceCollection();
-        IConfiguration config;
         var configuration = services.AddConfiguration(isDebug: isDebug);
 
         services
