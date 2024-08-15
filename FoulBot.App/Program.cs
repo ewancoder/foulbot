@@ -7,12 +7,4 @@ Console.CancelKeyPress += (_, e) =>
     cts.CancelAsync();
 };
 
-try
-{
-    await LegacyProgram.LegacyMain();
-    await Task.Delay(Timeout.Infinite, cts.Token);
-}
-catch (OperationCanceledException)
-{
-    Console.WriteLine("Exiting...");
-}
+await FoulBotServer.StartAsync(cts.Token);

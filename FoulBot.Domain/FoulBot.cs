@@ -13,9 +13,11 @@ public interface IFoulBot
     string ChatId { get; }
     ValueTask JoinChatAsync(string? invitedBy);
     IEnumerable<Reminder> AllReminders { get; }
+
+    Task GracefullyStopAsync();
 }
 
-public sealed class FoulBot : IFoulBot
+public sealed class FoulBot : IFoulBot, IAsyncDisposable
 {
     private readonly ILogger<FoulBot> _logger;
     private readonly IFoulAIClient _aiClient;
@@ -34,6 +36,8 @@ public sealed class FoulBot : IFoulBot
     private readonly ReminderCreator _reminderCreator;
     private readonly Task _botOnlyDecrementTask;
     private readonly Task? _talkByTime;
+    private readonly CancellationTokenSource _cts = new CancellationTokenSource(); // TODO: Make IDisposable.
+    private bool _isStopping;
 
     private int _randomReplyEveryMessages;
     private bool _subscribed = false;
@@ -69,7 +73,7 @@ public sealed class FoulBot : IFoulBot
         _delayStrategy = delayStrategy;
         _contextPreserverClient = contextPreserverClient;
         _reminderCreator = new ReminderCreator(
-            reminderLogger, _chat.ChatId, _config.FoulBotId);
+            reminderLogger, _chat.ChatId, _config.FoulBotId, _cts.Token);
 
         _chat.StatusChanged += OnStatusChanged;
         _reminderCreator.Remind += OnRemind;
@@ -89,9 +93,9 @@ public sealed class FoulBot : IFoulBot
 
     private async Task DecrementBotToBotCommunicationCounterAsync()
     {
-        while (true)
+        while (!_isStopping)
         {
-            await Task.Delay(TimeSpan.FromSeconds(_config.DecrementBotToBotCommunicationCounterIntervalSeconds));
+            await Task.Delay(TimeSpan.FromSeconds(_config.DecrementBotToBotCommunicationCounterIntervalSeconds), _cts.Token);
 
             if (_botToBotCommunicationCounter > 0)
             {
@@ -103,14 +107,14 @@ public sealed class FoulBot : IFoulBot
 
     private async Task TalkByTimeAsync()
     {
-        while (true)
+        while (!_isStopping)
         {
             var waitMinutes = _random.Next(60, 720);
             if (waitMinutes < 120)
                 waitMinutes = _random.Next(60, 720);
 
             _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
-            await Task.Delay(TimeSpan.FromMinutes(waitMinutes));
+            await Task.Delay(TimeSpan.FromMinutes(waitMinutes), _cts.Token);
             _logger.LogInformation("Sending a message based on time, {WaitMinutes} minutes passed.", waitMinutes);
 
             try
@@ -153,6 +157,12 @@ public sealed class FoulBot : IFoulBot
         using var _ = Logger
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
+
+        if (_isStopping)
+        {
+            _logger.LogInformation("Gracefully stopping the application. Skipping joining chat.");
+            return;
+        }
 
         try
         {
@@ -201,6 +211,13 @@ public sealed class FoulBot : IFoulBot
 
     private void OnStatusChanged(object? sender, FoulStatusChanged message)
     {
+        if (_isStopping)
+        {
+            using var _ = Logger.BeginScope();
+            _logger.LogInformation("Gracefully stopping the application. Skipping status change.");
+            return;
+        }
+
         Task.Run(async () =>
         {
             try
@@ -222,6 +239,13 @@ public sealed class FoulBot : IFoulBot
     public async Task OnStatusChangedAsync(FoulStatusChanged message)
     {
         using var _ = Logger.BeginScope();
+
+        if (_isStopping)
+        {
+            _logger.LogInformation("Gracefully stopping the application. Skipping status change.");
+            return;
+        }
+
         _logger.LogDebug("Received StatusChanged message: {Message}", message);
 
         if (message.WhoName != _config.BotId)
@@ -255,6 +279,12 @@ public sealed class FoulBot : IFoulBot
     private bool _shutup;
     private void OnMessageReceived(object? sender, FoulMessage message)
     {
+        if (_isStopping)
+        {
+            _logger.LogInformation("Gracefully stopping the application. Skipping message handling.");
+            return;
+        }
+
         if (message.Text == "$shutup")
         {
             _shutup = true;
@@ -317,6 +347,12 @@ public sealed class FoulBot : IFoulBot
 
     private async Task RemindAsync(Reminder reminder)
     {
+        if (_isStopping)
+        {
+            _logger.LogInformation("Gracefully stopping the application. Skipping reminder.");
+            return;
+        }
+
         // TODO: Add shared code from OnMessageReceived method, like NOT processing this if bot is NOT added to the chat anymore (unsubscribed).
         // TODO: Log everything and log amount of tokens.
 
@@ -540,5 +576,20 @@ public sealed class FoulBot : IFoulBot
             return null; // If 3 bots have written messages and no real people have replied - skip replying.
 
         return snapshot;
+    }
+
+    public async Task GracefullyStopAsync()
+    {
+        _isStopping = true;
+        await _cts.CancelAsync();
+        await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_isStopping)
+            await GracefullyStopAsync();
+
+        _cts.Dispose();
     }
 }

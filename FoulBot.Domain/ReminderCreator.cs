@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -32,7 +33,8 @@ public sealed class ReminderCreator
     public ReminderCreator(
         ILogger<ReminderCreator> logger,
         FoulChatId chatId,
-        FoulBotId botId)
+        FoulBotId botId,
+        CancellationToken cancellationToken)
     {
         _logger = logger;
         _chatId = chatId;
@@ -48,7 +50,7 @@ public sealed class ReminderCreator
         _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
             .ToDictionary(x => x.Id!);
 
-        _running = RunRemindersAsync();
+        _running = RunRemindersAsync(cancellationToken);
     }
 
     public IEnumerable<Reminder> AllReminders => _reminders.Values;
@@ -96,7 +98,7 @@ public sealed class ReminderCreator
         AddReminder(new Reminder(time, request, everyDay, from));
     }
 
-    private async Task RunRemindersAsync()
+    private async Task RunRemindersAsync(CancellationToken cancellationToken)
     {
         using var _ = _logger
             .AddScoped("ChatId", _chatId)
@@ -105,7 +107,7 @@ public sealed class ReminderCreator
 
         while (true)
         {
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
 
             try
             {

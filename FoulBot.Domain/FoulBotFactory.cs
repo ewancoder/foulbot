@@ -39,6 +39,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _aiClientFactory = aiClientFactory;
         _googleTtsService = googleTtsService;
         _delayStrategy = delayStrategy;
+        // TODO: Use cancellation token.
     }
 
     public IFoulBot Create(

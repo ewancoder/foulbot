@@ -14,6 +14,7 @@ public sealed class FoulChat : IFoulChat
     private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
     private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
     private readonly object _lock = new object();
+    private bool _isStopping;
 
     public FoulChat(ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
     {
@@ -59,6 +60,12 @@ public sealed class FoulChat : IFoulChat
     {
         using var _ = Logger.BeginScope();
 
+        if (_isStopping)
+        {
+            _logger.LogWarning("Gracefully stopping the application. Skipping status update {WhoName}, {ByName}, {Status}", whoName, byName, status);
+            return;
+        }
+
         _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName}, {Status}", whoName, byName, status);
 
         StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
@@ -70,6 +77,12 @@ public sealed class FoulChat : IFoulChat
         using var l = Logger
             .AddScoped("MessageId", message.Id)
             .BeginScope();
+
+        if (_isStopping)
+        {
+            _logger.LogWarning("Gracefully stopping the application. Skipping message update.");
+            return;
+        }
 
         _logger.LogInformation("Received message by FoulChat");
 
@@ -114,6 +127,12 @@ public sealed class FoulChat : IFoulChat
 
     public void AddMessage(FoulMessage message)
     {
+        if (_isStopping)
+        {
+            _logger.LogWarning("Gracefully stopping the application. Skipping adding message to context.");
+            return;
+        }
+
         lock (_lock)
         {
             _logger.LogDebug("Entered a lock for adding the message to the context manually. Chat {ChatId}, message {@Message}.", ChatId, message);
@@ -128,6 +147,12 @@ public sealed class FoulChat : IFoulChat
             _logger.LogDebug("Notifying bots about the manual message {@Message}.", message);
             MessageReceived?.Invoke(this, message);
         }
+    }
+
+    public Task GracefullyStopAsync()
+    {
+        _isStopping = true;
+        return Task.Delay(TimeSpan.FromSeconds(5)); // HACK implementation.
     }
 
     private bool AddFoulMessageToContext(FoulMessage message)
