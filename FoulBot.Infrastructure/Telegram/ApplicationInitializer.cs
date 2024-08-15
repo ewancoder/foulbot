@@ -1,9 +1,13 @@
-﻿using FoulBot.Domain;
-using FoulBot.Infrastructure.Telegram;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using FoulBot.Domain;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 
-namespace FoulBot.App;
+namespace FoulBot.Infrastructure.Telegram;
 
 public sealed class ApplicationInitializer
 {

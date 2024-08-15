@@ -37,22 +37,13 @@
       </ItemGroup>
     </When>
   </Choose>
-
-  <!--<Choose>
-    <When Condition="$(MSBuildProjectName.EndsWith('.Api'))">
-      <PropertyGroup>
-        <GenerateDocumentationFile>True</GenerateDocumentationFile>
-      </PropertyGroup>
-    </When>
-  </Choose>-->
-
   <ItemDefinitionGroup>
-    <!--<PackageReference>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>-->
-    <!--<ProjectReference>
-      <PrivateAssets>all</PrivateAssets>
-    </ProjectReference>-->
+    <PackageReference>
+      <PrivateAssets>compile</PrivateAssets>
+    </PackageReference>
+    <ProjectReference>
+      <PrivateAssets>compile</PrivateAssets>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">

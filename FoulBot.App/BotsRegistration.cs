@@ -1,7 +1,7 @@
 ﻿using FoulBot.Domain;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FoulBot.Api;
+namespace FoulBot.App;
 
 public static class BotsRegistration
 {

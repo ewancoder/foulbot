@@ -4,7 +4,8 @@
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Google.Cloud.TextToSpeech.V1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
-    <PackageReference Include="Serilog" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Sinks.Console" />
