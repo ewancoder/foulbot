@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FoulBot.Domain;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FoulBot.Api;
 
-public sealed class ChatPool
+public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
@@ -18,6 +19,7 @@ public sealed class ChatPool
     private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = new Dictionary<string, IFoulBot>();
     private readonly ConcurrentDictionary<string, IFoulChat> _chats
         = new ConcurrentDictionary<string, IFoulChat>();
+    private bool _isStopping;
 
     public ChatPool(
         ILogger<ChatPool> logger,
@@ -195,6 +197,29 @@ public sealed class ChatPool
         {
             _logger.LogInformation("Releasing lock");
             _lock.Release();
+        }
+    }
+
+    public async ValueTask GracefullyStopAsync()
+    {
+        _isStopping = true;
+
+        await Task.WhenAll(
+            _chats.Values.Select(chat => chat.GracefullyStopAsync()).Concat(
+                _joinedBotsObjects.Values.Select(bot => bot.GracefullyStopAsync())));
+
+        await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_isStopping)
+            await GracefullyStopAsync();
+
+        foreach (var bot in _joinedBotsObjects.Values)
+        {
+            // TODO: Figure out whether interface should be disposable.
+            await ((Domain.FoulBot)bot).DisposeAsync();
         }
     }
 }

@@ -3,8 +3,11 @@
     "FoulBot.App": {
       "commandName": "Project"
     },
-    "Container (Dockerfile)": {
+    "Docker": {
       "commandName": "Docker"
+    },
+    "WSL": {
+      "commandName": "WSL2"
     }
   }
 }

@@ -47,4 +47,6 @@ public interface IFoulChat
     void HandleMessage(FoulMessage message);
 
     void AddMessage(FoulMessage message);
+
+    Task GracefullyStopAsync();
 }
