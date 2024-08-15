@@ -1,4 +1,4 @@
-﻿using FoulBot.App;
+using FoulBot.App;
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>

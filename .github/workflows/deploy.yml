@@ -1,0 +1,68 @@
+name: Build, publish and deploy a Docker image
+
+on:
+  push:
+    branches: [ 'main' ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-publish-and-deploy-image:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Login to GitHub Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    - name: Build and push Docker image
+      id: push
+      uses: docker/build-push-action@v6
+      with:
+        push: true
+        context: .
+        file: FoulBot.App/Dockerfile
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Deploy to DO
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        passphrase: ${{ secrets.PASSWORD }}
+        key: ${{ secrets.KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          docker pull ghcr.io/ewancoder/foulbot:main
+          docker stop foulbot || true
+          docker rm foulbot || true
+          docker run -d \
+            --name foulbot \
+            --restart unless-stopped \
+            --memory 400m \
+            --env-file /data/foulbot/secrets.env \
+            -v /data/foulbot/key.json:/app/key.json \
+            -v /data/foulbot/chats:/app/chats \
+            -v /data/foulbot/allowed_chats:/app/allowed_chats \
+            -v /data/foulbot/logs:/app/logs \
+            -v /data/foulbot/reminders:/app/reminders \
+            ghcr.io/ewancoder/foulbot:main
