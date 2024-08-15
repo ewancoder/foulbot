@@ -7,7 +7,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace FoulBot.Infrastructure;
+namespace FoulBot.Infrastructure.Telegram;
 
 public interface ITelegramBotMessengerFactory
 {

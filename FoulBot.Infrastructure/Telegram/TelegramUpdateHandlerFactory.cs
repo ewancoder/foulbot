@@ -1,9 +1,8 @@
 ﻿using FoulBot.Domain;
-using FoulBot.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Polling;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure.Telegram;
 
 public interface ITelegramUpdateHandlerFactory
 {

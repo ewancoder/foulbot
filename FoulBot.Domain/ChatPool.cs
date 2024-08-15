@@ -4,10 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FoulBot.Domain;
 using Microsoft.Extensions.Logging;
 
-namespace FoulBot.Api;
+namespace FoulBot.Domain;
 
 public sealed class ChatPool : IAsyncDisposable
 {

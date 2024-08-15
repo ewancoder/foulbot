@@ -1,4 +1,4 @@
-﻿namespace FoulBot.Api;
+﻿namespace FoulBot.Domain;
 
 public interface IChatCache
 {

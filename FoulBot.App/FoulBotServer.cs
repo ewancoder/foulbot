@@ -24,13 +24,8 @@ public sealed class FoulBotServer
 
         services
             .AddLogging(configuration, isDebug)
-            .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
-            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
-            .AddTransient<IFoulBotFactory, FoulBotFactory>()
-            .AddTransient<IFoulChatFactory, FoulChatFactory>()
             .AddScoped<ChatLoader>()
             .AddScoped<IChatCache>(x => x.GetRequiredService<ChatLoader>())
-            .AddScoped<ChatPool>()
             .AddScoped<ApplicationInitializer>()
             .AddFoulBotInfrastructure()
             .RegisterBots(isDebug);

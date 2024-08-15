@@ -1,5 +1,5 @@
-﻿using FoulBot.Api;
-using FoulBot.Domain;
+﻿using FoulBot.Domain;
+using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 

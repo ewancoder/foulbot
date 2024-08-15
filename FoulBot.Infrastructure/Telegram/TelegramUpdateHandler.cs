@@ -1,5 +1,8 @@
-﻿using FoulBot.Domain;
-using FoulBot.Infrastructure;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using FoulBot.Domain;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -7,7 +10,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure.Telegram;
 
 public sealed class TelegramUpdateHandler : IUpdateHandler
 {
