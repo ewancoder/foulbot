@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public interface IAllowedChatsProvider
 {

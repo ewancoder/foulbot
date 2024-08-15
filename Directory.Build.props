@@ -8,7 +8,10 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
-
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="System.Text.Json" />
+  </ItemGroup>
   <Choose>
     <When Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
       <PropertyGroup>
@@ -23,6 +26,8 @@
         <PackageReference Include="xunit.runner.visualstudio" />
         <PackageReference Include="AutoFixture.Xunit2" />
         <PackageReference Include="AutoFixture.AutoMoq" />
+        <!-- Next packages are added just so PrivateAssets works with global using -->
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
         <Using Include="Xunit" />
         <Using Include="AutoFixture" />
         <Using Include="AutoFixture.Xunit2" />

@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public sealed class FoulChat : IFoulChat
 {

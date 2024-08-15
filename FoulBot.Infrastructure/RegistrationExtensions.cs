@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using FoulBot.Domain;
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

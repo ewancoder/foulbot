@@ -1,8 +1,6 @@
 ﻿using Azure;
 using Azure.AI.OpenAI;
-using FoulBot.Domain;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using UnidecodeSharpCore;
 
 namespace FoulBot.Infrastructure;

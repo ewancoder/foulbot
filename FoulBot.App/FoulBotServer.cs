@@ -1,9 +1,6 @@
-﻿using FoulBot.Domain;
-using FoulBot.Infrastructure;
-using FoulBot.Infrastructure.Telegram;
+﻿using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace FoulBot.App;
 

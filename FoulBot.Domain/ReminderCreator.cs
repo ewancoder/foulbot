@@ -1,7 +1,4 @@
-﻿using System.Text.Json;
-using Microsoft.Extensions.Logging;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public sealed record Reminder(
     DateTime AtUtc,

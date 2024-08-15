@@ -1,6 +1,4 @@
-﻿using FoulBot.Domain;
-using Microsoft.Extensions.Logging;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 

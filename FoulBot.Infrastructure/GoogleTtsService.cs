@@ -1,6 +1,4 @@
-﻿using FoulBot.Domain;
-using Google.Cloud.TextToSpeech.V1;
-using Microsoft.Extensions.Logging;
+﻿using Google.Cloud.TextToSpeech.V1;
 
 namespace FoulBot.Infrastructure;
 
