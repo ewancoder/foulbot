@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FoulBot.Domain;
+﻿using FoulBot.Domain;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 

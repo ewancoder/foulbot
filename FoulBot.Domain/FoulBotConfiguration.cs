@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public sealed record FoulBotConfiguration
     : IContextReducerConfiguration,

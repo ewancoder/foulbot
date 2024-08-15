@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public static class RespondStrategyExtensions
 {

@@ -1,5 +1,4 @@
-﻿using System;
-using FoulBot.Domain;
+﻿using FoulBot.Domain;
 using Telegram.Bot.Types;
 
 namespace FoulBot.Infrastructure;
