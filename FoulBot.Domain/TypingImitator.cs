@@ -2,20 +2,7 @@
 
 public interface ITypingImitatorFactory
 {
-    TypingImitator ImitateTyping(FoulChatId chatId);
-    TypingImitator ImitateVoiceRecording(FoulChatId chatId);
-}
-
-public static class TypingImitatorFactoryExtensions
-{
-    public static TypingImitator ImitateTyping(
-        this ITypingImitatorFactory factory, FoulChatId chatId, bool isVoice)
-    {
-        if (isVoice)
-            return factory.ImitateVoiceRecording(chatId);
-
-        return factory.ImitateTyping(chatId);
-    }
+    TypingImitator ImitateTyping(FoulChatId chatId, bool isVoice);
 }
 
 public sealed class TypingImitatorFactory : ITypingImitatorFactory
@@ -37,31 +24,10 @@ public sealed class TypingImitatorFactory : ITypingImitatorFactory
         _random = random;
     }
 
-    public TypingImitator ImitateTyping(FoulChatId chatId)
+    public TypingImitator ImitateTyping(FoulChatId chatId, bool isVoice)
     {
         return new TypingImitator(
-            _logger, _botMessenger, _timeProvider, _random, chatId, false);
-    }
-
-    public TypingImitator ImitateVoiceRecording(FoulChatId chatId)
-    {
-        return new TypingImitator(
-            _logger, _botMessenger, _timeProvider, _random, chatId, true);
-    }
-}
-
-public interface ISharedRandomGenerator
-{
-    int Generate(int minInclusive, int maxInclusive);
-}
-
-public sealed class SharedRandomGenerator : ISharedRandomGenerator
-{
-    private readonly Random _random = Random.Shared;
-
-    public int Generate(int minInclusive, int maxInclusive)
-    {
-        return _random.Next(minInclusive, maxInclusive + 1);
+            _logger, _botMessenger, _timeProvider, _random, chatId, isVoice);
     }
 }
 
