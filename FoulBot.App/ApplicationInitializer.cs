@@ -1,55 +1,41 @@
-﻿using FoulBot.Api;
-using FoulBot.Domain;
-using Microsoft.Extensions.Configuration;
-using Telegram.Bot;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
 
 public sealed class ApplicationInitializer
 {
-    private readonly IConfiguration _configuration;
-    private readonly ITelegramUpdateHandlerFactory _factory;
-    private readonly ChatLoader _chatLoader;
     private readonly ChatPool _chatPool;
-    private readonly IEnumerable<KeyValuePair<string, FoulBotConfiguration>> _botConfigs;
+    private readonly IEnumerable<BotConnectionConfiguration> _botConfigs;
+    private readonly ChatLoader _chatLoader;
+    private readonly IServiceProvider _provider;
 
     public ApplicationInitializer(
-        IConfiguration configuration,
-        ITelegramUpdateHandlerFactory factory,
-        ChatLoader chatLoader,
         ChatPool chatPool,
-        IDictionary<string, FoulBotConfiguration> botConfigs)
+        IEnumerable<BotConnectionConfiguration> botConfigs,
+        ChatLoader chatLoader,
+        IServiceProvider provider)
     {
-        _configuration = configuration;
-        _factory = factory;
-        _chatLoader = chatLoader;
         _chatPool = chatPool;
         _botConfigs = botConfigs;
+        _chatLoader = chatLoader;
+        _provider = provider;
     }
 
-    public void Initialize(CancellationToken cancellationToken)
-    {
-        foreach (var botConfig in _botConfigs.ToDictionary()) // Make sure there are no duplicates.
-        {
-            InitializeBot(botConfig.Key, botConfig.Value, cancellationToken);
-        }
-    }
+    public Task InitializeAsync(CancellationToken cancellationToken) => Task.WhenAll(
+        _botConfigs.Select(x => StartHandlingAsync(x, cancellationToken)));
 
     public ValueTask GracefullyShutdownAsync()
         => _chatPool.GracefullyStopAsync();
 
-    private void InitializeBot(
-        string apiConfigurationKeyName,
-        FoulBotConfiguration config,
+    private async Task StartHandlingAsync(
+        BotConnectionConfiguration configuration,
         CancellationToken cancellationToken)
     {
-        var key = _configuration[apiConfigurationKeyName]
-            ?? throw new InvalidOperationException($"Could not get API key from the configuration for bot {config.BotId}.");
+        var key = configuration.Type;
+        var handler = _provider.GetRequiredKeyedService<IBotConnectionHandler>(key);
 
-        var client = new TelegramBotClient(key);
-        client.StartReceiving(_factory.Create(config), cancellationToken: cancellationToken);
+        var botMessenger = await handler.StartHandlingAsync(configuration, cancellationToken);
 
-        // Asynchronously load bot to all the chats where it's supposed to be.
-        _ = _chatLoader.LoadBotToChatAsync(client, _chatPool, config);
+        await _chatLoader.LoadBotToAllChatsAsync(botMessenger, _chatPool, configuration.Configuration, cancellationToken);
     }
 }

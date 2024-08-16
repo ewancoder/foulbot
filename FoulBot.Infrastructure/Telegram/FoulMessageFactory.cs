@@ -1,8 +1,6 @@
-﻿using FoulBot.Domain;
-using Microsoft.Extensions.Logging;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure.Telegram;
 
 public interface IFoulMessageFactory
 {

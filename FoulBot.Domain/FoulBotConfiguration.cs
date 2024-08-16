@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public sealed record FoulBotConfiguration
     : IContextReducerConfiguration,
@@ -21,7 +17,7 @@ public sealed record FoulBotConfiguration
             throw new ArgumentException("Should have at least one keyword.");
 
         FoulBotId = new FoulBotId(botId, botName);
-        Directive = directive;
+        Directive = directive.Replace("\r", string.Empty).Replace('\n', ' ');
         KeyWords = keyWords;
     }
 

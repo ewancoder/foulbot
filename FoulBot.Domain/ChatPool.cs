@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FoulBot.Domain;
-using Microsoft.Extensions.Logging;
+﻿using System.Collections.Concurrent;
 
-namespace FoulBot.Api;
+namespace FoulBot.Domain;
 
 public sealed class ChatPool : IAsyncDisposable
 {
@@ -37,7 +30,7 @@ public sealed class ChatPool : IAsyncDisposable
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -49,12 +42,12 @@ public sealed class ChatPool : IAsyncDisposable
         if (!_chats.TryGetValue(chatId, out var chat))
         {
             _logger.LogInformation("Did not find the chat, creating it.");
-            chat = await GetOrAddFoulChatAsync(chatId);
+            chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
         }
 
         try
         {
-            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory, invitedBy);
+            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory, invitedBy, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -72,7 +65,8 @@ public sealed class ChatPool : IAsyncDisposable
         BotChatStatus status,
         string? invitedByUsername,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory)
+        Func<IFoulChat, IFoulBot> botFactory,
+        CancellationToken cancellationToken)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -87,7 +81,7 @@ public sealed class ChatPool : IAsyncDisposable
             chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
         }
 
-        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername);
+        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername, cancellationToken);
 
         chat.ChangeBotStatus(
             botUsername,
@@ -102,7 +96,8 @@ public sealed class ChatPool : IAsyncDisposable
         string botId,
         FoulMessage message,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory)
+        Func<IFoulChat, IFoulBot> botFactory,
+        CancellationToken cancellationToken)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -117,21 +112,21 @@ public sealed class ChatPool : IAsyncDisposable
             chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
         }
 
-        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory);
+        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, cancellationToken: cancellationToken);
 
         chat.HandleMessage(message);
 
         _logger.LogInformation("Successfully handled message.");
     }
 
-    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(string chatId)
+    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(string chatId, CancellationToken cancellationToken)
     {
         _chats.TryGetValue(chatId, out var chat);
         if (chat != null)
             return chat;
 
         _logger.LogInformation("Chat is not created yet. Waiting for lock to start creating.");
-        await _lock.WaitAsync();
+        await _lock.WaitAsync(cancellationToken);
         try
         {
             _logger.LogInformation("Entered lock for creating the chat.");
@@ -164,7 +159,7 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
@@ -176,7 +171,7 @@ public sealed class ChatPool : IAsyncDisposable
             .BeginScope();
 
         _logger.LogInformation("Did not find the bot, creating and joining it to the chat. Waiting to acquire lock.");
-        await _lock.WaitAsync();
+        await _lock.WaitAsync(cancellationToken);
         try
         {
             _logger.LogInformation("Entered lock for creating and joining the bot.");

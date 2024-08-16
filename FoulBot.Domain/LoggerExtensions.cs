@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public interface IScopedLogger
 {

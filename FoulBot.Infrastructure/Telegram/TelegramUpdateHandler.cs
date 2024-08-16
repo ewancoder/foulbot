@@ -1,13 +1,10 @@
-﻿using FoulBot.Domain;
-using FoulBot.Infrastructure;
-using Microsoft.Extensions.Logging;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace FoulBot.Api;
+namespace FoulBot.Infrastructure.Telegram;
 
 public sealed class TelegramUpdateHandler : IUpdateHandler
 {
@@ -67,10 +64,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 // Intentionally not awaited.
                 Task.Run(async () =>
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(10));
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
                     _logger.LogWarning(exception, "Polling error occurred during potential Telegram downtime.");
                     _pollingErrorCodes.Remove(arException.ErrorCode);
-                });
+                }, cancellationToken);
             }
         }
 
@@ -97,12 +94,12 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         if (DateTime.UtcNow < _coldStarted)
         {
             _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
-            await Task.Delay(2000);
+            await Task.Delay(2000, cancellationToken);
         }
 
         try
         {
-            await HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botMessenger, _botConfiguration, chat));
+            await HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botMessenger, _botConfiguration, chat), cancellationToken);
         }
         catch (Exception exception)
         {
@@ -110,7 +107,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
     }
 
-    private async ValueTask HandleUpdateAsync(string botId, Update update, Func<IFoulChat, IFoulBot> botFactory)
+    private async ValueTask HandleUpdateAsync(string botId, Update update, Func<IFoulChat, IFoulBot> botFactory, CancellationToken cancellationToken)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -147,7 +144,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 ToBotChatStatus(member.Status),
                 invitedByUsername,
                 update.MyChatMember.Chat.Type == ChatType.Private,
-                botFactory);
+                botFactory,
+                cancellationToken);
 
             _logger.LogInformation("Successfully handled NewChatMember update.");
             return;
@@ -190,7 +188,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 botId,
                 message,
                 update.Message.Chat.Type == ChatType.Private,
-                botFactory);
+                botFactory,
+                cancellationToken);
 
             _logger.LogInformation("Successfully handled Message update.");
             return;

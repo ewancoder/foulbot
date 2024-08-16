@@ -242,6 +242,9 @@ dotnet_diagnostic.S1128.severity = error
 # File-scoped namespaces everywhere
 csharp_style_namespace_declarations=file_scoped:error
 
+# CS0168: Variable declared but never used
+dotnet_diagnostic.CS0168.severity = error
+
 
 # == Disabled warnings ==
 

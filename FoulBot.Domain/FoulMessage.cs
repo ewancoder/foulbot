@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public enum BotChatStatus
 {

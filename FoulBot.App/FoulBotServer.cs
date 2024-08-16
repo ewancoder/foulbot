@@ -1,12 +1,5 @@
-﻿using System.Reflection;
-using FoulBot.Api;
-using FoulBot.Domain;
-using FoulBot.Infrastructure;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Serilog;
-using Serilog.Events;
 
 namespace FoulBot.App;
 
@@ -24,16 +17,11 @@ public sealed class FoulBotServer
 
         services
             .AddLogging(configuration, isDebug)
-            .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
-            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
-            .AddTransient<IFoulBotFactory, FoulBotFactory>()
-            .AddTransient<IFoulChatFactory, FoulChatFactory>()
             .AddScoped<ChatLoader>()
             .AddScoped<IChatCache>(x => x.GetRequiredService<ChatLoader>())
-            .AddScoped<ChatPool>()
             .AddScoped<ApplicationInitializer>()
             .AddFoulBotInfrastructure()
-            .RegisterBots(isDebug);
+            .RegisterBots(configuration, isDebug);
 
         {
             using var rootProvider = services.BuildServiceProvider();
@@ -48,7 +36,7 @@ public sealed class FoulBotServer
             var appInitializer = provider.GetRequiredService<ApplicationInitializer>();
             try
             {
-                appInitializer.Initialize(combinedCts.Token);
+                await appInitializer.InitializeAsync(combinedCts.Token);
 
                 logger.LogInformation("Application started.");
                 await Task.Delay(Timeout.Infinite, combinedCts.Token);
@@ -75,47 +63,5 @@ public sealed class FoulBotServer
         }
 
         // Provider and CTSs are disposed here.
-    }
-}
-
-public static class FoulBotServerExtensions
-{
-    public static IConfiguration AddConfiguration(
-        this IServiceCollection services, bool isDebug)
-    {
-        var configurationBuilder = new ConfigurationBuilder()
-            .AddEnvironmentVariables();
-
-        if (isDebug)
-            configurationBuilder.AddUserSecrets(Assembly.GetExecutingAssembly());
-
-        var configuration = configurationBuilder.Build();
-
-        services.AddSingleton<IConfiguration>(configuration);
-
-        return configuration;
-    }
-
-    public static IServiceCollection AddLogging(
-        this IServiceCollection services, IConfiguration configuration, bool isDebug)
-    {
-        var loggerBuilder = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("FoulBot", LogEventLevel.Verbose);
-
-        loggerBuilder = isDebug
-            ? loggerBuilder.WriteTo.Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}\n{Properties}\n{NewLine}{Exception}")
-            : loggerBuilder.WriteTo.Seq(
-                "http://31.146.143.167:5341", apiKey: configuration["SeqApiKey"]);
-        // TODO: Move IP address to configuration.
-
-        var logger = loggerBuilder
-            .Enrich.WithThreadId()
-            .CreateLogger();
-
-        logger.Write(LogEventLevel.Information, "hi");
-
-        return services.AddLogging(builder => builder.AddSerilog(logger, dispose: true));
     }
 }

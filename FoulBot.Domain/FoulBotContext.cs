@@ -1,8 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.Logging;
-
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public interface IFoulBotContext
 {
