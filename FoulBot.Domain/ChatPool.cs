@@ -30,7 +30,7 @@ public sealed class ChatPool : IAsyncDisposable
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -65,7 +65,7 @@ public sealed class ChatPool : IAsyncDisposable
         BotChatStatus status,
         string? invitedByUsername,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory,
+        FoulChatToBotFactory botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -96,7 +96,7 @@ public sealed class ChatPool : IAsyncDisposable
         string botId,
         FoulMessage message,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory,
+        FoulChatToBotFactory botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -159,7 +159,7 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;

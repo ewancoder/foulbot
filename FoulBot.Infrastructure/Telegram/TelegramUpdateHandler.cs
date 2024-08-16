@@ -99,7 +99,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.Create(botMessenger, _botConfiguration, chat), cancellationToken);
+            await HandleUpdateAsync(_botConfiguration.BotId, update, _botFactory.CreateBotFactoryFromChat(botMessenger, _botConfiguration), cancellationToken);
         }
         catch (Exception exception)
         {
@@ -107,7 +107,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
     }
 
-    private async ValueTask HandleUpdateAsync(string botId, Update update, Func<IFoulChat, IFoulBot> botFactory, CancellationToken cancellationToken)
+    private async ValueTask HandleUpdateAsync(string botId, Update update, FoulChatToBotFactory botFactory, CancellationToken cancellationToken)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)

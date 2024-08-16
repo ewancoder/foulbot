@@ -1,5 +1,18 @@
 ﻿namespace FoulBot.Domain;
 
+public delegate IFoulBot FoulChatToBotFactory(IFoulChat chat);
+
+public static class FoulBotFactoryExtensions
+{
+    public static FoulChatToBotFactory CreateBotFactoryFromChat(
+        this IFoulBotFactory botFactory,
+        IBotMessenger botMessenger,
+        FoulBotConfiguration configuration)
+    {
+        return chat => botFactory.Create(botMessenger, configuration, chat);
+    }
+}
+
 public interface IFoulBotFactory
 {
     public IFoulBot Create(
