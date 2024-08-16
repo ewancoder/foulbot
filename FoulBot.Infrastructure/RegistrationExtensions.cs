@@ -7,21 +7,31 @@ using Serilog.Events;
 
 namespace FoulBot.Infrastructure;
 
+public static class Constants
+{
+    public static class BotTypes
+    {
+        public const string Telegram = "telegram";
+        public const string Discord = "discord";
+    }
+}
+
 public static class RegistrationExtensions
 {
     public static IServiceCollection AddFoulBotInfrastructure(this IServiceCollection services)
     {
         return services
-            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()    // Domain
-            .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
+            .AddScoped<IAllowedChatsProvider, AllowedChatsProvider>()    // Domain
+            .AddScoped<IBotDelayStrategy, BotDelayStrategy>()
+            .AddScoped<ChatPool>()
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>()
-            .AddScoped<ChatPool>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
             .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
-            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>();
+            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
+            .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
     }
 
     public static IConfiguration AddConfiguration(

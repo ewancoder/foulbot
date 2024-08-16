@@ -1,23 +1,18 @@
-﻿using Telegram.Bot;
-
-namespace FoulBot.Infrastructure.Telegram;
+﻿namespace FoulBot.App;
 
 public sealed class ChatLoader : IChatCache
 {
     private readonly ILogger<ChatLoader> _logger;
     private readonly IFoulBotFactory _botFactory;
-    private readonly ITelegramBotMessengerFactory _messengerFactory;
     private readonly HashSet<string> _chatIds;
     private readonly object _lock = new object();
 
     public ChatLoader(
         ILogger<ChatLoader> logger,
-        IFoulBotFactory botFactory,
-        ITelegramBotMessengerFactory messengerFactory)
+        IFoulBotFactory botFactory)
     {
         _logger = logger;
         _botFactory = botFactory;
-        _messengerFactory = messengerFactory;
 
         _chatIds = File.Exists("chats")
             ? File.ReadAllText("chats").Split(',').ToHashSet() // HACK: Blocking call.
@@ -25,7 +20,7 @@ public sealed class ChatLoader : IChatCache
     }
 
     public async Task LoadBotToChatAsync(
-        TelegramBotClient client,
+        IBotMessenger botMessenger,
         ChatPool chatPool,
         FoulBotConfiguration configuration)
     {
@@ -38,7 +33,7 @@ public sealed class ChatLoader : IChatCache
             await chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
-                chat => _botFactory.Create(_messengerFactory.Create(client), configuration, chat));
+                chat => _botFactory.Create(botMessenger, configuration, chat));
         }
     }
 

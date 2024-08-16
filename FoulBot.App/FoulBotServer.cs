@@ -1,5 +1,4 @@
-﻿using FoulBot.Infrastructure.Telegram;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
@@ -22,7 +21,7 @@ public sealed class FoulBotServer
             .AddScoped<IChatCache>(x => x.GetRequiredService<ChatLoader>())
             .AddScoped<ApplicationInitializer>()
             .AddFoulBotInfrastructure()
-            .RegisterBots(isDebug);
+            .RegisterBots(configuration, isDebug);
 
         {
             using var rootProvider = services.BuildServiceProvider();
@@ -37,7 +36,7 @@ public sealed class FoulBotServer
             var appInitializer = provider.GetRequiredService<ApplicationInitializer>();
             try
             {
-                appInitializer.Initialize(combinedCts.Token);
+                await appInitializer.InitializeAsync(combinedCts.Token);
 
                 logger.LogInformation("Application started.");
                 await Task.Delay(Timeout.Infinite, combinedCts.Token);
