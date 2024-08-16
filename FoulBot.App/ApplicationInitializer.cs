@@ -36,6 +36,6 @@ public sealed class ApplicationInitializer
 
         var botMessenger = await handler.StartHandlingAsync(configuration, cancellationToken);
 
-        await _chatLoader.LoadBotToChatAsync(botMessenger, _chatPool, configuration.Configuration);
+        await _chatLoader.LoadBotToAllChatsAsync(botMessenger, _chatPool, configuration.Configuration, cancellationToken);
     }
 }

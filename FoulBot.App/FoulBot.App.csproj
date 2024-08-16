@@ -9,6 +9,22 @@
     <UserSecretsId>46aa42b7-b77d-46fa-8191-54e3e1f288ca</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="reminders\**" />
+    <EmbeddedResource Remove="reminders\**" />
+    <None Remove="reminders\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="allowed_chats" />
+    <None Remove="chats" />
+    <None Remove="ewancoder-bot1.chats" />
+    <None Remove="ewancoder_1bot.chats" />
+    <None Remove="ewancoder_pidorbot.chats" />
+    <None Remove="ew_meatbagsbot.chats" />
+    <None Remove="ew_pidorbot.chats" />
+    <None Remove="ew_test.chats" />
+    <None Remove="key.json" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
