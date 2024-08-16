@@ -214,7 +214,9 @@ public sealed class ChatPool : IAsyncDisposable
         foreach (var bot in _joinedBotsObjects.Values)
         {
             // TODO: Figure out whether interface should be disposable.
-            await ((Domain.FoulBot)bot).DisposeAsync();
+            await ((FoulBot)bot).DisposeAsync();
         }
+
+        _lock.Dispose();
     }
 }
