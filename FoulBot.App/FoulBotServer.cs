@@ -17,6 +17,8 @@ public sealed class FoulBotServer
 
         services
             .AddLogging(configuration, isDebug)
+            .AddSingleton(TimeProvider.System)
+            .AddScoped<ISharedRandomGenerator, SharedRandomGenerator>()
             .AddScoped<ChatLoader>()
             .AddScoped<IChatCache>(x => x.GetRequiredService<ChatLoader>())
             .AddScoped<ApplicationInitializer>()
