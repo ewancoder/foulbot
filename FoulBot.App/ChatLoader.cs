@@ -35,7 +35,6 @@ public sealed class ChatLoader : IChatCache, IDisposable
             if (chatId.Contains('$') && chatId.Split('$')[1] != configuration.BotId)
                 return Task.CompletedTask;
 
-            // TODO: Pass cancellationToken here.
             return chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
