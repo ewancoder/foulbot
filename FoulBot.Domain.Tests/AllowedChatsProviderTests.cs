@@ -7,7 +7,7 @@ public class AllowedChatsProviderTests
         string fileName,
         FoulChatId chatId)
     {
-        var sut = new AllowedChatsProvider(fileName);
+        using var sut = new AllowedChatsProvider(fileName);
 
         Assert.False(await sut.IsAllowedChatAsync(chatId));
 
@@ -25,7 +25,7 @@ public class AllowedChatsProviderTests
     {
         Assert.False(File.Exists(fileName));
 
-        var sut = new AllowedChatsProvider(fileName);
+        using var sut = new AllowedChatsProvider(fileName);
         await sut.IsAllowedChatAsync(new(fileName));
 
         Assert.True(File.Exists(fileName));
