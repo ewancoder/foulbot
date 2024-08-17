@@ -16,7 +16,8 @@ public abstract class Testing : IDisposable
     protected Mock<TObject> Freeze<TObject>() where TObject : class
         => Fixture.Freeze<Mock<TObject>>();
 
-    protected Task WaitAsync() => Task.Delay(10);
+    protected Task WaitAsync() => Task.Delay(5);
+    protected Task WaitAsync(Task task) => Task.WhenAny(task, WaitAsync());
     protected void AdvanceTime(int milliseconds) => TimeProvider.Advance(TimeSpan.FromMilliseconds(milliseconds));
 
     public virtual void Dispose()

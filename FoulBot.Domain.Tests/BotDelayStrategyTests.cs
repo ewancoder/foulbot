@@ -8,6 +8,8 @@ public class BotDelayStrategyTests : Testing
     public BotDelayStrategyTests()
     {
         _random = Freeze<ISharedRandomGenerator>();
+        _random.Setup(x => x.Generate(It.IsAny<int>(), It.IsAny<int>()))
+            .Returns(100_000_000);
 
         _sut = Fixture.Create<BotDelayStrategy>();
     }
@@ -19,8 +21,6 @@ public class BotDelayStrategyTests : Testing
     {
         var correctDelay = 10_000;
 
-        _random.Setup(x => x.Generate(It.IsAny<int>(), It.IsAny<int>()))
-            .Returns(100_000_000);
         _random.Setup(x => x.Generate(1, 100)).Returns(randomNumberGenerated);
         _random.Setup(x => x.Generate(minimumDelay, maximumDelay)).Returns(correctDelay);
 
@@ -33,8 +33,21 @@ public class BotDelayStrategyTests : Testing
         Assert.False(task.IsCompleted);
 
         AdvanceTime(1);
+        await WaitAsync(task);
+        Assert.True(task.IsCompletedSuccessfully);
+    }
+
+    [Fact]
+    public async Task DelayAsync_ShouldCancelDelay_WhenCancellationRequested()
+    {
+        var task = _sut.DelayAsync(Cts.Token).AsTask();
         await WaitAsync();
-        Assert.True(task.IsCompleted);
+        Assert.False(task.IsCompleted);
+
+        await Cts.CancelAsync();
+        await WaitAsync(task);
+
+        Assert.True(task.IsCanceled);
     }
 }
 
