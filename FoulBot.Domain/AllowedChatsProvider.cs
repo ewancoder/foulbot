@@ -45,7 +45,10 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 
     private async ValueTask SaveChangesAsync()
     {
-        var serialized = JsonSerializer.Serialize(_allowedChats);
+        var allowedChats = await GetAllowedChatsAsync();
+
+        var serialized = JsonSerializer.Serialize(
+            allowedChats.Keys.Select(chatId => chatId.Value));
 
         await _lock.WaitAsync();
         try

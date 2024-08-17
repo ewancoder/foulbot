@@ -3,29 +3,30 @@
 public class AllowedChatsProviderTests
 {
     [Theory, AutoMoqData]
-    public void ShouldReadAndWrite(
+    public async Task ShouldReadAndWrite(
         string fileName,
         FoulChatId chatId)
     {
         var sut = new AllowedChatsProvider(fileName);
 
-        Assert.False(sut.IsAllowedChat(chatId));
+        Assert.False(await sut.IsAllowedChatAsync(chatId));
 
-        sut.AddAllowedChat(chatId);
+        await sut.AllowChatAsync(chatId);
 
-        Assert.True(sut.IsAllowedChat(chatId));
+        Assert.True(await sut.IsAllowedChatAsync(chatId));
 
-        sut.RemoveAllowedChat(chatId);
+        await sut.DisallowChatAsync(chatId);
 
-        Assert.False(sut.IsAllowedChat(chatId));
+        Assert.False(await sut.IsAllowedChatAsync(chatId));
     }
 
     [Theory, AutoMoqData]
-    public void ShouldCreateFileIfNotExists(string fileName)
+    public async Task ShouldCreateFileIfNotExists(string fileName)
     {
         Assert.False(File.Exists(fileName));
 
-        _ = new AllowedChatsProvider(fileName);
+        var sut = new AllowedChatsProvider(fileName);
+        await sut.IsAllowedChatAsync(new(fileName));
 
         Assert.True(File.Exists(fileName));
     }
