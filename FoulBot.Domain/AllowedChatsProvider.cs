@@ -71,8 +71,10 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         await _lock.WaitAsync();
         try
         {
+#pragma warning disable CA1508 // False positive: It is updated below.
             if (_allowedChats != null)
                 return _allowedChats;
+#pragma warning restore CA1508
 
             if (!File.Exists(_fileName))
                 await File.WriteAllTextAsync(_fileName, "[]");
