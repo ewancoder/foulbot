@@ -1,6 +1,13 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using Moq;
+
+namespace FoulBot.Domain.Tests;
 
 public abstract class Testing
 {
-    protected IFixture _fixture = AutoMoqDataAttribute.CreateFixture();
+    protected IFixture Fixture { get; } = AutoMoqDataAttribute.CreateFixture();
+
+    protected TObject Create<TObject>() => Fixture.Create<TObject>();
+
+    protected Mock<TObject> Freeze<TObject>() where TObject : class
+        => Fixture.Freeze<Mock<TObject>>();
 }

@@ -7,10 +7,10 @@ public class AllowedChatsProviderTests : Testing, IDisposable
 
     public AllowedChatsProviderTests()
     {
-        _fileName = _fixture.Create<string>();
-        _fixture.Customizations.Add(new AllowedChatsProviderBuilder(_fileName));
+        _fileName = Fixture.Create<string>();
+        Fixture.Customizations.Add(new AllowedChatsProviderBuilder(_fileName));
 
-        _sut = _fixture.Create<AllowedChatsProvider>();
+        _sut = Fixture.Create<AllowedChatsProvider>();
     }
 
     [Theory, AutoMoqData]
@@ -40,7 +40,7 @@ public class AllowedChatsProviderTests : Testing, IDisposable
     [Fact]
     public async Task ShouldWorkConcurrently()
     {
-        var ids = _fixture.CreateMany<FoulChatId>(100);
+        var ids = Fixture.CreateMany<FoulChatId>(100);
 
         await Parallel.ForEachAsync(ids, new ParallelOptions
         {
@@ -61,7 +61,7 @@ public class AllowedChatsProviderTests : Testing, IDisposable
         await _sut.AllowChatAsync(chatId);
         Assert.True(await _sut.IsAllowedChatAsync(chatId));
 
-        using var _sut2 = _fixture.Create<AllowedChatsProvider>();
+        using var _sut2 = Fixture.Create<AllowedChatsProvider>();
         Assert.True(await _sut2.IsAllowedChatAsync(chatId));
     }
 
