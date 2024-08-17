@@ -1,4 +1,4 @@
-name: Build, test, publish and deploy (if main) a Docker image
+name: CI
 
 on:
   push:
@@ -11,11 +11,7 @@ env:
 jobs:
   test:
     name: build-and-test-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false # So that windows tests continue even if linux fails.
-      matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
@@ -27,14 +23,45 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Test
-      run: dotnet test --logger trx --logger html --results-directory test-results-${{ matrix.os }}
+      run: dotnet test --logger trx --logger html --results-directory coverage --collect "XPlat Code Coverage"
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
+      if: '!cancelled()'
       with:
-        name: dotnet-results-${{ matrix.os }}
-        path: test-results-${{ matrix.os }}
-      if: ${{ always() }} # So that failing tests won't prevent publishing the results
+        name: coverage
+        path: coverage
+
+    - name: Code coverage summary report
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      if: '!cancelled()'
+      with:
+        filename: 'coverage/*/coverage.cobertura.xml'
+        badge: true
+        format: 'markdown'
+        output: 'both'
+        fail_below_min: true
+        thresholds: '0 80'
+
+    - name: Write to Job Summary
+      run: |
+        cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY |
+        echo COVERAGE=$(cat code-coverage-results.md | awk -F '|' '{print $2}' | sed -n 's/.*\*\*\([0-9]*\)%.*/\1/p') >> $GITHUB_ENV
+      if: '!cancelled()'
+
+    - name: Create Awesome Badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      if: '!cancelled()'
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: ${{ secrets.GIST_ID }}
+        filename: coverage-${{ github.ref_name }}.json
+        label: Coverage
+        message: ${{ env.COVERAGE }}%
+        valColorRange: ${{ env.COVERAGE }}
+        maxColorRange: 80
+        minColorRange: 3
+        color: orange
 
   build-publish-and-deploy-image:
     runs-on: ubuntu-latest
