@@ -39,7 +39,7 @@ public sealed class TypingImitator : IAsyncDisposable
 {
     private const int MinRandomWaitMs = 1500;
     private const int MaxRandomWaitMs = 10000;
-    private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+    private readonly CancellationTokenSource _cts = new();
     private readonly ILogger<TypingImitator> _logger;
     private readonly IBotMessenger _messenger;
     private readonly TimeProvider _timeProvider;

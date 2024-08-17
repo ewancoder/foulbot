@@ -92,7 +92,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
             new ContextPreserverClient(
                 _contextPreserverClientLogger,
                 _aiClientFactory,
+                _random,
                 configuration.Directive,
-                configuration.OpenAIModel));
+                configuration.OpenAIModel),
+            _random);
     }
 }

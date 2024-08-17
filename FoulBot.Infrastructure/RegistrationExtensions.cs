@@ -72,5 +72,4 @@ public static class RegistrationExtensions
 
         return services.AddLogging(builder => builder.AddSerilog(logger, dispose: true));
     }
-
 }

@@ -11,6 +11,8 @@ public sealed class SharedRandomGenerator : ISharedRandomGenerator
 
     public int Generate(int minInclusive, int maxInclusive)
     {
+#pragma warning disable CA5394 // Do not use insecure randomness
         return _random.Next(minInclusive, maxInclusive + 1);
+#pragma warning restore CA5394 // Do not use insecure randomness
     }
 }

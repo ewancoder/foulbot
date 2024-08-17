@@ -7,11 +7,10 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
-    private readonly HashSet<string> _joinedBots = new HashSet<string>();
-    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = new Dictionary<string, IFoulBot>();
-    private readonly ConcurrentDictionary<string, IFoulChat> _chats
-        = new ConcurrentDictionary<string, IFoulChat>();
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly HashSet<string> _joinedBots = [];
+    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
+    private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
     private bool _isStopping;
 
     public ChatPool(
@@ -138,13 +137,13 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the chat and caching it for future.");
-            var longChatId = chatId.Contains("$")
+            var longChatId = chatId.Contains('$')
                 ? Convert.ToInt64(chatId.Split("$")[0])
                 : Convert.ToInt64(chatId);
-            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains("$"));
+            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains('$'));
             chat = _chats.GetOrAdd(chatId, chat);
 
-            if (chatId.Contains("$"))
+            if (chatId.Contains('$'))
                 _logger.LogInformation("Created a PRIVATE chat.");
 
             _chatCache.AddChat(chatId);

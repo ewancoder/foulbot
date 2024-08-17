@@ -5,9 +5,9 @@ public sealed class FoulChat : IFoulChat
     private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _chatCreatedAt;
-    private readonly Dictionary<string, FoulMessage> _contextMessages = new Dictionary<string, FoulMessage>();
-    private readonly List<FoulMessage> _context = new List<FoulMessage>(1000);
-    private readonly object _lock = new object();
+    private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly List<FoulMessage> _context = new(1000);
+    private readonly object _lock = new();
     private bool _isStopping;
 
     public FoulChat(ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
@@ -30,7 +30,7 @@ public sealed class FoulChat : IFoulChat
     public event EventHandler<FoulMessage>? MessageReceived;
     public event EventHandler<FoulStatusChanged>? StatusChanged;
 
-    public List<FoulMessage> GetContextSnapshot()
+    public IList<FoulMessage> GetContextSnapshot()
     {
         // Instead of locking.
         while (true)
@@ -167,10 +167,9 @@ public sealed class FoulChat : IFoulChat
                 return false;
             }
 
-            if (_contextMessages.ContainsKey(message.Id))
+            if (_contextMessages.TryGetValue(message.Id, out var existing))
             {
                 _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
-                var existing = _contextMessages[message.Id];
                 existing.ReplyTo = message.ReplyTo;
                 return false; // Discard the message after updating existing message.
             }

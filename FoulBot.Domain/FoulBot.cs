@@ -24,19 +24,19 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IFoulBotContext _botContext;
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IContextPreserverClient _contextPreserverClient;
-    private readonly Random _random = new Random();
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private readonly ISharedRandomGenerator _random;
+    private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ReminderCreator _reminderCreator;
     private readonly Task _botOnlyDecrementTask;
     private readonly Task? _talkByTime;
-    private readonly CancellationTokenSource _cts = new CancellationTokenSource(); // TODO: Make IDisposable.
+    private readonly CancellationTokenSource _cts = new();
     private bool _isStopping;
 
     private int _randomReplyEveryMessages;
-    private bool _subscribed = false;
-    private int _botToBotCommunicationCounter = 0;
-    private int _audioCounter = 0;
-    private int _replyEveryMessagesCounter = 0;
+    private bool _subscribed;
+    private int _botToBotCommunicationCounter;
+    private int _audioCounter;
+    private int _replyEveryMessagesCounter;
 
     public FoulBot(
         ILogger<ReminderCreator> reminderLogger,
@@ -51,7 +51,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         IContextReducer contextReducer,
         IFoulBotContext botContext,
         IBotDelayStrategy delayStrategy,
-        IContextPreserverClient contextPreserverClient)
+        IContextPreserverClient contextPreserverClient,
+        ISharedRandomGenerator random)
     {
         _botContext = botContext;
         _logger = logger;
@@ -65,6 +66,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _contextReducer = contextReducer;
         _delayStrategy = delayStrategy;
         _contextPreserverClient = contextPreserverClient;
+        _random = random;
         _reminderCreator = new ReminderCreator(
             reminderLogger, _chat.ChatId, _config.FoulBotId, _cts.Token);
 
@@ -81,8 +83,6 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         if (_config.WriteOnYourOwn)
             _talkByTime = TalkByTimeAsync();
     }
-
-    private bool ShouldReplyByCount() => _config.ReplyEveryMessages > 0 && _replyEveryMessagesCounter >= _config.ReplyEveryMessages;
 
     private async Task DecrementBotToBotCommunicationCounterAsync()
     {
@@ -102,9 +102,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     {
         while (!_isStopping)
         {
-            var waitMinutes = _random.Next(60, 720);
+            var waitMinutes = _random.Generate(60, 720);
             if (waitMinutes < 120)
-                waitMinutes = _random.Next(60, 720);
+                waitMinutes = _random.Generate(60, 720);
 
             _logger.LogInformation("Prepairing to wait for a message based on time, {WaitMinutes} minutes.", waitMinutes);
             await Task.Delay(TimeSpan.FromMinutes(waitMinutes), _cts.Token);
@@ -125,7 +125,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     public string ChatId => _chat.ChatId.ToString();
     public IEnumerable<Reminder> AllReminders => _reminderCreator.AllReminders;
 
-    private void OnRemind(object? sender, Reminder reminder) => RemindAsync(reminder);
+    private void OnRemind(object? sender, Reminder reminder) => _ = RemindAsync(reminder);
 
     // TODO: Figure out how scope goes down here and whether I need to configure this at all.
     private IScopedLogger Logger => _logger
@@ -138,7 +138,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
         _replyEveryMessagesCounter = 0;
 
-        var count = _random.Next(Math.Max(1, _config.ReplyEveryMessages - 5), _config.ReplyEveryMessages + 15);
+        var count = _random.Generate(Math.Max(1, _config.ReplyEveryMessages - 5), _config.ReplyEveryMessages + 15);
         _randomReplyEveryMessages = count;
 
         _logger.LogInformation("Reset next mandatory reply after {Count} messages.", count);
@@ -177,9 +177,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 _logger.LogInformation("The bot has been invited by a person. Sending a welcome message.");
 
-                if (_config.Stickers.Any())
+                if (_config.Stickers.Count != 0)
                 {
-                    var sticker = _config.Stickers.ElementAt(_random.Next(0, _config.Stickers.Count));
+                    var sticker = _config.Stickers.ElementAt(_random.Generate(0, _config.Stickers.Count));
                     await _botMessenger.SendStickerAsync(_chat.ChatId, sticker);
 
                     _logger.LogInformation("Sent welcome sticker {StickerId}.", sticker);
@@ -310,7 +310,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             var reminders = string.Join("\n\n", _reminderCreator.AllReminders);
 
             // Unfortunately this method is not async so we can't await. But it's ok for this hacky functional.
-            _ = _botMessenger.SendTextMessageAsync(_chat.ChatId, reminders);
+            _ = _botMessenger.SendTextMessageAsync(_chat.ChatId, reminders).AsTask();
             return;
         }
 
@@ -515,7 +515,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             _logger.LogDebug("Waiting for between 1 and 8 seconds after replying, before the next handle cycle starts.");
 
             // Wait at least 1 second after each reply, but random up to 8.
-            await Task.Delay(TimeSpan.FromMilliseconds(_random.Next(1000, 8000)));
+            await Task.Delay(TimeSpan.FromMilliseconds(_random.Generate(1000, 8000)));
 
             _logger.LogDebug("Releasing the message handling lock.");
             _lock.Release();
@@ -525,13 +525,13 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     // TODO: Consider the situation: You write A, bot starts to type, you write B while bot is typing, bot writes C.
     // The context is as follows: You:A, You:B, Bot:C. But bot did not respond to your B message, he replied to your A message.
     // Currently he will NOT proceed to reply to your B message because the last message is HIS one.
-    private List<FoulMessage>? GetSnapshotIfNeedToReply(FoulMessage triggeredByMessage, out bool isBotToBotCommunication)
+    private IList<FoulMessage>? GetSnapshotIfNeedToReply(FoulMessage triggeredByMessage, out bool isBotToBotCommunication)
     {
         isBotToBotCommunication = false;
         _logger.LogTrace("Getting current context snapshot.");
         var snapshot = _botContext.GetUnprocessedSnapshot();
 
-        if (!snapshot.Any())
+        if (snapshot.Count == 0)
         {
             _logger.LogDebug("There are no unprocessed messages. Skipping replying.");
             return null;
@@ -584,5 +584,6 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await GracefullyStopAsync();
 
         _cts.Dispose();
+        _lock.Dispose();
     }
 }

@@ -16,7 +16,7 @@ public sealed class ReminderCreator
     private readonly FoulChatId _chatId;
     private readonly FoulBotId _botId;
 
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
     private readonly Dictionary<string, Reminder> _reminders;
     private readonly ILogger<ReminderCreator> _logger;
     private readonly Task _running;
@@ -160,8 +160,7 @@ public sealed class ReminderCreator
     {
         lock (_lock)
         {
-            if (_reminders.ContainsKey(reminderId))
-                _reminders.Remove(reminderId);
+            _reminders.Remove(reminderId);
         }
     }
 }

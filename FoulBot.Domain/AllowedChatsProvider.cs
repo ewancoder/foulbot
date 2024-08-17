@@ -10,7 +10,7 @@ public interface IAllowedChatsProvider
 public sealed class AllowedChatsProvider : IAllowedChatsProvider
 {
     private readonly string _fileName;
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
     private readonly List<string> _allowedChats;
 
     public AllowedChatsProvider(string fileName = "allowed_chats")

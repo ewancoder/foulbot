@@ -3,7 +3,7 @@
 public interface IScopedLogger
 {
     IScopedLogger AddScoped(string key, object? value);
-    IDisposable BeginScope();
+    IDisposable? BeginScope();
 }
 
 public static class LoggerExtensions
@@ -11,8 +11,7 @@ public static class LoggerExtensions
     public sealed class ScopeBuilder<T> : IScopedLogger
     {
         private readonly ILogger<T> _logger;
-        private readonly Dictionary<string, object?> _scope
-            = new Dictionary<string, object?>();
+        private readonly Dictionary<string, object?> _scope = [];
 
         public ScopeBuilder(ILogger<T> logger)
         {
@@ -38,7 +37,7 @@ public static class LoggerExtensions
     }
 
     public static ScopeBuilder<T> AddScoped<T>(this ILogger<T> logger)
-        => new ScopeBuilder<T>(logger);
+        => new(logger);
 
     public static ScopeBuilder<T> AddScoped<T>(this ILogger<T> logger, string key, object? value)
     {

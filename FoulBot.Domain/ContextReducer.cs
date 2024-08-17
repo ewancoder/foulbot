@@ -10,7 +10,7 @@ public interface IContextReducerConfiguration
 
 public interface IContextReducer
 {
-    public List<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext);
+    public ICollection<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext);
 }
 
 public sealed class ContextReducer : IContextReducer
@@ -26,8 +26,9 @@ public sealed class ContextReducer : IContextReducer
         _config = config;
     }
 
-    public List<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext)
+    public ICollection<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext)
     {
+        // TODO: Rewrite to avoid multiple enumerations.
         var onlyAddressedToMe = fullContext
             .Where(message => _respondStrategy.ShouldRespond(message) || IsMyOwnMessage(message))
             .Select(message =>
@@ -68,9 +69,11 @@ public sealed class ContextReducer : IContextReducer
             .TakeLast(_config.ContextSize)
             .ToList();
 
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false) }
-            .Concat(combinedContext)
-            .ToList();
+        return
+        [
+            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+            .. combinedContext,
+        ];
     }
 
     private bool IsMyOwnMessage(FoulMessage message)
@@ -93,7 +96,7 @@ public sealed class AddressedToMeContextReducer : IContextReducer
         _config = config;
     }
 
-    public List<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext)
+    public ICollection<FoulMessage> GetReducedContext(IEnumerable<FoulMessage> fullContext)
     {
         var onlyAddressedToMe = fullContext
             .Where(message => _respondStrategy.ShouldRespond(message) || IsMyOwnMessage(message))
@@ -118,9 +121,11 @@ public sealed class AddressedToMeContextReducer : IContextReducer
             .TakeLast(_config.ContextSize)
             .ToList();
 
-        return new[] { new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false) }
-            .Concat(combinedContext)
-            .ToList();
+        return
+        [
+            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+            .. combinedContext,
+        ];
     }
 
     private bool IsMyOwnMessage(FoulMessage message)

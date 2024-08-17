@@ -10,28 +10,31 @@ public interface IBotDelayStrategy
 
 public sealed class BotDelayStrategy : IBotDelayStrategy
 {
-    private readonly Random _random = new Random();
     private readonly ILogger<BotDelayStrategy> _logger;
+    private readonly ISharedRandomGenerator _random;
 
-    public BotDelayStrategy(ILogger<BotDelayStrategy> logger)
+    public BotDelayStrategy(
+        ILogger<BotDelayStrategy> logger,
+        ISharedRandomGenerator random)
     {
         _logger = logger;
+        _random = random;
     }
 
     public async ValueTask DelayAsync()
     {
-        var delay = _random.Next(1, 100);
+        var delay = _random.Generate(1, 100);
         if (delay > 90)
         {
-            delay = _random.Next(5000, 20000);
+            delay = _random.Generate(5000, 20000);
         }
         if (delay <= 90 && delay > 70)
         {
-            delay = _random.Next(1500, 5000);
+            delay = _random.Generate(1500, 5000);
         }
         if (delay <= 70)
         {
-            delay = _random.Next(200, 1200);
+            delay = _random.Generate(200, 1200);
         }
 
         _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
