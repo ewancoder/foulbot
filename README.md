@@ -2,11 +2,13 @@
 
 ## Production status
 
-![production ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg)
+![ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=main)
+![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/coverage-main.json)
 
 ## Development status
 
-![development ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=develop)
+![ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=develop)
+![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/coverage-develop.json)
 
 ## What it's about
 
