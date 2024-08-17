@@ -27,7 +27,7 @@ public class AllowedChatsProviderTests : Testing, IDisposable
         Assert.False(await _sut.IsAllowedChatAsync(chatId));
     }
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task ShouldCreateFileIfNotExists()
     {
         Assert.False(File.Exists(_fileName));
@@ -37,7 +37,7 @@ public class AllowedChatsProviderTests : Testing, IDisposable
         Assert.True(File.Exists(_fileName));
     }
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task ShouldWorkConcurrently()
     {
         var fixture = AutoMoqDataAttribute.CreateFixture();
