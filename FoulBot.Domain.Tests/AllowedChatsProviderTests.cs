@@ -40,8 +40,7 @@ public class AllowedChatsProviderTests : Testing, IDisposable
     [Fact]
     public async Task ShouldWorkConcurrently()
     {
-        var fixture = AutoMoqDataAttribute.CreateFixture();
-        var ids = fixture.CreateMany<FoulChatId>(100);
+        var ids = _fixture.CreateMany<FoulChatId>(100);
 
         await Parallel.ForEachAsync(ids, new ParallelOptions
         {
