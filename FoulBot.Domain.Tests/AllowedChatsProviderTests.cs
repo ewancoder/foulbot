@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public class AllowedChatsProviderTests : Testing, IDisposable
+public class AllowedChatsProviderTests : Testing
 {
     private readonly string _fileName;
     private readonly AllowedChatsProvider _sut;
@@ -65,9 +65,10 @@ public class AllowedChatsProviderTests : Testing, IDisposable
         Assert.True(await _sut2.IsAllowedChatAsync(chatId));
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         _sut.Dispose();
+        base.Dispose();
     }
 }
 
