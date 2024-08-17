@@ -61,7 +61,6 @@ jobs:
         valColorRange: ${{ env.COVERAGE }}
         maxColorRange: 80
         minColorRange: 3
-        color: orange
 
   build-publish-and-deploy-image:
     runs-on: ubuntu-latest
