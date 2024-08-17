@@ -38,7 +38,7 @@ public sealed class ChatLoader : IChatCache, IDisposable
             return chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
-                chat => _botFactory.Create(botMessenger, configuration, chat),
+                _botFactory.CreateBotFactoryFromChat(botMessenger, configuration),
                 cancellationToken: cancellationToken);
         }));
     }

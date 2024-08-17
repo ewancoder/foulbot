@@ -31,8 +31,8 @@ public sealed record FoulMessage(
 
     public override string ToString()
     {
-        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType.ToString()} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
+        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
     }
 
-    public static FoulMessage ByTime() => new FoulMessage("ByTime", FoulMessageType.System, "ByTime", "ByTime", DateTime.UtcNow, false);
+    public static FoulMessage ByTime() => new("ByTime", FoulMessageType.System, "ByTime", "ByTime", DateTime.UtcNow, false);
 }

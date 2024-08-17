@@ -13,7 +13,7 @@ public sealed record FoulBotConfiguration
         if (botId == null || botName == null || directive == null || keyWords == null)
             throw new ArgumentException("One of the arguments is null.");
 
-        if (!keyWords.Any())
+        if (keyWords.Count == 0)
             throw new ArgumentException("Should have at least one keyword.");
 
         FoulBotId = new FoulBotId(botId, botName);
@@ -31,12 +31,12 @@ public sealed record FoulBotConfiguration
     public int ContextSize { get; init; } = 30;
     public int MaxContextSizeInCharacters { get; init; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;
-    public int MessagesBetweenVoice { get; init; } = 0;
-    public bool UseOnlyVoice { get; init; } = false;
+    public int MessagesBetweenVoice { get; init; }
+    public bool UseOnlyVoice { get; init; }
     public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 1;
     public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 8 * 60 * 60;
     public bool NotAnAssistant { get; init; } = true;
-    public HashSet<string> Stickers { get; } = new HashSet<string>();
+    public HashSet<string> Stickers { get; } = [];
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool WriteOnYourOwn { get; init; } = true;
 

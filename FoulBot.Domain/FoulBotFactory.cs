@@ -1,5 +1,18 @@
 ﻿namespace FoulBot.Domain;
 
+public delegate IFoulBot FoulChatToBotFactory(IFoulChat chat);
+
+public static class FoulBotFactoryExtensions
+{
+    public static FoulChatToBotFactory CreateBotFactoryFromChat(
+        this IFoulBotFactory botFactory,
+        IBotMessenger botMessenger,
+        FoulBotConfiguration configuration)
+    {
+        return chat => botFactory.Create(botMessenger, configuration, chat);
+    }
+}
+
 public interface IFoulBotFactory
 {
     public IFoulBot Create(
@@ -18,6 +31,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly IGoogleTtsService _googleTtsService;
     private readonly IBotDelayStrategy _delayStrategy;
+    private readonly TimeProvider _timeProvider;
+    private readonly ISharedRandomGenerator _random;
 
     public FoulBotFactory(
         ILogger<FoulBot> logger,
@@ -27,7 +42,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ILogger<ReminderCreator> reminderLogger,
         IFoulAIClientFactory aiClientFactory,
         IGoogleTtsService googleTtsService,
-        IBotDelayStrategy delayStrategy)
+        IBotDelayStrategy delayStrategy,
+        TimeProvider timeProvider,
+        ISharedRandomGenerator random)
     {
         _logger = logger;
         _typingImitatorLogger = typingImitatorLogger;
@@ -37,7 +54,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _aiClientFactory = aiClientFactory;
         _googleTtsService = googleTtsService;
         _delayStrategy = delayStrategy;
-        // TODO: Use cancellation token.
+        _timeProvider = timeProvider;
+        _random = random;
     }
 
     public IFoulBot Create(
@@ -46,7 +64,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         IFoulChat chat)
     {
         var typingImitatorFactory = new TypingImitatorFactory(
-            _typingImitatorLogger, botMessenger);
+            _typingImitatorLogger, botMessenger, _timeProvider, _random);
 
         var respondStrategy = new MessageRespondStrategy(
             configuration, chat.IsPrivateChat);
@@ -74,7 +92,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
             new ContextPreserverClient(
                 _contextPreserverClientLogger,
                 _aiClientFactory,
+                _random,
                 configuration.Directive,
-                configuration.OpenAIModel));
+                configuration.OpenAIModel),
+            _random);
     }
 }

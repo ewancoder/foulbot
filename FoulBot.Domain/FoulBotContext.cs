@@ -2,8 +2,8 @@
 
 public interface IFoulBotContext
 {
-    List<FoulMessage> GetUnprocessedSnapshot();
-    void Process(List<FoulMessage> context);
+    IList<FoulMessage> GetUnprocessedSnapshot();
+    void Process(IList<FoulMessage> context);
 }
 
 public sealed class FoulBotContext : IFoulBotContext
@@ -20,7 +20,7 @@ public sealed class FoulBotContext : IFoulBotContext
         _chat = chat;
     }
 
-    public List<FoulMessage> GetUnprocessedSnapshot()
+    public IList<FoulMessage> GetUnprocessedSnapshot()
     {
         var snapshot = _chat.GetContextSnapshot();
         if (_lastProcessedMessageId != null)
@@ -36,7 +36,7 @@ public sealed class FoulBotContext : IFoulBotContext
         return snapshot;
     }
 
-    public void Process(List<FoulMessage> context)
+    public void Process(IList<FoulMessage> context)
     {
         _logger.LogDebug("Updating last processed ID: {PreviousLastProcessed} to {NewLastProcessed}.", _lastProcessedMessageId, context[^1].Id);
         _lastProcessedMessageId = context[^1].Id;

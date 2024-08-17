@@ -35,7 +35,7 @@ public interface IFoulChat
     event EventHandler<FoulMessage> MessageReceived;
     event EventHandler<FoulStatusChanged> StatusChanged;
 
-    List<FoulMessage> GetContextSnapshot();
+    IList<FoulMessage> GetContextSnapshot();
     void ChangeBotStatus(string whoName, string? byName, BotChatStatus status);
 
     // TODO: Get rid of Telegram dependency for this method. For now this is the only method left that uses it.

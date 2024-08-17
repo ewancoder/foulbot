@@ -7,11 +7,10 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
-    private readonly HashSet<string> _joinedBots = new HashSet<string>();
-    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = new Dictionary<string, IFoulBot>();
-    private readonly ConcurrentDictionary<string, IFoulChat> _chats
-        = new ConcurrentDictionary<string, IFoulChat>();
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly HashSet<string> _joinedBots = [];
+    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
+    private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
     private bool _isStopping;
 
     public ChatPool(
@@ -30,7 +29,7 @@ public sealed class ChatPool : IAsyncDisposable
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -65,7 +64,7 @@ public sealed class ChatPool : IAsyncDisposable
         BotChatStatus status,
         string? invitedByUsername,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory,
+        FoulChatToBotFactory botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -96,7 +95,7 @@ public sealed class ChatPool : IAsyncDisposable
         string botId,
         FoulMessage message,
         bool isPrivate,
-        Func<IFoulChat, IFoulBot> botFactory,
+        FoulChatToBotFactory botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -138,13 +137,13 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the chat and caching it for future.");
-            var longChatId = chatId.Contains("$")
+            var longChatId = chatId.Contains('$')
                 ? Convert.ToInt64(chatId.Split("$")[0])
                 : Convert.ToInt64(chatId);
-            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains("$"));
+            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains('$'));
             chat = _chats.GetOrAdd(chatId, chat);
 
-            if (chatId.Contains("$"))
+            if (chatId.Contains('$'))
                 _logger.LogInformation("Created a PRIVATE chat.");
 
             _chatCache.AddChat(chatId);
@@ -159,7 +158,7 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, Func<IFoulChat, IFoulBot> botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
@@ -214,7 +213,9 @@ public sealed class ChatPool : IAsyncDisposable
         foreach (var bot in _joinedBotsObjects.Values)
         {
             // TODO: Figure out whether interface should be disposable.
-            await ((Domain.FoulBot)bot).DisposeAsync();
+            await ((FoulBot)bot).DisposeAsync();
         }
+
+        _lock.Dispose();
     }
 }

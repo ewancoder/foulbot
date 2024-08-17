@@ -282,6 +282,10 @@ dotnet_diagnostic.CA1019.severity = silent
 # Remove missing XML documentation warnings, I'll add it where needed.
 dotnet_diagnostic.CS1591.severity = silent
 
+# Use primary constructors. I prefer using regular ones in most cases.
+# But consider reviewing this from time to time.
+dotnet_diagnostic.IDE0290.severity = silent
+
 
 
 # === Tests ===

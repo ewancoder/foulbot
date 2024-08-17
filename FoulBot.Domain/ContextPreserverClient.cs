@@ -2,7 +2,7 @@
 
 public interface IContextPreserverClient
 {
-    ValueTask<string> GetTextResponseAsync(List<FoulMessage> context);
+    ValueTask<string> GetTextResponseAsync(ICollection<FoulMessage> context);
     bool IsBadResponse(string message);
 }
 
@@ -25,23 +25,25 @@ public sealed class ContextPreserverClient : IContextPreserverClient
         "просматривать контент", "прости, но"
     ];
 
-    private readonly Random _random = new Random();
     private readonly ILogger<ContextPreserverClient> _logger;
     private readonly IFoulAIClient _client;
+    private readonly ISharedRandomGenerator _random;
     private readonly string _directive;
 
     public ContextPreserverClient(
         ILogger<ContextPreserverClient> logger,
         IFoulAIClientFactory clientFactory,
+        ISharedRandomGenerator random,
         string directive,
         string openAiModel)
     {
         _logger = logger;
         _client = clientFactory.Create(openAiModel);
+        _random = random;
         _directive = directive;
     }
 
-    public async ValueTask<string> GetTextResponseAsync(List<FoulMessage> context)
+    public async ValueTask<string> GetTextResponseAsync(ICollection<FoulMessage> context)
     {
         var aiGeneratedTextResponse = await _client.GetTextResponseAsync(context);
 
@@ -59,7 +61,7 @@ public sealed class ContextPreserverClient : IContextPreserverClient
             _logger.LogWarning("Generated broken context message: {Message}. Repeating main directive and trying to re-generate.", aiGeneratedTextResponse);
 
             i++;
-            await Task.Delay(_random.Next(1100, 2300));
+            await Task.Delay(_random.Generate(1100, 2300));
             context.Add(new FoulMessage(
                 "Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false));
 
