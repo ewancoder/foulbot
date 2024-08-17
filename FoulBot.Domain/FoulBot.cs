@@ -439,7 +439,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             HandlePrepairingReply(isBotToBotCommunication, out var isVoice);
 
             // Delay to simulate "reading" the messages by the bot.
-            await _delayStrategy.DelayAsync();
+            await _delayStrategy.DelayAsync(_cts.Token);
 
             // Get the exact reason why we are replying to that message.
             var reason = snapshot

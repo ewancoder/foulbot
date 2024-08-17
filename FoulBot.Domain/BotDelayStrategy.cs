@@ -5,7 +5,7 @@ public interface IBotDelayStrategy
     /// <summary>
     /// Delays processing message, creating a fictional "reading messages" pause.
     /// </summary>
-    ValueTask DelayAsync();
+    ValueTask DelayAsync(CancellationToken cancellationToken);
 }
 
 public sealed class BotDelayStrategy : IBotDelayStrategy
@@ -24,7 +24,7 @@ public sealed class BotDelayStrategy : IBotDelayStrategy
         _timeProvider = timeProvider;
     }
 
-    public async ValueTask DelayAsync()
+    public async ValueTask DelayAsync(CancellationToken cancellationToken)
     {
         var delay = _random.Generate(1, 100);
         if (delay > 90)
@@ -41,6 +41,6 @@ public sealed class BotDelayStrategy : IBotDelayStrategy
         }
 
         _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
-        await Task.Delay(TimeSpan.FromMilliseconds(delay), _timeProvider);
+        await Task.Delay(TimeSpan.FromMilliseconds(delay), _timeProvider, cancellationToken);
     }
 }
