@@ -11,13 +11,17 @@ public interface IAllowedChatsProvider
 
 public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 {
+    private readonly ILogger<AllowedChatsProvider> _logger;
     private readonly string _fileName;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private ConcurrentDictionary<FoulChatId, bool>? _allowedChats;
 
-    public AllowedChatsProvider(string fileName = "allowed_chats")
+    public AllowedChatsProvider(
+        ILogger<AllowedChatsProvider> logger,
+        string fileName = "allowed_chats")
     {
         _fileName = fileName;
+        _logger = logger;
     }
 
     public async ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId)
@@ -29,6 +33,8 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 
     public async ValueTask AllowChatAsync(FoulChatId chatId)
     {
+        _logger.LogWarning("Allowing chat {ChatId}", chatId.Value);
+
         var allowedChats = await GetAllowedChatsAsync();
         allowedChats.TryAdd(chatId, false);
 
@@ -37,6 +43,8 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 
     public async ValueTask DisallowChatAsync(FoulChatId chatId)
     {
+        _logger.LogWarning("Disallowing chat {ChatId}", chatId.Value);
+
         var allowedChats = await GetAllowedChatsAsync();
         allowedChats.TryRemove(chatId, out _);
 
@@ -53,6 +61,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         await _lock.WaitAsync();
         try
         {
+            _logger.LogDebug("Saving list of allowed chats: {SerializedAllowedChats}", serialized);
             await File.WriteAllTextAsync(_fileName, serialized);
         }
         finally
