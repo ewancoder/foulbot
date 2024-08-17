@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
-public sealed class FoulChatId
+public readonly record struct FoulChatId
 {
     public FoulChatId(string value)
     {

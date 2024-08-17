@@ -165,10 +165,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             if (update.Message.Text == "$activate")
             {
-                _allowedChatsProvider.AddAllowedChat(new(chatId));
+                await _allowedChatsProvider.AllowChatAsync(new(chatId));
             }
 
-            if (!_allowedChatsProvider.IsAllowedChat(new(chatId)))
+            if (!await _allowedChatsProvider.IsAllowedChatAsync(new(chatId)))
             {
                 _logger.LogWarning("Received a message from not allowed chat: {ChatId}", chatId);
                 return; // Bot is not allowed to write to this chat.
