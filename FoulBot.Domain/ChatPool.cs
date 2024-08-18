@@ -7,6 +7,7 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
+    private readonly IFoulBotNgFactory _foulBotFactory;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly HashSet<string> _joinedBots = [];
     private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
@@ -16,11 +17,13 @@ public sealed class ChatPool : IAsyncDisposable
     public ChatPool(
         ILogger<ChatPool> logger,
         IChatCache chatCache,
-        IFoulChatFactory foulChatFactory)
+        IFoulChatFactory foulChatFactory,
+        IFoulBotNgFactory foulBotFactory)
     {
         _logger = logger;
         _chatCache = chatCache;
         _foulChatFactory = foulChatFactory;
+        _foulBotFactory = foulBotFactory;
 
         _logger.LogInformation("ChatPool instance is created.");
     }

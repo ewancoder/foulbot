@@ -24,23 +24,28 @@ public sealed class FoulBotNg : IAsyncDisposable
 {
     private readonly ChatScopedBotMessenger _botMessenger;
     private readonly IFoulChat _chat;
-    private readonly ISharedRandomGenerator _random;
-    private readonly IFoulAIClient _aiClient;
-    private readonly CancellationTokenSource _cts = new();
-    private readonly FoulBotConfiguration _config;
+    //private readonly ISharedRandomGenerator _random;
+    //private readonly IFoulAIClient _aiClient;
+    private readonly CancellationTokenSource _cts;
+    //private readonly FoulBotConfiguration _config;
 
     private FoulBotNg(
-        IBotMessenger botMessenger,
+        ChatScopedBotMessenger botMessenger,
         IFoulChat chat,
-        ISharedRandomGenerator random,
-        IFoulAIClient aiClient,
-        FoulBotConfiguration config)
+        //ISharedRandomGenerator random,
+        //IFoulAIClient aiClient,
+        //FoulBotConfiguration config,
+        CancellationTokenSource cts)
     {
-        _botMessenger = new(botMessenger, chat.ChatId, _cts.Token);
+        _botMessenger = botMessenger;
         _chat = chat;
-        _random = random;
-        _aiClient = aiClient;
-        _config = config;
+        //_random = random;
+        //_aiClient = aiClient;
+        //_config = config;
+        _cts = cts;
+
+        // Consider moving it outside (don't forget DisposeAsync).
+        _chat.MessageReceived += OnMessageReceived;
     }
 
     public async ValueTask DisposeAsync()
@@ -51,7 +56,7 @@ public sealed class FoulBotNg : IAsyncDisposable
         _cts.Dispose();
     }
 
-    public async ValueTask<FoulBotNg> InviteBotToChatAsync(
+    public static async ValueTask<FoulBotNg> InviteBotToChatAsync(
         IBotMessenger botMessenger,
         IFoulChat chat,
         ISharedRandomGenerator random,
@@ -59,19 +64,18 @@ public sealed class FoulBotNg : IAsyncDisposable
         FoulBotConfiguration config,
         ChatParticipant invitedBy)
     {
-        var canWriteToChat = await _botMessenger.CheckCanWriteAsync();
+        var cts = new CancellationTokenSource();
+        var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
+
+        var canWriteToChat = await messenger.CheckCanWriteAsync();
         if (!canWriteToChat)
             throw new InvalidOperationException("Bot cannot write to invited chat.");
 
+        await GreetEveryoneAsync(messenger, aiClient, config, random, invitedBy);
+
         // Do not create disposable bot instance unless it can write to chat.
-        var bot = new FoulBotNg(botMessenger, chat, random, aiClient, config);
-
-        await GreetEveryoneAsync(invitedBy);
-
-        // Consider moving is outside (don't forget DisposeAsync).
-        _chat.MessageReceived += OnMessageReceived;
-
-        return bot;
+        //return new FoulBotNg(messenger, chat, random, aiClient, config, cts);
+        return new FoulBotNg(messenger, chat, cts);
     }
 
     private void OnMessageReceived(object? sender, FoulMessage message)
@@ -83,18 +87,61 @@ public sealed class FoulBotNg : IAsyncDisposable
         await _botMessenger.SendTextMessageAsync(message.Text);
     }
 
-    private async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
+    private static async ValueTask GreetEveryoneAsync(
+        ChatScopedBotMessenger messenger,
+        IFoulAIClient aiClient,
+        FoulBotConfiguration config,
+        ISharedRandomGenerator random,
+        ChatParticipant invitedBy)
     {
-        if (_config.Stickers.Count != 0)
+        if (config.Stickers.Count != 0)
         {
-            var stickerIndex = _random.Generate(0, _config.Stickers.Count - 1);
-            var stickerId = _config.Stickers[stickerIndex];
+            var stickerIndex = random.Generate(0, config.Stickers.Count - 1);
+            var stickerId = config.Stickers[stickerIndex];
 
-            await _botMessenger.SendStickerAsync(stickerId);
+            await messenger.SendStickerAsync(stickerId);
         }
 
-        var directive = $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
-        var greetingsMessage = await _aiClient.GetCustomResponseAsync(directive);
-        await _botMessenger.SendTextMessageAsync(greetingsMessage);
+        var directive = $"{config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
+        var greetingsMessage = await aiClient.GetCustomResponseAsync(directive);
+        await messenger.SendTextMessageAsync(greetingsMessage);
+    }
+}
+
+public interface IFoulBotNgFactory
+{
+    ValueTask<FoulBotNg> InviteBotToChatAsync(
+        FoulBotConfiguration config, ChatParticipant invitedBy);
+}
+
+public sealed class FoulBotNgFactory : IFoulBotNgFactory
+{
+    private readonly IBotMessenger _botMessenger;
+    private readonly IFoulChat _chat;
+    private readonly ISharedRandomGenerator _random;
+    private readonly IFoulAIClient _aiClient;
+
+    public FoulBotNgFactory(
+        IBotMessenger botMessenger,
+        IFoulChat chat,
+        ISharedRandomGenerator random,
+        IFoulAIClient aiClient)
+    {
+        _botMessenger = botMessenger;
+        _chat = chat;
+        _random = random;
+        _aiClient = aiClient;
+    }
+
+    public ValueTask<FoulBotNg> InviteBotToChatAsync(
+        FoulBotConfiguration config, ChatParticipant invitedBy)
+    {
+        return FoulBotNg.InviteBotToChatAsync(
+            _botMessenger,
+            _chat,
+            _random,
+            _aiClient,
+            config,
+            invitedBy);
     }
 }
