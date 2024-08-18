@@ -1,15 +1,15 @@
 ﻿namespace FoulBot.Domain;
 
-public delegate IFoulBot FoulChatToBotFactory(IFoulChat chat);
+public delegate ValueTask<FoulBotNg> FoulChatToBotFactory(IFoulChat chat);
 
 public static class FoulBotFactoryExtensions
 {
     public static FoulChatToBotFactory CreateBotFactoryFromChat(
-        this IFoulBotFactory botFactory,
+        this IFoulBotNgFactory botFactory,
         IBotMessenger botMessenger,
         FoulBotConfiguration configuration)
     {
-        return chat => botFactory.Create(botMessenger, configuration, chat);
+        return chat => botFactory.JoinBotToChatAsync(botMessenger, chat, configuration);
     }
 }
 

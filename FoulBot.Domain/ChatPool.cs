@@ -10,7 +10,7 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly IFoulBotNgFactory _foulBotFactory;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly HashSet<string> _joinedBots = [];
-    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
+    private readonly Dictionary<string, FoulBotNg> _joinedBotsObjects = [];
     private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
     private bool _isStopping;
 
@@ -28,7 +28,7 @@ public sealed class ChatPool : IAsyncDisposable
         _logger.LogInformation("ChatPool instance is created.");
     }
 
-    public IEnumerable<IFoulBot> AllBots => _joinedBotsObjects.Values;
+    public IEnumerable<FoulBotNg> AllBots => _joinedBotsObjects.Values;
 
     private IScopedLogger Logger => _logger.AddScoped();
 
@@ -184,8 +184,7 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the bot and joining it to chat.");
-            var bot = botFactory(chat);
-            await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
+            var bot = await botFactory(chat);
             _joinedBots.Add($"{botId}{chatId}");
             _joinedBotsObjects.Add($"{botId}{chatId}", bot);
             _logger.LogInformation("Adding bot to chat operation was performed.");
@@ -199,24 +198,27 @@ public sealed class ChatPool : IAsyncDisposable
 
     public async ValueTask GracefullyStopAsync()
     {
+        if (_isStopping) return;
+
         _isStopping = true;
+        await DisposeAsync();
 
         await Task.WhenAll(
-            _chats.Values.Select(chat => chat.GracefullyStopAsync()).Concat(
-                _joinedBotsObjects.Values.Select(bot => bot.GracefullyStopAsync())));
+            _chats.Values.Select(chat => chat.GracefullyStopAsync()));
 
         await Task.Delay(TimeSpan.FromSeconds(5));
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (!_isStopping)
-            await GracefullyStopAsync();
+        //if (!_isStopping)
+            // TODO: Do this without circular references.
+            //await GracefullyStopAsync();
 
         foreach (var bot in _joinedBotsObjects.Values)
         {
             // TODO: Figure out whether interface should be disposable.
-            await ((FoulBot)bot).DisposeAsync();
+            await ((FoulBotNg)bot).DisposeAsync();
         }
 
         _lock.Dispose();

@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
-public record struct ChatParticipant(string Name);
+public readonly record struct ChatParticipant(string Name);
 
 public sealed class ChatScopedBotMessenger(
     IBotMessenger messenger,
@@ -24,25 +24,19 @@ public sealed class FoulBotNg : IAsyncDisposable
 {
     private readonly ChatScopedBotMessenger _botMessenger;
     private readonly IFoulChat _chat;
-    //private readonly ISharedRandomGenerator _random;
-    //private readonly IFoulAIClient _aiClient;
     private readonly CancellationTokenSource _cts;
-    //private readonly FoulBotConfiguration _config;
+    private readonly FoulBotConfiguration _config;
 
     private FoulBotNg(
         ChatScopedBotMessenger botMessenger,
         IFoulChat chat,
-        //ISharedRandomGenerator random,
-        //IFoulAIClient aiClient,
-        //FoulBotConfiguration config,
-        CancellationTokenSource cts)
+        CancellationTokenSource cts,
+        FoulBotConfiguration config)
     {
         _botMessenger = botMessenger;
         _chat = chat;
-        //_random = random;
-        //_aiClient = aiClient;
-        //_config = config;
         _cts = cts;
+        _config = config;
 
         // Consider moving it outside (don't forget DisposeAsync).
         _chat.MessageReceived += OnMessageReceived;
@@ -54,6 +48,23 @@ public sealed class FoulBotNg : IAsyncDisposable
 
         await _cts.CancelAsync();
         _cts.Dispose();
+    }
+
+    public static async ValueTask<FoulBotNg> JoinBotToChatAsync(
+        IBotMessenger botMessenger,
+        IFoulChat chat,
+        FoulBotConfiguration config)
+    {
+        var cts = new CancellationTokenSource();
+        var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
+
+        var canWriteToChat = await messenger.CheckCanWriteAsync();
+        if (!canWriteToChat)
+            throw new InvalidOperationException("Bot cannot write to chat.");
+
+        // Do not create disposable bot instance unless it can write to chat.
+        return new FoulBotNg(messenger, chat, cts, config);
+
     }
 
     public static async ValueTask<FoulBotNg> InviteBotToChatAsync(
@@ -69,13 +80,12 @@ public sealed class FoulBotNg : IAsyncDisposable
 
         var canWriteToChat = await messenger.CheckCanWriteAsync();
         if (!canWriteToChat)
-            throw new InvalidOperationException("Bot cannot write to invited chat.");
+            throw new InvalidOperationException("Bot cannot write to chat.");
 
         await GreetEveryoneAsync(messenger, aiClient, config, random, invitedBy);
 
         // Do not create disposable bot instance unless it can write to chat.
-        //return new FoulBotNg(messenger, chat, random, aiClient, config, cts);
-        return new FoulBotNg(messenger, chat, cts);
+        return new FoulBotNg(messenger, chat, cts, config);
     }
 
     private void OnMessageReceived(object? sender, FoulMessage message)
@@ -110,37 +120,55 @@ public sealed class FoulBotNg : IAsyncDisposable
 
 public interface IFoulBotNgFactory
 {
+    ValueTask<FoulBotNg> JoinBotToChatAsync(
+        IBotMessenger botMessenger,
+        IFoulChat chat,
+        FoulBotConfiguration config);
+
     ValueTask<FoulBotNg> InviteBotToChatAsync(
-        FoulBotConfiguration config, ChatParticipant invitedBy);
+        IBotMessenger botMessenger,
+        IFoulChat chat,
+        FoulBotConfiguration config,
+        ChatParticipant invitedBy);
 }
 
 public sealed class FoulBotNgFactory : IFoulBotNgFactory
 {
-    private readonly IBotMessenger _botMessenger;
-    private readonly IFoulChat _chat;
     private readonly ISharedRandomGenerator _random;
-    private readonly IFoulAIClient _aiClient;
+    private readonly IFoulAIClientFactory _aiClientFactory;
 
     public FoulBotNgFactory(
+        ISharedRandomGenerator random,
+        IFoulAIClientFactory aiClientFactory)
+    {
+        _random = random;
+        _aiClientFactory = aiClientFactory;
+    }
+
+    public ValueTask<FoulBotNg> JoinBotToChatAsync(
         IBotMessenger botMessenger,
         IFoulChat chat,
-        ISharedRandomGenerator random,
-        IFoulAIClient aiClient)
+        FoulBotConfiguration config)
     {
-        _botMessenger = botMessenger;
-        _chat = chat;
-        _random = random;
-        _aiClient = aiClient;
+        return FoulBotNg.JoinBotToChatAsync(
+            botMessenger,
+            chat,
+            config);
     }
 
     public ValueTask<FoulBotNg> InviteBotToChatAsync(
-        FoulBotConfiguration config, ChatParticipant invitedBy)
+        IBotMessenger botMessenger,
+        IFoulChat chat,
+        FoulBotConfiguration config,
+        ChatParticipant invitedBy)
     {
+        var aiClient = _aiClientFactory.Create(config.OpenAIModel);
+
         return FoulBotNg.InviteBotToChatAsync(
-            _botMessenger,
-            _chat,
+            botMessenger,
+            chat,
             _random,
-            _aiClient,
+            aiClient,
             config,
             invitedBy);
     }

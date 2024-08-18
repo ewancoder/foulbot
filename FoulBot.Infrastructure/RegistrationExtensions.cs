@@ -25,6 +25,7 @@ public static class RegistrationExtensions
             .AddScoped<IBotDelayStrategy, BotDelayStrategy>()
             .AddScoped<ChatPool>()
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
+            .AddTransient<IFoulBotNgFactory, FoulBotNgFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
             .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
