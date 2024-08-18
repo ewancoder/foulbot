@@ -7,29 +7,32 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
+    private readonly IFoulBotNgFactory _foulBotFactory;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly HashSet<string> _joinedBots = [];
-    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
+    private readonly Dictionary<string, FoulBotNg> _joinedBotsObjects = [];
     private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
     private bool _isStopping;
 
     public ChatPool(
         ILogger<ChatPool> logger,
         IChatCache chatCache,
-        IFoulChatFactory foulChatFactory)
+        IFoulChatFactory foulChatFactory,
+        IFoulBotNgFactory foulBotFactory)
     {
         _logger = logger;
         _chatCache = chatCache;
         _foulChatFactory = foulChatFactory;
+        _foulBotFactory = foulBotFactory;
 
         _logger.LogInformation("ChatPool instance is created.");
     }
 
-    public IEnumerable<IFoulBot> AllBots => _joinedBotsObjects.Values;
+    public IEnumerable<FoulBotNg> AllBots => _joinedBotsObjects.Values;
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, JoinBotToChatAsync botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -64,7 +67,7 @@ public sealed class ChatPool : IAsyncDisposable
         BotChatStatus status,
         string? invitedByUsername,
         bool isPrivate,
-        FoulChatToBotFactory botFactory,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -95,7 +98,7 @@ public sealed class ChatPool : IAsyncDisposable
         string botId,
         FoulMessage message,
         bool isPrivate,
-        FoulChatToBotFactory botFactory,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -158,12 +161,12 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, JoinBotToChatAsync botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
 
-        using var _ = Logger
+        using var _l = Logger
             .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
             .AddScoped("InvitedBy", invitedBy)
@@ -181,8 +184,31 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the bot and joining it to chat.");
-            var bot = botFactory(chat);
-            await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
+            var bot = await botFactory(chat);
+            if (bot == null)
+            {
+                _logger.LogInformation("Could not add this bot to this chat.");
+                return;
+            }
+
+            EventHandler<FoulMessage> trigger = (s, message) => _ = bot.TriggerAsync(message);
+
+            // Consider rewriting to System.Reactive.
+            chat.MessageReceived += trigger;
+
+            // When we fail to send a message to chat, cleanup the bot (it will be recreated with more messages if we receive any).
+            bot.BotFailed += async (sender, e) =>
+            {
+                chat.MessageReceived -= trigger;
+
+                await bot.DisposeAsync();
+
+                _joinedBots.Remove($"{botId}{chatId}");
+                _joinedBotsObjects.Remove($"{botId}{chatId}");
+            };
+
+            if (invitedBy != null)
+                await bot.GreetEveryoneAsync(new(invitedBy));
             _joinedBots.Add($"{botId}{chatId}");
             _joinedBotsObjects.Add($"{botId}{chatId}", bot);
             _logger.LogInformation("Adding bot to chat operation was performed.");
@@ -196,24 +222,27 @@ public sealed class ChatPool : IAsyncDisposable
 
     public async ValueTask GracefullyStopAsync()
     {
+        if (_isStopping) return;
+
         _isStopping = true;
+        await DisposeAsync();
 
         await Task.WhenAll(
-            _chats.Values.Select(chat => chat.GracefullyStopAsync()).Concat(
-                _joinedBotsObjects.Values.Select(bot => bot.GracefullyStopAsync())));
+            _chats.Values.Select(chat => chat.GracefullyStopAsync()));
 
         await Task.Delay(TimeSpan.FromSeconds(5));
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (!_isStopping)
-            await GracefullyStopAsync();
+        //if (!_isStopping)
+            // TODO: Do this without circular references.
+            //await GracefullyStopAsync();
 
         foreach (var bot in _joinedBotsObjects.Values)
         {
             // TODO: Figure out whether interface should be disposable.
-            await ((FoulBot)bot).DisposeAsync();
+            await ((FoulBotNg)bot).DisposeAsync();
         }
 
         _lock.Dispose();
