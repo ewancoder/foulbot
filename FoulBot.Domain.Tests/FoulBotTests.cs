@@ -292,6 +292,30 @@ public class FoulBotTests : Testing<FoulBotNg>
         Assert.True(fired);
     }
 
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldOnlyAllowOneCallAtATime(FoulMessage message)
+    {
+        var task = new Task(() => { });
+        _delayStrategy.Setup(x => x.DelayAsync(Cts.Token))
+            .Returns(() => new(task));
+        var sut = CreateFoulBot();
+
+        var resultTask = sut.TriggerAsync(message).AsTask();
+
+        await WaitAsync(resultTask);
+        Assert.False(resultTask.IsCompleted);
+
+        var anotherResultTask = sut.TriggerAsync(message).AsTask();
+        await anotherResultTask;
+        Assert.True(anotherResultTask.IsCompletedSuccessfully);
+        _aiClient.Verify(x => x.GetTextResponseAsync(It.IsAny<IEnumerable<FoulMessage>>()), Times.Never);
+
+        task.Start();
+
+        await resultTask;
+        Assert.True(resultTask.IsCompleted);
+    }
+
     #endregion
 
     private FoulBotConfiguration CreateDefaultConfig()

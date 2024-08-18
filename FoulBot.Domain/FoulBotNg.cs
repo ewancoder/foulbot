@@ -15,6 +15,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
+    private int _triggerCalls;
 
     public FoulBotNg(
         ChatScopedBotMessenger botMessenger,
@@ -59,14 +60,14 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
+        var value = Interlocked.Increment(ref _triggerCalls);
         try
         {
+            if (value > 1) return;
+
             var context = _replyStrategy.GetContextForReplying(message);
             if (context == null)
                 return;
-
-            // TODO: Make sure only one TriggerAsync is executing at a time, at this point.
-            // !! and do not just grab lock, CANCEL all other locks if any
 
             // Simulate "reading" the chat.
             await _delayStrategy.DelayAsync(_cts.Token);
@@ -108,6 +109,10 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
             // instead of relying on exceptions.
             BotFailed?.Invoke(this, EventArgs.Empty);
             throw;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _triggerCalls);
         }
     }
 
