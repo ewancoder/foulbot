@@ -9,6 +9,7 @@ public class FoulBotTests : Testing<FoulBotNg>
     private readonly Mock<IBotReplyStrategy> _replyStrategy;
     private readonly Mock<IMessageFilter> _messageFilter;
     private readonly Mock<IBotDelayStrategy> _delayStrategy;
+    private readonly Mock<ITypingImitatorFactory> _typingImitatorFactory;
 
     public FoulBotTests()
     {
@@ -19,6 +20,10 @@ public class FoulBotTests : Testing<FoulBotNg>
         _replyStrategy = Freeze<IBotReplyStrategy>();
         _messageFilter = Freeze<IMessageFilter>();
         _delayStrategy = Freeze<IBotDelayStrategy>();
+        _typingImitatorFactory = Freeze<ITypingImitatorFactory>();
+
+        _messageFilter.Setup(x => x.IsGoodMessage(It.IsAny<string>()))
+            .Returns(true);
 
         Fixture.Register(() => new ChatScopedBotMessenger(
             _botMessenger.Object, _chat.Object.ChatId, Cts.Token));
@@ -226,23 +231,65 @@ public class FoulBotTests : Testing<FoulBotNg>
     }
 
     [Theory, AutoMoqData]
-    public async Task TriggerAsync_ShouldSimulateTyping(
+    public async Task TriggerAsync_ShouldSimulateTyping_AndDisposeAtTheEnd(
         FoulMessage message,
         IList<FoulMessage> context,
-        string responseMessage)
+        string responseMessage,
+        ITypingImitator typingImitator)
     {
-        var task = new Task<string>(() => responseMessage);
+        var startedTyping = false;
+        var finishedTyping = false;
+
+        var responseMessageTask = new Task<string>(() => responseMessage);
+        var typingImitatorFinishTask = new Task(() => finishedTyping = true);
 
         _replyStrategy.Setup(x => x.GetContextForReplying(message))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
-            .Returns(() => new(task));
+            .Returns(() => new(responseMessageTask));
+
+        _typingImitatorFactory.Setup(x => x.ImitateTyping(ChatId, false))
+            .Returns(typingImitator)
+            .Callback(() => startedTyping = true);
+
+        Mock.Get(typingImitator).Setup(x => x.FinishTypingText(responseMessage))
+            .Returns(() => new(typingImitatorFinishTask));
 
         var sut = CreateFoulBot();
         var resultTask = sut.TriggerAsync(message).AsTask();
 
-        // TODO: Finish this unit test.
+        await WaitAsync(resultTask);
+        Assert.True(startedTyping);
+        Assert.False(resultTask.IsCompleted);
+
+        responseMessageTask.Start();
+        await WaitAsync(resultTask);
+        Assert.False(resultTask.IsCompleted);
+
+        typingImitatorFinishTask.Start();
+        await resultTask;
+        Assert.True(resultTask.IsCompleted);
+        Assert.True(finishedTyping);
+        Mock.Get(typingImitator).Verify(x => x.DisposeAsync());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldInvokeBotFailedEvent_WhenExceptionHappens(
+        FoulMessage message)
+    {
+        _botMessenger.Setup(x => x.SendTextMessageAsync(ChatId, It.IsAny<string>()))
+            .Returns(() => new(Task.FromException(new InvalidOperationException())));
+
+        var sut = CreateFoulBot();
+
+        var fired = false;
+        sut.BotFailed += (_, _) => fired = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await sut.TriggerAsync(message));
+
+        Assert.True(fired);
     }
 
     #endregion

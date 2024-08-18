@@ -40,7 +40,6 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
         _config = config;
     }
 
-    public FoulBotId BotId => _config.FoulBotId;
     public event EventHandler? BotFailed;
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
@@ -105,7 +104,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
         }
         catch
         {
-            // TODO: Consider returning obolean from all botMessenger operations
+            // TODO: Consider returning boolean from all botMessenger operations
             // instead of relying on exceptions.
             BotFailed?.Invoke(this, EventArgs.Empty);
             throw;
