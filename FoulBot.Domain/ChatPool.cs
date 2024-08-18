@@ -191,6 +191,13 @@ public sealed class ChatPool : IAsyncDisposable
                 return;
             }
 
+            bot.BotFailed += async (sender, e) =>
+            {
+                await bot.DisposeAsync();
+                _joinedBots.Remove($"{botId}{chatId}");
+                _joinedBotsObjects.Remove($"{botId}{chatId}");
+            };
+
             if (invitedBy != null)
                 await bot.GreetEveryoneAsync(new(invitedBy));
             _joinedBots.Add($"{botId}{chatId}");

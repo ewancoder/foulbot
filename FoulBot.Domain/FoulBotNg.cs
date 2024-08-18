@@ -48,6 +48,8 @@ public sealed class FoulBotNg : IAsyncDisposable
         _chat.MessageReceived += OnMessageReceived;
     }
 
+    public event EventHandler? BotFailed;
+
     public async ValueTask DisposeAsync()
     {
         _chat.MessageReceived -= OnMessageReceived;
@@ -110,8 +112,18 @@ public sealed class FoulBotNg : IAsyncDisposable
 
     private async Task OnMessageReceivedAsync(FoulMessage message)
     {
-        // Test code.
-        await _botMessenger.SendTextMessageAsync(message.Text);
+        try
+        {
+            // Test code.
+            await _botMessenger.SendTextMessageAsync(message.Text);
+        }
+        catch
+        {
+            // TODO: Consider returning obolean from all botMessenger operations
+            // instead of relying on exceptions.
+            BotFailed?.Invoke(this, EventArgs.Empty);
+            throw;
+        }
     }
 }
 
