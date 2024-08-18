@@ -17,22 +17,19 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly ILogger<TypingImitator> _typingImitatorLogger;
-    private readonly ILogger<ContextPreserverClient> _contextPreserverClientLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
-        ILogger<TypingImitator> typingImitatorLogger,
-        ILogger<ContextPreserverClient> contextPreserverClientLogger)
+        ILogger<TypingImitator> typingImitatorLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
         _typingImitatorLogger = typingImitatorLogger;
-        _contextPreserverClientLogger = contextPreserverClientLogger;
     }
 
     /// <summary>
