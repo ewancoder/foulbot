@@ -116,11 +116,17 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         // Reply to every message in private chat, and to Replies.
         if (_chat.IsPrivateChat || currentMessage.ReplyTo == _config.BotId)
         {
+            _lastProcessedMessageId = currentMessage.Id;
             return Reduce(_chat.GetContextSnapshot());
         }
 
         if (_timeProvider.GetUtcNow().UtcDateTime - _lastTriggeredAt < _minimumTimeBetweenMessages)
+        {
+            // Still consider all messages processed at this point,
+            // so that when _minimumTimeBetweenMessages passes we don't reply instantly to old messages.
+            _lastProcessedMessageId = currentMessage.Id;
             return null; // Reply to triggers only once per _minimumTimeBetweenMessages.
+        }
 
         var context = _chat.GetContextSnapshot();
 
