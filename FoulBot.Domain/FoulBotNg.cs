@@ -78,14 +78,17 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
 
             await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse);
 
-            // TODO: Do not add it to chat if it's bad (context preserver).
-            _chat.AddMessage(new FoulMessage(
-                Guid.NewGuid().ToString(),
-                FoulMessageType.Bot,
-                _config.BotName,
-                aiGeneratedTextResponse,
-                DateTime.UtcNow, // TODO: Consider using timeprovider.
-                true));
+            // HACK: consider rewriting this.
+            if (ContextPreserverClient.IsGoodResponse(aiGeneratedTextResponse) || _config.IsAssistant)
+            {
+                _chat.AddMessage(new FoulMessage(
+                    Guid.NewGuid().ToString(),
+                    FoulMessageType.Bot,
+                    _config.BotName,
+                    aiGeneratedTextResponse,
+                    DateTime.UtcNow, // TODO: Consider using timeprovider.
+                    true));
+            }
         }
         catch
         {

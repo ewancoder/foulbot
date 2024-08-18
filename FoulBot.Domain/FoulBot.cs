@@ -501,8 +501,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
             _logger.LogDebug("Successfully replied to Telegram. Sending the Response as the next message to context.");
 
-            if (_config.NotAnAssistant && _contextPreserverClient.IsBadResponse(aiGeneratedTextResponse))
-                return; // Do not add this message to the context / process it, because it will spoil the context for all the subsequent requests.
+            //if (_config.NotAnAssistant && _contextPreserverClient.IsBadResponse(aiGeneratedTextResponse))
+                //return; // Do not add this message to the context / process it, because it will spoil the context for all the subsequent requests.
 
             // This will also cause this method to trigger again. Handle this on this level.
             // Adding this message to the global context ONLY after it has been received by telegram.

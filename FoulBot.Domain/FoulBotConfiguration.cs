@@ -40,6 +40,8 @@ public sealed record FoulBotConfiguration
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool WriteOnYourOwn { get; init; } = true;
 
+    public bool IsAssistant => !NotAnAssistant;
+
     public FoulBotConfiguration UseGpt35()
     {
         return this with

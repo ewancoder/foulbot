@@ -27,7 +27,7 @@ public sealed class ContextPreservingFoulAIClient : IFoulAIClient
 public interface IContextPreserverClient
 {
     ValueTask<string> GetTextResponseAsync(IFoulAIClient client, IEnumerable<FoulMessage> context);
-    bool IsBadResponse(string message);
+    //bool IsBadResponse(string message);
 }
 
 public sealed class ContextPreserverClient : IContextPreserverClient
@@ -94,7 +94,9 @@ public sealed class ContextPreserverClient : IContextPreserverClient
         return aiGeneratedTextResponse;
     }
 
-    public bool IsBadResponse(string message)
+    public static bool IsGoodResponse(string message) => !IsBadResponse(message);
+
+    public static bool IsBadResponse(string message)
     {
         return _failedContext.Any(keyword => message.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
             && !_failedContextCancellation.Any(keyword => message.Contains(keyword, StringComparison.InvariantCultureIgnoreCase));
