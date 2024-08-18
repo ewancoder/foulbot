@@ -43,20 +43,9 @@ public sealed class FoulBotNg : IAsyncDisposable
         _chat = chat;
         _cts = cts;
         _config = config;
-
-        // Consider moving it outside (don't forget DisposeAsync).
-        _chat.MessageReceived += OnMessageReceived;
     }
 
     public event EventHandler? BotFailed;
-
-    public async ValueTask DisposeAsync()
-    {
-        _chat.MessageReceived -= OnMessageReceived;
-
-        await _cts.CancelAsync();
-        _cts.Dispose();
-    }
 
     /// <summary>
     /// Returns null when it's not possible to join this bot to this chat.
@@ -107,10 +96,7 @@ public sealed class FoulBotNg : IAsyncDisposable
         await _botMessenger.SendTextMessageAsync(greetingsMessage);
     }
 
-    private void OnMessageReceived(object? sender, FoulMessage message)
-        => _ = OnMessageReceivedAsync(message);
-
-    private async Task OnMessageReceivedAsync(FoulMessage message)
+    public async Task TriggerAsync(FoulMessage message)
     {
         try
         {
@@ -124,6 +110,12 @@ public sealed class FoulBotNg : IAsyncDisposable
             BotFailed?.Invoke(this, EventArgs.Empty);
             throw;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
     }
 }
 

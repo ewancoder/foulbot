@@ -166,7 +166,7 @@ public sealed class ChatPool : IAsyncDisposable
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
 
-        using var _ = Logger
+        using var _l = Logger
             .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
             .AddScoped("InvitedBy", invitedBy)
@@ -191,9 +191,18 @@ public sealed class ChatPool : IAsyncDisposable
                 return;
             }
 
+            EventHandler<FoulMessage> trigger = (s, message) => _ = bot.TriggerAsync(message);
+
+            // Consider rewriting to System.Reactive.
+            chat.MessageReceived += trigger;
+
+            // When we fail to send a message to chat, cleanup the bot (it will be recreated with more messages if we receive any).
             bot.BotFailed += async (sender, e) =>
             {
+                chat.MessageReceived -= trigger;
+
                 await bot.DisposeAsync();
+
                 _joinedBots.Remove($"{botId}{chatId}");
                 _joinedBotsObjects.Remove($"{botId}{chatId}");
             };
