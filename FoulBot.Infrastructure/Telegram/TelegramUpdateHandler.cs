@@ -107,7 +107,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
     }
 
-    private async ValueTask HandleUpdateAsync(string botId, Update update, FoulChatToBotFactory botFactory, CancellationToken cancellationToken)
+    private async ValueTask HandleUpdateAsync(string botId, Update update, JoinBotToChatAsync botFactory, CancellationToken cancellationToken)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)

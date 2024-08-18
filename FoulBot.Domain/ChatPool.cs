@@ -32,7 +32,7 @@ public sealed class ChatPool : IAsyncDisposable
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, JoinBotToChatAsync botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         using var _ = Logger
             .AddScoped("BotId", botId)
@@ -67,7 +67,7 @@ public sealed class ChatPool : IAsyncDisposable
         BotChatStatus status,
         string? invitedByUsername,
         bool isPrivate,
-        FoulChatToBotFactory botFactory,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -98,7 +98,7 @@ public sealed class ChatPool : IAsyncDisposable
         string botId,
         FoulMessage message,
         bool isPrivate,
-        FoulChatToBotFactory botFactory,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
@@ -161,7 +161,7 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, JoinBotToChatAsync botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
     {
         if (_joinedBots.Contains($"{botId}{chatId}"))
             return;
@@ -185,6 +185,14 @@ public sealed class ChatPool : IAsyncDisposable
 
             _logger.LogInformation("Creating the bot and joining it to chat.");
             var bot = await botFactory(chat);
+            if (bot == null)
+            {
+                _logger.LogInformation("Could not add this bot to this chat.");
+                return;
+            }
+
+            if (invitedBy != null)
+                await bot.GreetEveryoneAsync(new(invitedBy));
             _joinedBots.Add($"{botId}{chatId}");
             _joinedBotsObjects.Add($"{botId}{chatId}", bot);
             _logger.LogInformation("Adding bot to chat operation was performed.");
