@@ -1,8 +1,32 @@
-﻿namespace FoulBot.Domain;
+﻿
+namespace FoulBot.Domain;
+
+public sealed class ContextPreservingFoulAIClient : IFoulAIClient
+{
+    private readonly IContextPreserverClient _contextPreserver;
+    private readonly IFoulAIClient _foulAiClient;
+
+    public ContextPreservingFoulAIClient(
+        IContextPreserverClient contextPreserver,
+        IFoulAIClient foulAiClient)
+    {
+        _contextPreserver = contextPreserver;
+        _foulAiClient = foulAiClient;
+    }
+
+    public ValueTask<Stream> GetAudioResponseAsync(string text)
+        => _foulAiClient.GetAudioResponseAsync(text);
+
+    public ValueTask<string> GetCustomResponseAsync(string directive)
+        => _foulAiClient.GetCustomResponseAsync(directive);
+
+    public ValueTask<string> GetTextResponseAsync(IEnumerable<FoulMessage> context)
+        => _contextPreserver.GetTextResponseAsync(_foulAiClient, context);
+}
 
 public interface IContextPreserverClient
 {
-    ValueTask<string> GetTextResponseAsync(ICollection<FoulMessage> context);
+    ValueTask<string> GetTextResponseAsync(IFoulAIClient client, IEnumerable<FoulMessage> context);
     bool IsBadResponse(string message);
 }
 
@@ -26,26 +50,23 @@ public sealed class ContextPreserverClient : IContextPreserverClient
     ];
 
     private readonly ILogger<ContextPreserverClient> _logger;
-    private readonly IFoulAIClient _client;
     private readonly ISharedRandomGenerator _random;
     private readonly string _directive;
 
     public ContextPreserverClient(
         ILogger<ContextPreserverClient> logger,
-        IFoulAIClientFactory clientFactory,
         ISharedRandomGenerator random,
-        string directive,
-        string openAiModel)
+        string directive)
     {
         _logger = logger;
-        _client = clientFactory.Create(openAiModel);
         _random = random;
         _directive = directive;
     }
 
-    public async ValueTask<string> GetTextResponseAsync(ICollection<FoulMessage> context)
+    public async ValueTask<string> GetTextResponseAsync(
+        IFoulAIClient client, IEnumerable<FoulMessage> context)
     {
-        var aiGeneratedTextResponse = await _client.GetTextResponseAsync(context);
+        var aiGeneratedTextResponse = await client.GetTextResponseAsync(context);
 
         var i = 1;
         while (IsBadResponse(aiGeneratedTextResponse))
@@ -62,10 +83,12 @@ public sealed class ContextPreserverClient : IContextPreserverClient
 
             i++;
             await Task.Delay(_random.Generate(1100, 2300));
-            context.Add(new FoulMessage(
-                "Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false));
 
-            aiGeneratedTextResponse = await _client.GetTextResponseAsync(context);
+            // TODO: Figure out if collection initializer copies the collection in memory or like LINQ.
+            aiGeneratedTextResponse = await client.GetTextResponseAsync([
+                new("Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false),
+                .. context
+            ]);
         }
 
         return aiGeneratedTextResponse;

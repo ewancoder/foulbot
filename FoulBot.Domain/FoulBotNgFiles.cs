@@ -36,20 +36,23 @@ public sealed class FoulBotNgFactory : IFoulBotNgFactory
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
-    private readonly ILogger<TypingImitator> _logger;
+    private readonly ILogger<TypingImitator> _typingImitatorLogger;
+    private readonly ILogger<ContextPreserverClient> _contextPreserverClientLogger;
 
     public FoulBotNgFactory(
         TimeProvider timeProvider,
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
-        ILogger<TypingImitator> logger)
+        ILogger<TypingImitator> typingImitatorLogger,
+        ILogger<ContextPreserverClient> contextPreserverClientLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
-        _logger = logger;
+        _typingImitatorLogger = typingImitatorLogger;
+        _contextPreserverClientLogger = contextPreserverClientLogger;
     }
 
     /// <summary>
@@ -68,8 +71,13 @@ public sealed class FoulBotNgFactory : IFoulBotNgFactory
         var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
         var replyStrategy = new BotReplyStrategy(_timeProvider, chat, config);
         var typingImitatorFactory = new TypingImitatorFactory(
-            _logger, botMessenger, _timeProvider, _random);
-        var aiClient = _aiClientFactory.Create(config.OpenAIModel);
+            _typingImitatorLogger, botMessenger, _timeProvider, _random);
+        var aiClient = _aiClientFactory.Create(
+            new ContextPreserverClient(
+                _contextPreserverClientLogger,
+                _random,
+                config.Directive),
+            config.OpenAIModel);
 
         return new FoulBotNg(
             messenger,

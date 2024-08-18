@@ -56,7 +56,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     {
         _botContext = botContext;
         _logger = logger;
-        _aiClient = aiClientFactory.Create(configuration.OpenAIModel);
+        _aiClient = aiClientFactory.Create(
+            new ContextPreserverClient(null!, random, configuration.Directive),
+            configuration.OpenAIModel);
         _googleTtsService = googleTtsService;
         _botMessenger = botMessenger;
         _config = configuration;
@@ -465,7 +467,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             _logger.LogDebug("Context for AI: {@Context}", context);
 
             var aiGeneratedTextResponse = _config.NotAnAssistant
-                ? await _contextPreserverClient.GetTextResponseAsync(context)
+                ? await _contextPreserverClient.GetTextResponseAsync(_aiClient, context)
                 : await _aiClient.GetTextResponseAsync(context);
 
             _logger.LogInformation("Context, reason and response: {@Context}, {Reason}, {Response}.", context, reason, aiGeneratedTextResponse);
