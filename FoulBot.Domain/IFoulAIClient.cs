@@ -2,9 +2,7 @@
 
 public interface IFoulAIClientFactory
 {
-    IFoulAIClient Create(
-        IContextPreserverClient contextPreserverClient,
-        string openAiModel);
+    IFoulAIClient Create(string openAiModel);
 }
 
 public interface IFoulAIClient

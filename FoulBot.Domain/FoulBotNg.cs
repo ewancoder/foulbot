@@ -11,6 +11,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
+    private readonly IMessageFilter _messageFilter;
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
@@ -22,6 +23,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
         ITypingImitatorFactory typingImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
+        IMessageFilter messageFilter,
         IFoulChat chat,
         CancellationTokenSource cts,
         FoulBotConfiguration config)
@@ -32,6 +34,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
         _typingImitatorFactory = typingImitatorFactory;
         _random = random;
         _aiClient = aiClient;
+        _messageFilter = messageFilter;
         _chat = chat;
         _cts = cts;
         _config = config;
@@ -72,14 +75,22 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
             // TODO: pass isVoice.
             await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, false);
 
+            var i = 0;
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
+            while (!_messageFilter.IsGoodMessage(aiGeneratedTextResponse) && i < 3)
+            {
+                i++;
+                aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([
+                    new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+                    .. context
+                ]);
+            }
 
             await typing.FinishTypingText(aiGeneratedTextResponse);
 
             await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse);
 
-            // HACK: consider rewriting this.
-            if (ContextPreserverClient.IsGoodResponse(aiGeneratedTextResponse) || _config.IsAssistant)
+            if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
             {
                 _chat.AddMessage(new FoulMessage(
                     Guid.NewGuid().ToString(),

@@ -1,5 +1,4 @@
-﻿
-namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain;
 
 public sealed class ContextPreservingFoulAIClient : IFoulAIClient
 {

@@ -18,14 +18,8 @@ public sealed class FoulAIClientFactory : IFoulAIClientFactory
         _configuration = configuration;
     }
 
-    public IFoulAIClient Create(
-        IContextPreserverClient contextPreserverClient,
-        string openAiModel)
-    {
-        return new ContextPreservingFoulAIClient(
-            contextPreserverClient,
-            new FoulAIClient(_logger, _configuration, openAiModel));
-    }
+    public IFoulAIClient Create(string openAiModel)
+        => new FoulAIClient(_logger, _configuration, openAiModel);
 }
 
 public sealed class FoulAIClient : IFoulAIClient

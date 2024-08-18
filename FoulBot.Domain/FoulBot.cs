@@ -56,9 +56,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     {
         _botContext = botContext;
         _logger = logger;
-        _aiClient = aiClientFactory.Create(
-            new ContextPreserverClient(null!, random, configuration.Directive),
-            configuration.OpenAIModel);
+        _aiClient = aiClientFactory.Create(configuration.OpenAIModel);
         _googleTtsService = googleTtsService;
         _botMessenger = botMessenger;
         _config = configuration;
