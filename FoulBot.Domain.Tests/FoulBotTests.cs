@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public class FoulBotTests : Testing<FoulBotNg>
+public class FoulBotTests : Testing<FoulBot>
 {
     private readonly Mock<IFoulChat> _chat;
     private readonly Mock<ISharedRandomGenerator> _random;
@@ -326,19 +326,19 @@ public class FoulBotTests : Testing<FoulBotNg>
             .Create();
     }
 
-    private FoulBotNg CreateFoulBot()
+    private FoulBot CreateFoulBot()
     {
         var config = CreateDefaultConfig();
         Customize("config", config);
         Customize("cts", Cts);
 
-        return Fixture.Create<FoulBotNg>();
+        return Fixture.Create<FoulBot>();
     }
 
-    private FoulBotNg CreateFoulBot(FoulBotConfiguration config)
+    private FoulBot CreateFoulBot(FoulBotConfiguration config)
     {
         Customize("config", config);
 
-        return Fixture.Create<FoulBotNg>();
+        return Fixture.Create<FoulBot>();
     }
 }

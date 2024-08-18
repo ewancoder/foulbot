@@ -12,7 +12,7 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
     private readonly ILogger<TelegramBotMessenger> _bmLogger;
     private readonly ILogger<TelegramUpdateHandler> _logger;
     private readonly ChatPool _chatPool;
-    private readonly IFoulBotNgFactory _botFactory;
+    private readonly IFoulBotFactory _botFactory;
     private readonly IFoulMessageFactory _foulMessageFactory;
     private readonly IAllowedChatsProvider _allowedChatsProvider;
 
@@ -20,7 +20,7 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
         ILogger<TelegramBotMessenger> bmLogger,
         ILogger<TelegramUpdateHandler> logger,
         ChatPool chatPool,
-        IFoulBotNgFactory botFactory,
+        IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         IAllowedChatsProvider allowedChatsProvider)
     {

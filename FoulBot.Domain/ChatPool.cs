@@ -7,10 +7,10 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
-    private readonly IFoulBotNgFactory _foulBotFactory;
+    private readonly IFoulBotFactory _foulBotFactory;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly HashSet<string> _joinedBots = [];
-    private readonly Dictionary<string, FoulBotNg> _joinedBotsObjects = [];
+    private readonly Dictionary<string, FoulBot> _joinedBotsObjects = [];
     private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
     private bool _isStopping;
 
@@ -18,7 +18,7 @@ public sealed class ChatPool : IAsyncDisposable
         ILogger<ChatPool> logger,
         IChatCache chatCache,
         IFoulChatFactory foulChatFactory,
-        IFoulBotNgFactory foulBotFactory)
+        IFoulBotFactory foulBotFactory)
     {
         _logger = logger;
         _chatCache = chatCache;
@@ -28,7 +28,7 @@ public sealed class ChatPool : IAsyncDisposable
         _logger.LogInformation("ChatPool instance is created.");
     }
 
-    public IEnumerable<FoulBotNg> AllBots => _joinedBotsObjects.Values;
+    public IEnumerable<FoulBot> AllBots => _joinedBotsObjects.Values;
 
     private IScopedLogger Logger => _logger.AddScoped();
 
@@ -242,7 +242,7 @@ public sealed class ChatPool : IAsyncDisposable
         foreach (var bot in _joinedBotsObjects.Values)
         {
             // TODO: Figure out whether interface should be disposable.
-            await ((FoulBotNg)bot).DisposeAsync();
+            await ((FoulBot)bot).DisposeAsync();
         }
 
         _lock.Dispose();

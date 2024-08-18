@@ -11,7 +11,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly ILogger<TelegramBotMessenger> _botMessengerLogger;
     private readonly ILogger<TelegramUpdateHandler> _logger;
     private readonly ChatPool _chatPool;
-    private readonly IFoulBotNgFactory _botFactory;
+    private readonly IFoulBotFactory _botFactory;
     private readonly IFoulMessageFactory _foulMessageFactory;
     private readonly FoulBotConfiguration _botConfiguration;
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
@@ -21,7 +21,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         ILogger<TelegramBotMessenger> botMessengerLogger, // TODO: Move to another factory.
         ILogger<TelegramUpdateHandler> logger,
         ChatPool chatPool,
-        IFoulBotNgFactory botFactory,
+        IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         FoulBotConfiguration botConfiguration,
         IAllowedChatsProvider allowedChatsProvider)
@@ -99,7 +99,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await HandleUpdateAsync(_botConfiguration.BotId, update, _botFactory.CreateBotFactoryFromChat(botMessenger, _botConfiguration), cancellationToken);
+            await HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, _botConfiguration), cancellationToken);
         }
         catch (Exception exception)
         {

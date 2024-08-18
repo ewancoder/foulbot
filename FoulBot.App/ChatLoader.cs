@@ -7,13 +7,13 @@ public sealed class ChatLoader : IChatCache, IDisposable
 {
     private const string FileName = "chats";
     private readonly ILogger<ChatLoader> _logger;
-    private readonly IFoulBotNgFactory _botFactory;
+    private readonly IFoulBotFactory _botFactory;
     private readonly HashSet<string> _chatIds; // This is being saved in a file.
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     public ChatLoader(
         ILogger<ChatLoader> logger,
-        IFoulBotNgFactory botFactory)
+        IFoulBotFactory botFactory)
     {
         _logger = logger;
         _botFactory = botFactory;
@@ -38,7 +38,7 @@ public sealed class ChatLoader : IChatCache, IDisposable
             return chatPool.InitializeChatAndBotAsync(
                 configuration.BotId,
                 chatId,
-                _botFactory.CreateBotFactoryFromChat(botMessenger, configuration),
+                chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, configuration),
                 cancellationToken: cancellationToken);
         }));
     }
