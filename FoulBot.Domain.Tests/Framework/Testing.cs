@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public abstract class Testing : IDisposable
+public abstract class Testing<TSut> : IDisposable
 {
     protected Testing()
     {
@@ -19,6 +19,13 @@ public abstract class Testing : IDisposable
     protected Task WaitAsync() => Task.Delay(5);
     protected Task WaitAsync(Task task) => Task.WhenAny(task, WaitAsync());
     protected void AdvanceTime(int milliseconds) => TimeProvider.Advance(TimeSpan.FromMilliseconds(milliseconds));
+
+    protected void Customize<TParameter>(string parameterName, TParameter value)
+    {
+        Fixture.Customizations.Add(
+            new CustomParameterBuilder<TSut, TParameter>(
+                parameterName, value));
+    }
 
     public virtual void Dispose()
     {

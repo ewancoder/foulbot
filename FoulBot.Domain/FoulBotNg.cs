@@ -58,7 +58,7 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
         await _botMessenger.SendTextMessageAsync(greetingsMessage);
     }
 
-    public async Task TriggerAsync(FoulMessage message)
+    public async ValueTask TriggerAsync(FoulMessage message)
     {
         try
         {
@@ -75,6 +75,8 @@ public sealed class FoulBotNg : IFoulBotNg, IAsyncDisposable
             // TODO: pass isVoice.
             await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, false);
 
+            // TODO: Consider moving retry logic to a separate class.
+            // It is untested for now.
             var i = 0;
             var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
             while (!_messageFilter.IsGoodMessage(aiGeneratedTextResponse) && i < 3)

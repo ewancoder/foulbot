@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public class BotDelayStrategyTests : Testing
+public class BotDelayStrategyTests : Testing<BotDelayStrategy>
 {
     private readonly Mock<ISharedRandomGenerator> _random;
     private readonly BotDelayStrategy _sut;
@@ -25,11 +25,11 @@ public class BotDelayStrategyTests : Testing
         _random.Setup(x => x.Generate(minimumDelay, maximumDelay)).Returns(correctDelay);
 
         var task = _sut.DelayAsync(Cts.Token).AsTask();
-        await WaitAsync();
+        await WaitAsync(task);
         Assert.False(task.IsCompleted);
 
         AdvanceTime(correctDelay - 1);
-        await WaitAsync();
+        await WaitAsync(task);
         Assert.False(task.IsCompleted);
 
         AdvanceTime(1);
@@ -41,7 +41,7 @@ public class BotDelayStrategyTests : Testing
     public async Task DelayAsync_ShouldCancelDelay_WhenCancellationRequested()
     {
         var task = _sut.DelayAsync(Cts.Token).AsTask();
-        await WaitAsync();
+        await WaitAsync(task);
         Assert.False(task.IsCompleted);
 
         await Cts.CancelAsync();

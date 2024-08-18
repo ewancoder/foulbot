@@ -3,7 +3,7 @@ using AutoFixture.Kernel;
 
 namespace FoulBot.Domain.Tests;
 
-public abstract class CustomParameterBuilder<TObject, TParameter>(
+public class CustomParameterBuilder<TObject, TParameter>(
     string parameterName, TParameter parameterValue)
     : ISpecimenBuilder
 {

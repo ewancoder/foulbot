@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public class AllowedChatsProviderTests : Testing
+public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
 {
     private readonly string _fileName;
     private readonly AllowedChatsProvider _sut;
