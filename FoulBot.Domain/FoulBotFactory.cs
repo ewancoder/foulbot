@@ -91,10 +91,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
             _delayStrategy,
             new ContextPreserverClient(
                 _contextPreserverClientLogger,
-                _aiClientFactory,
                 _random,
-                configuration.Directive,
-                configuration.OpenAIModel),
+                configuration.Directive),
             _random);
     }
 }
