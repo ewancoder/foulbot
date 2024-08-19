@@ -6,6 +6,7 @@ public interface IBotReplyStrategy
 }
 
 // TODO: Unit test the following:
+// - That depending on date (first triggered or nontriggered) it takes priority differently
 // - Private chats
 // - Replies
 // - Debounce between triggered messages (and updating it)

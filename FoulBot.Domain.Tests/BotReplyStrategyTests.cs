@@ -16,9 +16,9 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     [Theory]
     [ClassData(typeof(BotReplyStrategyTheoryData))]
     public void GetContextForReplying_ShouldProduceResults(
-        List<FoulMessage> context,
+        IList<FoulMessage> context,
         FoulMessage currentMessage,
-        List<FoulMessage>? result,
+        IList<FoulMessage>? result,
         int contextSize, int maxContextSizeInCharacters)
     {
         // Context is always ordered by date.
@@ -88,27 +88,30 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             null,
             100, 100);
 
-        // Default condition: all 10 messages are processed.
+        // Default condition: all messages are processed.
         var messages = GenerateMessages();
 
-        var lastTriggeredMessage = messages
+        var triggered = messages
             .Where(x => x.Text.Contains(BotReplyStrategyTests.Trigger))
             .OrderByDescending(x => x.Date)
-            .First();
+            .ToList();
 
-        var lastNonTriggeredMessage = messages
-            .Where(x => x.Text.Contains(BotReplyStrategyTests.Trigger))
+        var nonTriggered = messages
+            .Where(x => !x.Text.Contains(BotReplyStrategyTests.Trigger))
             .OrderByDescending(x => x.Date)
-            .First();
+            .ToList();
 
         Add(messages,
             Message(),
-            [ lastTriggeredMessage, lastNonTriggeredMessage ],
+            [
+                triggered[0],
+                nonTriggered[0]
+            ],
             8, 100_000);
 
         Add(messages,
             Message(),
-            [ lastTriggeredMessage, lastNonTriggeredMessage ],
+            [ triggered[0], nonTriggered[0] ],
             100_000, 100);
     }
 
