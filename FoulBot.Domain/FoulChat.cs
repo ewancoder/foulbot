@@ -153,6 +153,7 @@ public sealed class FoulChat : IFoulChat
         }
 
         // HACK: Waiting for messages from other bots to come.
+        // This can be improved in future if Chat knew how many bots are in it.
         await Task.Delay(2000);
 
         var consolidatedMessage = _duplicateMessageHandler.Merge(list);
