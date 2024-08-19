@@ -21,13 +21,13 @@ public sealed record FoulBotConfiguration
         KeyWords = keyWords;
     }
 
-    public FoulBotId FoulBotId { get; }
+    public FoulBotId FoulBotId { get; init; }
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
 
     public string OpenAIModel { get; init; } = "gpt-4o-mini";
     public string Directive { get; }
-    public IEnumerable<string> KeyWords { get; }
+    public IEnumerable<string> KeyWords { get; init; }
     public int ContextSize { get; init; } = 30;
     public int MaxContextSizeInCharacters { get; init; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;

@@ -93,6 +93,8 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
                     allMessages.Add(message.AsUser());
                 else
                     allMessages.Add(message);
+
+                allMessagesCharactersCount += message.Text.Length;
             }
         }
 
