@@ -159,9 +159,46 @@ public class FoulChatTests : Testing<FoulChat>
 
         await Task.WhenAll(tasks);
 
+        // Called only once.
+        _duplicateMessageHandler.Verify(x => x.Merge(It.IsAny<IEnumerable<FoulMessage>>()), Times.Once);
+
         Assert.Single(received);
         Assert.Equal(consolidatedMessage, received.Single());
         Assert.Equal(consolidatedMessage, sut.GetContextSnapshot().Single());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldSkipReplyingToMessagesOlderThan1Minute()
+    {
+        var newMessage = Fixture.Build<FoulMessage>()
+            .With(x => x.Date, DateTime.UtcNow - TimeSpan.FromMinutes(0.8))
+            .Create();
+
+        var oldMessage = Fixture.Build<FoulMessage>()
+            .With(x => x.Date, DateTime.UtcNow - TimeSpan.FromMinutes(1))
+            .Create();
+
+        var sut = CreateFoulChat();
+
+        await sut.HandleMessageAsync(oldMessage);
+        Assert.Empty(sut.GetContextSnapshot());
+
+        await sut.HandleMessageAsync(newMessage);
+        Assert.NotEmpty(sut.GetContextSnapshot());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldNotDoAnything_WhenShuttingDown()
+    {
+        var message = Fixture.Build<FoulMessage>()
+            .With(x => x.Date, DateTime.MaxValue)
+            .Create();
+
+        var sut = CreateFoulChat();
+        await sut.GracefullyCloseAsync();
+
+        await sut.HandleMessageAsync(message);
+        Assert.Empty(sut.GetContextSnapshot());
     }
 
     #endregion
