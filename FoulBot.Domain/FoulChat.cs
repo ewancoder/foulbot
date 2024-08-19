@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Diagnostics;
+
+namespace FoulBot.Domain;
 
 public interface IFoulChat
 {
@@ -16,6 +18,10 @@ public interface IFoulChat
 
 public sealed class FoulChat : IFoulChat
 {
+    // Consider making these numbers configurable.
+    public const int MaxContextSizeLimit = 500;
+    public const int CleanupContextSizeLimit = 200;
+
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly ILogger<FoulChat> _logger;
     private readonly Guid _chatInstanceId = Guid.NewGuid();
@@ -132,10 +138,7 @@ public sealed class FoulChat : IFoulChat
         {
             _logger.LogDebug("Entered a lock for adding the message to the context manually");
 
-            _context.Add(message);
-            _contextMessages.Add(message.Id, message);
-
-            CleanupContext();
+            AddMessageToContext(message);
 
             // TODO: Consider debouncing at this level.
             _logger.LogDebug("Notifying bots about the manual message");
@@ -176,16 +179,12 @@ public sealed class FoulChat : IFoulChat
                     return false; // Message already exists but we don't need to update it.
                 }
 
-                _context.Remove(duplicate);
-                _contextMessages.Remove(duplicate.Id);
+                RemoveMessageFromContext(duplicate);
             }
 
             {
-                _context.Add(message);
-                _contextMessages.Add(message.Id, message);
+                AddMessageToContext(message);
                 _logger.LogDebug("Added message to context.");
-
-                CleanupContext();
 
                 consolidatedMessage = message;
                 _logger.LogDebug("Exiting the lock for adding message to context.");
@@ -194,18 +193,41 @@ public sealed class FoulChat : IFoulChat
         }
     }
 
-    private void CleanupContext()
+    private void CleanupContextIfNeeded()
     {
-        if (_context.Count > 500) // TODO: Make these numbers configurable.
+        if (_context.Count > MaxContextSizeLimit)
         {
-            _logger.LogDebug("Context has more than 500 messages. Cleaning it up to 200.");
-            while (_context.Count > 200)
+            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, CleanupContextSizeLimit);
+            var orderedByDate = _context.OrderBy(x => x.Date);
+            foreach (var message in orderedByDate)
             {
-                var msg = _context[0];
-                _context.RemoveAt(0);
-                _contextMessages.Remove(msg.Id);
+                RemoveMessageFromContext(message);
+
+                if (_context.Count <= CleanupContextSizeLimit)
+                    break;
             }
+
             _logger.LogDebug("Successfully cleaned up the context.");
         }
+    }
+
+    /// <summary>
+    /// Should only be called within a lock.
+    /// </summary>
+    private void AddMessageToContext(FoulMessage message)
+    {
+        _context.Add(message);
+        _contextMessages.Add(message.Id, message);
+
+        CleanupContextIfNeeded();
+    }
+
+    /// <summary>
+    /// Should only be called within a lock.
+    /// </summary>
+    private void RemoveMessageFromContext(FoulMessage message)
+    {
+        _context.Remove(message);
+        _contextMessages.Remove(message.Id);
     }
 }
