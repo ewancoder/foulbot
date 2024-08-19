@@ -142,7 +142,7 @@ public sealed class FoulChat : IFoulChat
 
     private async ValueTask<FoulMessage?> ConsolidateAndAddMessageToContextAsync(FoulMessage message)
     {
-        var list = _unconsolidatedMessages.GetOrAdd(message.Id, new List<FoulMessage>());
+        var list = _unconsolidatedMessages.GetOrAdd(message.Id, []);
 
         lock (_lock)
         {
@@ -154,6 +154,7 @@ public sealed class FoulChat : IFoulChat
 
         // HACK: Waiting for messages from other bots to come.
         // This can be improved in future if Chat knew how many bots are in it.
+        // TODO: Consider passing TimeProvider here to improve test execution time.
         await Task.Delay(2000);
 
         var consolidatedMessage = _duplicateMessageHandler.Merge(list);

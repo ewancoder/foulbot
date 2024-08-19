@@ -34,7 +34,7 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Fact]
-    public async void GetContextSnapshot_ShouldWorkConcurrently()
+    public async Task GetContextSnapshot_ShouldWorkConcurrently()
     {
         // We clean up to 200, when we reach 501.
         // So: (+200, +301) 501 -> 200, (+301) 501 -> 200, (+198) = 398 at the end
@@ -48,7 +48,6 @@ public class FoulChatTests : Testing<FoulChat>
             if (amountOfMessagesInSnapshot > FoulChat.MaxContextSizeLimit)
                 amountOfMessagesInSnapshot = FoulChat.CleanupContextSizeLimit;
         }
-
         var messages = Fixture.CreateMany<FoulMessage>(1000)
             .OrderBy(x => x.Date).ToList();
 
@@ -68,9 +67,71 @@ public class FoulChatTests : Testing<FoulChat>
 
 
         // Hacky way to test this, because messages are cleaning up when there are too many of them.
-        Assert.Equal(
-            messages.TakeLast(amountOfMessagesInSnapshot),
-            sut.GetContextSnapshot().TakeLast(amountOfMessagesInSnapshot));
+        Assert.Equal(amountOfMessagesInSnapshot, sut.GetContextSnapshot().Count);
+        // We can't test specific messages here because random ones can be removed by cleanup process.
+    }
+
+    [Fact]
+    public async Task GetContextSnapshot_ShouldWorkConcurrently_UntilLimit()
+    {
+        // This test tests specific data without cleanup process.
+        var amountOfMessagesInSnapshot = FoulChat.MaxContextSizeLimit;
+
+        var messages = Fixture.CreateMany<FoulMessage>(amountOfMessagesInSnapshot)
+            .OrderBy(x => x.Date).ToList();
+
+        var sut = CreateFoulChat();
+
+        var t1 = Task.Run(() =>
+        {
+            Parallel.ForEach(messages, message => sut.AddMessage(message));
+        });
+
+        var t2 = Task.Run(() =>
+        {
+            Parallel.For(1, 1000, index => sut.GetContextSnapshot());
+        });
+
+        await Task.WhenAll(t1, t2);
+
+        Assert.Equal(messages.Count, sut.GetContextSnapshot().Count);
+        Assert.Equal(messages, sut.GetContextSnapshot());
+    }
+
+    // TODO: Improve this test. In order to test concurrency, we need to AT LEAST have 1000 items.
+    // However due to 2000 ms delay in FoulChat the test takes 1 minute to run with 1000 items.
+    // For now using 10 items just to keep the test code here.
+    [Fact]
+    public async Task HandleMessageAsync_ShouldWorkConcurrently_UntilLimit()
+    {
+        // This test tests specific data without cleanup process.
+        var amountOfMessagesInSnapshot = FoulChat.MaxContextSizeLimit;
+
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.Date, () => DateTime.UtcNow + Fixture.Create<TimeSpan>())
+            .CreateMany(amountOfMessagesInSnapshot)
+            .OrderBy(x => x.Date)
+            .TakeLast(10)
+            .ToList();
+
+        _duplicateMessageHandler.Setup(x => x.Merge(It.IsAny<IEnumerable<FoulMessage>>()))
+            .Returns<IEnumerable<FoulMessage>>(messages => messages.Single());
+
+        var sut = CreateFoulChat();
+
+        var t1 = Parallel.ForEachAsync(
+            messages,
+            async (message, _) => await sut.HandleMessageAsync(message).AsTask());
+
+        var t2 = Task.Run(() =>
+        {
+            Parallel.For(1, 1000, index => sut.GetContextSnapshot());
+        });
+
+        await Task.WhenAll(t1, t2);
+
+        Assert.Equal(messages.Count, sut.GetContextSnapshot().Count);
+        Assert.Equal(messages, sut.GetContextSnapshot());
     }
 
     [Fact]
