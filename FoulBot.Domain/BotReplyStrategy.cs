@@ -5,8 +5,6 @@ public interface IBotReplyStrategy
     IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage);
 }
 
-// TODO: Unit test the following:
-// - Remaking other bots messages into user's for that bot's eyes
 public sealed class BotReplyStrategy : IBotReplyStrategy
 {
     public static readonly TimeSpan MinimumTimeBetweenMessages = TimeSpan.FromHours(1);

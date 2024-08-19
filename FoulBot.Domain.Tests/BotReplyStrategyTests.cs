@@ -131,6 +131,31 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         Assert.NotNull(response);
     }
 
+    [Theory, AutoMoqData]
+    public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
+    {
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.MessageType, FoulMessageType.Bot)
+            .With(x => x.Text, Trigger)
+            .CreateMany()
+            .ToList();
+
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.KeyWords, [ Trigger ])
+            .Create();
+
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(messages);
+
+        var response = sut.GetContextForReplying(messages[^1]);
+        // Skipping system directive.
+        Assert.True(response!.Skip(1).All(message => message.MessageType == FoulMessageType.User));
+    }
+
     [Theory]
     [ClassData(typeof(BotReplyStrategyTheoryData))]
     public void GetContextForReplying_ShouldProduceResults(
