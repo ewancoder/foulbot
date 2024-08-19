@@ -6,7 +6,6 @@ public interface IBotReplyStrategy
 }
 
 // TODO: Unit test the following:
-// - Replies
 // - Remaking other bots messages into user's for that bot's eyes
 public sealed class BotReplyStrategy : IBotReplyStrategy
 {

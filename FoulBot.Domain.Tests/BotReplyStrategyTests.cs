@@ -116,6 +116,21 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         Assert.Null(result);
     }
 
+    [Theory, AutoMoqData]
+    public void GetContextForReplying_ShouldReturnResults_WhenCurrentMessageIsAReplyToTheBot(
+        FoulBotConfiguration config)
+    {
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+            .With(x => x.ReplyTo, config.BotId)
+            .Create());
+
+        Assert.NotNull(response);
+    }
+
     [Theory]
     [ClassData(typeof(BotReplyStrategyTheoryData))]
     public void GetContextForReplying_ShouldProduceResults(
