@@ -13,6 +13,25 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .Returns(false);
     }
 
+    [Theory, AutoMoqData]
+    public void GetContextForReplying_ShouldProduceResults_EvenWithoutTriggers_WhenChatIsPrivate()
+    {
+        var context = Fixture.CreateMany<FoulMessage>()
+            .ToList();
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(context);
+
+        _chat.Setup(x => x.IsPrivateChat)
+            .Returns(true);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+
+        Assert.NotNull(result);
+    }
+
     [Theory]
     [ClassData(typeof(BotReplyStrategyTheoryData))]
     public void GetContextForReplying_ShouldProduceResults(

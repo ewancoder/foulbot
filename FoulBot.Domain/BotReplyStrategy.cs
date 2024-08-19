@@ -6,7 +6,6 @@ public interface IBotReplyStrategy
 }
 
 // TODO: Unit test the following:
-// - Private chats
 // - Replies
 // - Debounce between triggered messages (and updating it)
 // - LastProcessedMessageId
