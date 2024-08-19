@@ -122,7 +122,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             return;
         }
 
-        if (update.Type == UpdateType.MyChatMember)
+        /*if (update.Type == UpdateType.MyChatMember)
         {
             _logger.LogDebug("Received MyChatMember update, initiating bot change status.");
 
@@ -149,7 +149,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             _logger.LogInformation("Successfully handled NewChatMember update.");
             return;
-        }
+        }*/
 
         if (update.Type == UpdateType.Message && update.Message?.Type == MessageType.Text)
         {
@@ -199,11 +199,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _logger.LogDebug("Received unnecessary update, skipping handling.");
     }
 
-    private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
+    /*private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
     {
         if (status == ChatMemberStatus.Left || status == ChatMemberStatus.Kicked)
             return BotChatStatus.Left;
 
         return BotChatStatus.Joined;
-    }
+    }*/
 }

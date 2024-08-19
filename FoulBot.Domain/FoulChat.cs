@@ -6,12 +6,16 @@ public sealed class FoulChat : IFoulChat
     private readonly ILogger<FoulChat> _logger;
     private readonly DateTime _chatCreatedAt;
     private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly List<FoulMessage> _context = new(1000);
     private readonly object _lock = new();
     private bool _isStopping;
 
-    public FoulChat(ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
+    public FoulChat(
+        IDuplicateMessageHandler duplicateMessageHandler,
+        ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
     {
+        _duplicateMessageHandler = duplicateMessageHandler;
         _logger = logger;
         ChatId = chatId;
         IsPrivateChat = isPrivateChat;
@@ -28,7 +32,6 @@ public sealed class FoulChat : IFoulChat
     public bool IsPrivateChat { get; }
     public FoulChatId ChatId { get; }
     public event EventHandler<FoulMessage>? MessageReceived;
-    public event EventHandler<FoulStatusChanged>? StatusChanged;
 
     public IList<FoulMessage> GetContextSnapshot()
     {
@@ -48,21 +51,6 @@ public sealed class FoulChat : IFoulChat
                 _logger.LogWarning(exception, "Concurrency error when getting the context snapshot. Trying again.");
             }
         }
-    }
-
-    public void ChangeBotStatus(string whoName, string? byName, BotChatStatus status)
-    {
-        using var _ = Logger.BeginScope();
-
-        if (_isStopping)
-        {
-            _logger.LogWarning("Gracefully stopping the application. Skipping status update {WhoName}, {ByName}, {Status}", whoName, byName, status);
-            return;
-        }
-
-        _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName}, {Status}", whoName, byName, status);
-
-        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
     }
 
     public void HandleMessage(FoulMessage message)
@@ -151,27 +139,24 @@ public sealed class FoulChat : IFoulChat
 
     private bool AddFoulMessageToContext(FoulMessage message)
     {
-        if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
+        if (_contextMessages.TryGetValue(message.Id, out var duplicate))
         {
-            _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-            return false;
+            var newMessage = _duplicateMessageHandler.Merge(duplicate, message);
+            if (newMessage == null)
+                return false; // Message already exists but we don't need to update it.
         }
 
         _logger.LogDebug("Entering lock for adding (updating) message to context.");
         lock (_lock)
         {
-            _logger.LogDebug("Entered lock for adding (updating) message to context.");
-            if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
+            if (_contextMessages.TryGetValue(message.Id, out duplicate))
             {
-                _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-                return false;
-            }
+                var newMessage = _duplicateMessageHandler.Merge(duplicate, message);
+                if (newMessage == null)
+                    return false; // Message already exists but we don't need to update it.
 
-            if (_contextMessages.TryGetValue(message.Id, out var existing))
-            {
-                _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
-                existing.ReplyTo = message.ReplyTo;
-                return false; // Discard the message after updating existing message.
+                _context.Remove(duplicate);
+                _contextMessages.Remove(duplicate.Id);
             }
 
             {

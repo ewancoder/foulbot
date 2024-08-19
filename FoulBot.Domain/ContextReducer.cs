@@ -71,7 +71,7 @@ public sealed class ContextReducer : IContextReducer
 
         return
         [
-            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
             .. combinedContext,
         ];
     }
@@ -123,7 +123,7 @@ public sealed class AddressedToMeContextReducer : IContextReducer
 
         return
         [
-            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
             .. combinedContext,
         ];
     }

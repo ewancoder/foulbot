@@ -88,7 +88,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 i++;
                 aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([ // TODO: Pass cancellation token.
-                    new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+                    new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
                     .. context
                 ]);
             }
@@ -105,7 +105,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                     _config.BotName,
                     aiGeneratedTextResponse,
                     DateTime.UtcNow, // TODO: Consider using timeprovider.
-                    true));
+                    true,
+                    null));
             }
         }
         catch

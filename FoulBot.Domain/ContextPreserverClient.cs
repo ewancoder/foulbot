@@ -85,7 +85,7 @@ public sealed class ContextPreserverClient : IContextPreserverClient
 
             // TODO: Figure out if collection initializer copies the collection in memory or like LINQ.
             aiGeneratedTextResponse = await client.GetTextResponseAsync([
-                new("Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false),
+                new("Directive", FoulMessageType.System, "System", _directive, DateTime.MinValue, false, null),
                 .. context
             ]);
         }

@@ -2,7 +2,7 @@
 
 public interface IFoulChatFactory
 {
-    IFoulChat Create(FoulChatId chatId, bool isPrivate);
+    IFoulChat Create(IDuplicateMessageHandler duplicateMessageHandler, FoulChatId chatId, bool isPrivate);
 }
 
 public sealed class FoulChatFactory : IFoulChatFactory
@@ -14,8 +14,8 @@ public sealed class FoulChatFactory : IFoulChatFactory
         _foulChatLogger = foulChatLogger;
     }
 
-    public IFoulChat Create(FoulChatId chatId, bool isPrivate)
+    public IFoulChat Create(IDuplicateMessageHandler duplicateMessageHandler, FoulChatId chatId, bool isPrivate)
     {
-        return new FoulChat(_foulChatLogger, chatId, isPrivate);
+        return new FoulChat(duplicateMessageHandler, _foulChatLogger, chatId, isPrivate);
     }
 }

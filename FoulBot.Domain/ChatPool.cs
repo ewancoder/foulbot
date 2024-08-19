@@ -8,6 +8,7 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly IChatCache _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
     private readonly IFoulBotFactory _foulBotFactory;
+    private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly HashSet<string> _joinedBots = [];
     private readonly Dictionary<string, FoulBot> _joinedBotsObjects = [];
@@ -18,12 +19,14 @@ public sealed class ChatPool : IAsyncDisposable
         ILogger<ChatPool> logger,
         IChatCache chatCache,
         IFoulChatFactory foulChatFactory,
-        IFoulBotFactory foulBotFactory)
+        IFoulBotFactory foulBotFactory,
+        IDuplicateMessageHandler duplicateMessageHandler)
     {
         _logger = logger;
         _chatCache = chatCache;
         _foulChatFactory = foulChatFactory;
         _foulBotFactory = foulBotFactory;
+        _duplicateMessageHandler = duplicateMessageHandler;
 
         _logger.LogInformation("ChatPool instance is created.");
     }
@@ -60,7 +63,7 @@ public sealed class ChatPool : IAsyncDisposable
         return chat;
     }
 
-    public async ValueTask UpdateStatusAsync(
+    /*public async ValueTask UpdateStatusAsync(
         string chatId,
         string botId,
         string botUsername,
@@ -91,7 +94,7 @@ public sealed class ChatPool : IAsyncDisposable
             status);
 
         _logger.LogInformation("Successfully initiated bot change status.");
-    }
+    }*/
 
     public async ValueTask HandleMessageAsync(
         string chatId,
@@ -143,7 +146,7 @@ public sealed class ChatPool : IAsyncDisposable
             var longChatId = chatId.Contains('$')
                 ? Convert.ToInt64(chatId.Split("$")[0])
                 : Convert.ToInt64(chatId);
-            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains('$'));
+            chat = _foulChatFactory.Create(_duplicateMessageHandler, new FoulChatId(longChatId.ToString()), chatId.Contains('$'));
             chat = _chats.GetOrAdd(chatId, chat);
 
             if (chatId.Contains('$'))

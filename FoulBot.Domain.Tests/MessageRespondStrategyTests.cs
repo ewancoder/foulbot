@@ -73,7 +73,7 @@ public class MessageRespondStrategyTests
     public void ShouldRespond_ShouldReturnTrue_WhenAtLeastOneMessageHasReasonToRespondTo(
         List<FoulMessage> messages)
     {
-        messages[1].ReplyTo = _configuration.BotId;
+        messages[1] = messages[1] with { ReplyTo = _configuration.BotId };
 
         Assert.True(_sut.ShouldRespond(messages));
         Assert.True(_sut.ShouldRespond(messages[1]));
@@ -81,10 +81,7 @@ public class MessageRespondStrategyTests
 
     private FoulMessage CreateMessage(string? senderName = null, string? replyTo = null, string? text = null)
     {
-        return new FoulMessage("id", FoulMessageType.Bot, senderName ?? _fixture.Create<string>(), text ?? _fixture.Create<string>(), DateTime.UtcNow, true)
-        {
-            ReplyTo = replyTo
-        };
+        return new FoulMessage("id", FoulMessageType.Bot, senderName ?? _fixture.Create<string>(), text ?? _fixture.Create<string>(), DateTime.UtcNow, true, replyTo);
     }
 }
 

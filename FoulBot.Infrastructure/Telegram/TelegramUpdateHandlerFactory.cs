@@ -1,4 +1,5 @@
-﻿using Telegram.Bot.Polling;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Polling;
 
 namespace FoulBot.Infrastructure.Telegram;
 
@@ -19,7 +20,7 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
     public TelegramUpdateHandlerFactory(
         ILogger<TelegramBotMessenger> bmLogger,
         ILogger<TelegramUpdateHandler> logger,
-        ChatPool chatPool,
+        [FromKeyedServices("Telegram")]ChatPool chatPool,
         IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         IAllowedChatsProvider allowedChatsProvider)

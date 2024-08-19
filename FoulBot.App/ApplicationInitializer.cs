@@ -10,7 +10,7 @@ public sealed class ApplicationInitializer
     private readonly IServiceProvider _provider;
 
     public ApplicationInitializer(
-        ChatPool chatPool,
+        [FromKeyedServices("Telegram")]ChatPool chatPool,
         IEnumerable<BotConnectionConfiguration> botConfigs,
         ChatLoader chatLoader,
         IServiceProvider provider)

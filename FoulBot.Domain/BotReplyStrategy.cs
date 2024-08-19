@@ -101,7 +101,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
         return
         [
-            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
+            new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
             .. onlyAddressedToMe.Concat(allMessages)
             .DistinctBy(x => x.Id)
             .OrderBy(x => x.Date)
