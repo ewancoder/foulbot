@@ -5,6 +5,12 @@ public interface IBotReplyStrategy
     IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage);
 }
 
+// TODO: Unit test the following:
+// - Private chats
+// - Replies
+// - Debounce between triggered messages (and updating it)
+// - LastProcessedMessageId
+// - Remaking other bots messages into user's for that bot's eyes
 public sealed class BotReplyStrategy : IBotReplyStrategy
 {
     private static readonly TimeSpan _minimumTimeBetweenMessages = TimeSpan.FromHours(1);
