@@ -2,6 +2,8 @@
 
 namespace FoulBot.Domain;
 
+// TODO: Unit test this.
+// This class is difficult to unit test because it encapsulates most state and subscribes internally.
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
