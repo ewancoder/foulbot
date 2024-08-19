@@ -7,12 +7,11 @@ public interface IBotReplyStrategy
 
 // TODO: Unit test the following:
 // - Replies
-// - Debounce between triggered messages (and updating it)
-// - LastProcessedMessageId
 // - Remaking other bots messages into user's for that bot's eyes
 public sealed class BotReplyStrategy : IBotReplyStrategy
 {
-    private static readonly TimeSpan _minimumTimeBetweenMessages = TimeSpan.FromHours(1);
+    public static readonly TimeSpan MinimumTimeBetweenMessages = TimeSpan.FromHours(1);
+
     private readonly TimeProvider _timeProvider;
     private readonly IFoulChat _chat;
     private readonly FoulBotConfiguration _config;
@@ -41,7 +40,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
             return Reduce(_chat.GetContextSnapshot());
         }
 
-        if (_timeProvider.GetUtcNow().UtcDateTime - _lastTriggeredAt < _minimumTimeBetweenMessages)
+        if (_timeProvider.GetUtcNow().UtcDateTime - _lastTriggeredAt < MinimumTimeBetweenMessages)
         {
             // Still consider all messages processed at this point,
             // so that when _minimumTimeBetweenMessages passes we don't reply instantly to old messages.

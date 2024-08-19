@@ -17,6 +17,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldProduceResults_EvenWithoutTriggers_WhenChatIsPrivate()
     {
         var context = Fixture.CreateMany<FoulMessage>()
+            .OrderBy(x => x.Date)
             .ToList();
 
         _chat.Setup(x => x.GetContextSnapshot())
@@ -30,6 +31,89 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         var result = sut.GetContextForReplying(context[0]);
 
         Assert.NotNull(result);
+    }
+
+    [Theory, AutoMoqData]
+    public void GetContextForReplying_ShouldReturnNull_WhenTimeHasPassed_ButNoNewMessagesAppeared()
+    {
+        var context = Fixture
+            .Build<FoulMessage>()
+            .With(x => x.Text, Trigger)
+            .CreateMany()
+            .OrderBy(x => x.Date)
+            .ToList();
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(context);
+
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.KeyWords, [ Trigger ])
+            .Create();
+
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages);
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+    }
+
+    [Theory, AutoMoqData]
+    public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenTriggers()
+    {
+        var context = Fixture
+            .Build<FoulMessage>()
+            .With(x => x.Text, Trigger)
+            .CreateMany()
+            .OrderBy(x => x.Date)
+            .ToList();
+
+        void AddMessages()
+        {
+            context.Add(Fixture.Build<FoulMessage>()
+                .With(x => x.Text, Trigger)
+                .Create());
+        }
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(context);
+
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.KeyWords, [ Trigger ])
+            .Create();
+
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+
+        Assert.NotNull(result);
+
+        AddMessages();
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+
+        AddMessages();
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+
+        AddMessages();
+        TimeProvider.Advance(TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+
+        AddMessages();
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
     }
 
     [Theory]
