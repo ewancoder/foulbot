@@ -9,7 +9,10 @@ public sealed record Reminder(
     public string? Id { get; set; }
 }
 
-public readonly record struct FoulBotId(string BotId, string BotName);
+public readonly record struct FoulBotId(string BotId, string BotName)
+{
+    public override string ToString() => $"{BotId} {BotName}";
+}
 
 public sealed class ReminderCreator
 {

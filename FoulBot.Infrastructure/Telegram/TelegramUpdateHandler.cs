@@ -99,7 +99,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await HandleUpdateAsync(_botConfiguration.BotId, update, chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, _botConfiguration), cancellationToken);
+            await HandleUpdateAsync(new(_botConfiguration.BotId, _botConfiguration.BotName), update, chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, _botConfiguration), cancellationToken);
         }
         catch (Exception exception)
         {
@@ -107,10 +107,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
     }
 
-    private async ValueTask HandleUpdateAsync(string botId, Update update, JoinBotToChatAsync botFactory, CancellationToken cancellationToken)
+    private async ValueTask HandleUpdateAsync(FoulBotId foulBotId, Update update, JoinBotToChatAsync botFactory, CancellationToken cancellationToken)
     {
         using var _ = Logger
-            .AddScoped("BotId", botId)
+            .AddScoped("BotId", foulBotId.BotId)
             .AddScoped("ChatId", update?.MyChatMember?.Chat?.Id ?? update?.Message?.Chat?.Id)
             .AddScoped("ChatName", update?.MyChatMember?.Chat?.Username ?? update?.Message?.Chat?.Username
                 ?? update?.MyChatMember?.Chat?.Title ?? update?.Message?.Chat?.Title)
@@ -184,10 +184,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             await _chatPool.HandleMessageAsync(
-                chatId,
-                botId,
+                update.Message.Chat.Type == ChatType.Private
+                    ? new(chatId) { FoulBotId = foulBotId }
+                    : new(chatId),
+                foulBotId,
                 message,
-                update.Message.Chat.Type == ChatType.Private,
                 botFactory,
                 cancellationToken);
 

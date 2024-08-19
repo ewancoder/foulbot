@@ -35,12 +35,11 @@ public sealed class FoulChat : IFoulChat
     public FoulChat(
         IDuplicateMessageHandler duplicateMessageHandler,
         ILogger<FoulChat> logger,
-        FoulChatId chatId, bool isPrivateChat)
+        FoulChatId chatId)
     {
         _duplicateMessageHandler = duplicateMessageHandler;
         _logger = logger;
         ChatId = chatId;
-        IsPrivateChat = isPrivateChat;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Created instance of FoulChat with start time {StartTime}", _chatCreatedAt);
@@ -53,7 +52,7 @@ public sealed class FoulChat : IFoulChat
         .AddScoped("ChatId", ChatId); // TODO: Add name of the chat.
 
     public FoulChatId ChatId { get; }
-    public bool IsPrivateChat { get; }
+    public bool IsPrivateChat => ChatId.IsPrivate;
 
     public IList<FoulMessage> GetContextSnapshot()
     {

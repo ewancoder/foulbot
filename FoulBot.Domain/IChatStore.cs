@@ -2,5 +2,5 @@
 
 public interface IChatStore
 {
-    public void AddChat(string chatId);
+    public void AddChat(FoulChatId chatId);
 }
