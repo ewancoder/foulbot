@@ -28,18 +28,3 @@ public interface IBotMessenger
 }
 
 
-public interface IFoulChat
-{
-    bool IsPrivateChat { get; }
-    FoulChatId ChatId { get; }
-    event EventHandler<FoulMessage> MessageReceived;
-
-    IList<FoulMessage> GetContextSnapshot();
-
-    // TODO: Get rid of Telegram dependency for this method. For now this is the only method left that uses it.
-    void HandleMessage(FoulMessage message);
-
-    void AddMessage(FoulMessage message);
-
-    Task GracefullyStopAsync();
-}

@@ -119,7 +119,7 @@ public sealed class ChatPool : IAsyncDisposable
 
         var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, cancellationToken: cancellationToken);
 
-        chat.HandleMessage(message);
+        await chat.HandleMessageAsync(message);
 
         _logger.LogInformation("Successfully handled message.");
     }
@@ -231,7 +231,7 @@ public sealed class ChatPool : IAsyncDisposable
         await DisposeAsync();
 
         await Task.WhenAll(
-            _chats.Values.Select(chat => chat.GracefullyStopAsync()));
+            _chats.Values.Select(chat => chat.GracefullyCloseAsync()));
 
         await Task.Delay(TimeSpan.FromSeconds(5));
     }
