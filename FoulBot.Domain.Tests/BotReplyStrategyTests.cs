@@ -113,6 +113,24 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             Message(),
             [ triggered[0], nonTriggered[0] ],
             100_000, 100);
+
+        List<FoulMessage> msg = [
+            Message(0, true),
+            Message(1, true),
+            Message(2, true),
+            Message(3, true),
+
+            Message(4, false),
+            Message(5, false),
+            Message(6, false),
+            Message(7, false)
+        ];
+
+        Add(msg, Message(8, false), [
+            msg[1], msg[2], msg[3], // Priority to triggered messages.
+            msg[6], msg[7]
+        ],
+        5, 100_000);
     }
 
     private List<FoulMessage> GenerateMessages()
@@ -134,7 +152,17 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
     {
         return _fixture.Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
+            .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.SenderName, senderName)
+            .Create();
+    }
+
+    private FoulMessage Message(int hours, bool isTriggered)
+    {
+        return _fixture.Build<FoulMessage>()
+            .With(x => x.Date, DateTime.MinValue + TimeSpan.FromHours(hours))
+            .With(x => x.MessageType, FoulMessageType.User)
+            .With(x => x.Text, isTriggered ? BotReplyStrategyTests.Trigger : _fixture.Create<string>())
             .Create();
     }
 
