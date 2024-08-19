@@ -4,7 +4,7 @@ namespace FoulBot.Domain;
 
 public interface IFoulChat
 {
-    event EventHandler<FoulMessage> MessageReceived;
+    event EventHandler<FoulMessage>? MessageReceived;
 
     FoulChatId ChatId { get; }
     bool IsPrivateChat { get; }

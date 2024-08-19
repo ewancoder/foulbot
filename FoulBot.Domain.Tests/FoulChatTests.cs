@@ -228,7 +228,7 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.Equal(consolidatedMessage, sut.GetContextSnapshot().Single());
     }
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task HandleMessageAsync_ShouldSkipReplyingToMessagesOlderThan1Minute()
     {
         var newMessage = Fixture.Build<FoulMessage>()
@@ -248,7 +248,7 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.NotEmpty(sut.GetContextSnapshot());
     }
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task HandleMessageAsync_ShouldNotDoAnything_WhenShuttingDown()
     {
         var message = Fixture.Build<FoulMessage>()
@@ -263,6 +263,26 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     #endregion
+
+    [Fact]
+    public void IsPrivateChat_ShouldReturnValueFromConstruction()
+    {
+        Customize("isPrivateChat", true);
+
+        var sut = CreateFoulChat();
+
+        Assert.True(sut.IsPrivateChat);
+    }
+
+    [Theory, AutoMoqData]
+    public void ChatId_ShouldReturnValueFromConstruction(FoulChatId chatId)
+    {
+        Customize("chatId", chatId);
+
+        var sut = CreateFoulChat();
+
+        Assert.Equal(chatId, sut.ChatId);
+    }
 
     private FoulChat CreateFoulChat(IEnumerable<FoulMessage> context)
     {
