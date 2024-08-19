@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
-public interface IChatCache
+public interface IChatStore
 {
     public void AddChat(string chatId);
 }

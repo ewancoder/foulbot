@@ -42,7 +42,7 @@ public static class RegistrationExtensions
             .AddTransient<TDuplicateMessageHandler>()
             .AddKeyedScoped(key, (provider, _) => new ChatPool(
                 provider.GetRequiredService<ILogger<ChatPool>>(),
-                provider.GetRequiredService<IChatCache>(),
+                provider.GetRequiredService<IChatStore>(),
                 provider.GetRequiredService<IFoulChatFactory>(),
                 provider.GetRequiredService<IFoulBotFactory>(),
                 provider.GetRequiredService<TDuplicateMessageHandler>())); // TODO: Rewrite into ChatPool factory.

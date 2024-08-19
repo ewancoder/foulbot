@@ -26,5 +26,3 @@ public interface IBotMessenger
     ValueTask NotifyRecordingVoiceAsync(FoulChatId chatId);
     ValueTask NotifyTyping(FoulChatId chatId);
 }
-
-

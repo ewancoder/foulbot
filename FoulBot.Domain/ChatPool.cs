@@ -5,7 +5,7 @@ namespace FoulBot.Domain;
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
-    private readonly IChatCache _chatCache;
+    private readonly IChatStore _chatCache;
     private readonly IFoulChatFactory _foulChatFactory;
     private readonly IFoulBotFactory _foulBotFactory;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
@@ -17,7 +17,7 @@ public sealed class ChatPool : IAsyncDisposable
 
     public ChatPool(
         ILogger<ChatPool> logger,
-        IChatCache chatCache,
+        IChatStore chatCache,
         IFoulChatFactory foulChatFactory,
         IFoulBotFactory foulBotFactory,
         IDuplicateMessageHandler duplicateMessageHandler)

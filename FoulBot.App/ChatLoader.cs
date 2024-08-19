@@ -3,7 +3,7 @@
 /// <summary>
 /// This class is responsible for initially loading all the bots to chats.
 /// </summary>
-public sealed class ChatLoader : IChatCache, IDisposable
+public sealed class ChatLoader : IChatStore, IDisposable
 {
     private const string FileName = "chats";
     private readonly ILogger<ChatLoader> _logger;
