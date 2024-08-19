@@ -14,7 +14,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
     private readonly ILogger<AllowedChatsProvider> _logger;
     private readonly string _fileName;
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private ConcurrentDictionary<FoulChatId, bool>? _allowedChats;
+    private ConcurrentDictionary<string, bool>? _allowedChats;
 
     public AllowedChatsProvider(
         ILogger<AllowedChatsProvider> logger,
@@ -28,7 +28,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
     {
         var allowedChats = await GetAllowedChatsAsync();
 
-        return allowedChats.ContainsKey(chatId);
+        return allowedChats.ContainsKey(GetKey(chatId));
     }
 
     public async ValueTask AllowChatAsync(FoulChatId chatId)
@@ -36,7 +36,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         _logger.LogWarning("Allowing chat {ChatId}", chatId.Value);
 
         var allowedChats = await GetAllowedChatsAsync();
-        allowedChats.TryAdd(chatId, false);
+        allowedChats.TryAdd(GetKey(chatId), false);
 
         await SaveChangesAsync();
     }
@@ -46,7 +46,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         _logger.LogWarning("Disallowing chat {ChatId}", chatId.Value);
 
         var allowedChats = await GetAllowedChatsAsync();
-        allowedChats.TryRemove(chatId, out _);
+        allowedChats.TryRemove(GetKey(chatId), out _);
 
         await SaveChangesAsync();
     }
@@ -56,7 +56,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         var allowedChats = await GetAllowedChatsAsync();
 
         var serialized = JsonSerializer.Serialize(
-            allowedChats.Keys.Select(chatId => chatId.Value));
+            allowedChats.Keys.Select(chatId => chatId));
 
         await _lock.WaitAsync();
         try
@@ -75,7 +75,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         _lock.Dispose();
     }
 
-    private async ValueTask<ConcurrentDictionary<FoulChatId, bool>> GetAllowedChatsAsync()
+    private async ValueTask<ConcurrentDictionary<string, bool>> GetAllowedChatsAsync()
     {
         if (_allowedChats != null)
             return _allowedChats;
@@ -95,8 +95,8 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
             var chats = JsonSerializer.Deserialize<string[]>(fileContent)?.Distinct()
                 ?? throw new InvalidOperationException("Failed to deserialize allowed chats.");
 
-            _allowedChats = new ConcurrentDictionary<FoulChatId, bool>(
-                chats.Select(chat => new KeyValuePair<FoulChatId, bool>(new(chat), false)));
+            _allowedChats = new ConcurrentDictionary<string, bool>(
+                chats.Select(chat => new KeyValuePair<string, bool>(GetKey(new(chat)), false)));
 
             return _allowedChats;
         }
@@ -105,4 +105,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
             _lock.Release();
         }
     }
+
+    private static string GetKey(FoulChatId chatId)
+        => chatId.Value;
 }
