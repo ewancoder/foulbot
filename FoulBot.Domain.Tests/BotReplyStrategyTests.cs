@@ -46,7 +46,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         if (contextForReplying == null)
         {
-            Assert.Equal(result, contextForReplying);
+            Assert.Null(result);
             return;
         }
 
