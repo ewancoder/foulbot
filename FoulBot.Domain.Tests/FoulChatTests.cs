@@ -2,6 +2,15 @@
 
 public class FoulChatTests : Testing<FoulChat>
 {
+    private readonly Mock<IDuplicateMessageHandler> _duplicateMessageHandler;
+
+    public FoulChatTests()
+    {
+        _duplicateMessageHandler = Freeze<IDuplicateMessageHandler>();
+    }
+
+    #region AddMessage and GetContext
+
     [Fact]
     public void GetContextSnapshot_ShouldReturnEmptyCollection_FromStart()
     {
@@ -119,6 +128,43 @@ public class FoulChatTests : Testing<FoulChat>
         sut.AddMessage(Fixture.Create<FoulMessage>());
         Assert.Empty(sut.GetContextSnapshot());
     }
+
+    #endregion
+
+    #region HandleMessage
+
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldNotifyAboutConsolidatedMessageById_WhenMultipleDuplicatesAreSent_AndConsolidatorSaysOnlyFirstOneShouldBeProcessed(
+        FoulMessage consolidatedMessage)
+    {
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.Id, Fixture.Create<string>())
+            .With(x => x.Date, DateTime.MaxValue)
+            .CreateMany()
+            .ToList();
+
+        _duplicateMessageHandler.Setup(x => x.Merge(messages))
+            .Returns(() => consolidatedMessage);
+
+        var sut = CreateFoulChat();
+
+        var received = new List<FoulMessage>();
+        sut.MessageReceived += (_, message) => received.Add(message);
+
+        var tasks = new List<Task>();
+        foreach (var message in messages)
+        {
+            tasks.Add(sut.HandleMessageAsync(message).AsTask());
+        }
+
+        await Task.WhenAll(tasks);
+
+        Assert.Single(received);
+        Assert.Equal(consolidatedMessage, received.Single());
+        Assert.Equal(consolidatedMessage, sut.GetContextSnapshot().Single());
+    }
+
+    #endregion
 
     private FoulChat CreateFoulChat(IEnumerable<FoulMessage> context)
     {

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
 
 namespace FoulBot.Domain;
 
@@ -28,6 +28,7 @@ public sealed class FoulChat : IFoulChat
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
     private readonly List<FoulMessage> _context = new(1000);
     private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
     private readonly object _lock = new();
     private bool _isStopping;
 
@@ -96,24 +97,9 @@ public sealed class FoulChat : IFoulChat
             return;
         }
 
-        if (!TryAddMessageToContext(message, out var _))
-        {
-            _logger.LogTrace("Skipping this message handling (as it's likely duplicate)");
+        var consolidatedMessage = await ConsolidateAndAddMessageToContextAsync(message);
+        if (consolidatedMessage == null) // Other bots are too late.
             return;
-        }
-
-        // Mega super duper HACK to wait for the message from ALL the bots.
-        _logger.LogTrace("Entering a very hacky 2-second way to consolidate the same message from different bots");
-
-        await Task.Delay(2000);
-
-        // For some reason logging scope is still present here (using Serilog).
-        // Which is Great for me, but need to investigate why.
-        // !!! It even bleeds through the event into the ensuing FoulBot instance which is wild.
-
-        _logger.LogTrace("Finished waiting for 2 seconds in super-hack, now notifying bots about the message");
-
-        TryAddMessageToContext(message, out var consolidatedMessage);
 
         // TODO: Consider debouncing at this level.
         _logger.LogInformation("Notifying bots about the message");
@@ -154,43 +140,34 @@ public sealed class FoulChat : IFoulChat
         return Task.Delay(TimeSpan.FromSeconds(5)); // HACK implementation.
     }
 
-    private bool TryAddMessageToContext(FoulMessage message, out FoulMessage consolidatedMessage)
+    private async ValueTask<FoulMessage?> ConsolidateAndAddMessageToContextAsync(FoulMessage message)
     {
-        if (_contextMessages.TryGetValue(message.Id, out var duplicate))
+        var list = _unconsolidatedMessages.GetOrAdd(message.Id, new List<FoulMessage>());
+
+        lock (_lock)
         {
-            var newMessage = _duplicateMessageHandler.Merge(duplicate, message);
-            if (newMessage == null)
-            {
-                consolidatedMessage = duplicate;
-                return false; // Message already exists but we don't need to update it.
-            }
+            list.Add(message);
+
+            if (list.Count > 1)
+                return null; // Only process the rest by the first handler.
         }
+
+        // HACK: Waiting for messages from other bots to come.
+        await Task.Delay(2000);
+
+        var consolidatedMessage = _duplicateMessageHandler.Merge(list);
 
         _logger.LogDebug("Entering lock for adding message to context.");
         lock (_lock)
         {
-            if (_contextMessages.TryGetValue(message.Id, out duplicate))
-            {
-                var newMessage = _duplicateMessageHandler.Merge(duplicate, message);
-                if (newMessage == null)
-                {
-                    consolidatedMessage = duplicate;
-                    _logger.LogDebug("Exiting the lock for adding message to context.");
-                    return false; // Message already exists but we don't need to update it.
-                }
-
-                RemoveMessageFromContext(duplicate);
-            }
-
-            {
-                AddMessageToContext(message);
-                _logger.LogDebug("Added message to context.");
-
-                consolidatedMessage = message;
-                _logger.LogDebug("Exiting the lock for adding message to context.");
-                return true;
-            }
+            AddMessageToContext(consolidatedMessage);
+            _logger.LogDebug("Added message to context.");
+            _logger.LogDebug("Exiting the lock for adding message to context.");
         }
+
+        _unconsolidatedMessages.Remove(message.Id, out _);
+
+        return consolidatedMessage;
     }
 
     private void CleanupContextIfNeeded()

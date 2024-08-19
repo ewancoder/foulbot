@@ -2,14 +2,19 @@
 
 public sealed class TelegramDuplicateMessageHandler : IDuplicateMessageHandler
 {
-    public FoulMessage? Merge(FoulMessage previousMessage, FoulMessage newMessage)
+    public FoulMessage Merge(IEnumerable<FoulMessage> messages)
     {
-        if (previousMessage.ReplyTo != null || newMessage.ReplyTo == null)
-            return null;
-
-        return previousMessage with
+        FoulMessage? lastMessage = null;
+        foreach (var message in messages)
         {
-            ReplyTo = previousMessage.ReplyTo ?? newMessage.ReplyTo
-        };
+            lastMessage = message;
+            if (message.ReplyTo != null)
+                return message;
+        }
+
+        if (lastMessage == null)
+            throw new InvalidOperationException("Messages collection is empty.");
+
+        return lastMessage;
     }
 }
