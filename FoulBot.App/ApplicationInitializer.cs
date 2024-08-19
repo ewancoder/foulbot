@@ -25,7 +25,7 @@ public sealed class ApplicationInitializer
         _botConfigs.Select(x => StartHandlingAsync(x, cancellationToken)));
 
     public ValueTask GracefullyShutdownAsync()
-        => _chatPool.GracefullyStopAsync();
+        => _chatPool.GracefullyCloseAsync();
 
     private async Task StartHandlingAsync(
         BotConnectionConfiguration configuration,

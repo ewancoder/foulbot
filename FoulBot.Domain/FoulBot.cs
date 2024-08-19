@@ -2,7 +2,9 @@
 
 public interface IFoulBot
 {
-    event EventHandler? BotFailed;
+    event EventHandler? Shutdown;
+
+    Task GracefulShutdownAsync();
 }
 
 /// <summary>
@@ -21,6 +23,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
     private int _triggerCalls;
+    private bool _isShuttingDown;
 
     public FoulBot(
         ChatScopedBotMessenger botMessenger,
@@ -46,7 +49,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _config = config;
     }
 
-    public event EventHandler? BotFailed;
+    public event EventHandler? Shutdown;
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
@@ -113,7 +116,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         {
             // TODO: Consider returning boolean from all botMessenger operations
             // instead of relying on exceptions.
-            BotFailed?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
+            await GracefulShutdownAsync();
             throw;
         }
         finally
@@ -122,9 +125,26 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Cancels internal operations and fires Shutdown event.
+    /// </summary>
+    public async Task GracefulShutdownAsync()
+    {
+        if (_isShuttingDown) return;
+        _isShuttingDown = true;
+
+        await _cts.CancelAsync();
+        Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
+    }
+
+    /// <summary>
+    /// Cancels internal operations and disposes of resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _cts.CancelAsync();
+        if (!_isShuttingDown)
+            await GracefulShutdownAsync();
+
         _cts.Dispose();
     }
 }

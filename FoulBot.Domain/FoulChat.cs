@@ -145,7 +145,9 @@ public sealed class FoulChat : IFoulChat
 
     public Task GracefullyCloseAsync()
     {
+        if (_isStopping) return Task.CompletedTask;
         _isStopping = true;
+
         return Task.Delay(TimeSpan.FromSeconds(5)); // HACK implementation.
     }
 

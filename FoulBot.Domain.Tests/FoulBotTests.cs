@@ -284,7 +284,7 @@ public class FoulBotTests : Testing<FoulBot>
         var sut = CreateFoulBot();
 
         var fired = false;
-        sut.BotFailed += (_, _) => fired = true;
+        sut.Shutdown += (_, _) => fired = true;
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await sut.TriggerAsync(message));

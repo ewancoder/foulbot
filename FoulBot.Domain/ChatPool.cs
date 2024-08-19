@@ -63,39 +63,6 @@ public sealed class ChatPool : IAsyncDisposable
         return chat;
     }
 
-    /*public async ValueTask UpdateStatusAsync(
-        string chatId,
-        string botId,
-        string botUsername,
-        BotChatStatus status,
-        string? invitedByUsername,
-        bool isPrivate,
-        JoinBotToChatAsync botFactory,
-        CancellationToken cancellationToken)
-    {
-        using var _ = Logger
-            .AddScoped("BotId", botId)
-            .AddScoped("ChatId", chatId)
-            .BeginScope();
-
-        _logger.LogDebug("Updating bot status: {BotUsername}, {Status}.", botUsername, status);
-
-        if (isPrivate)
-        {
-            _logger.LogDebug("Chat is private, adding bot ID to chat ID so that its separate from other bots.");
-            chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
-        }
-
-        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername, cancellationToken);
-
-        chat.ChangeBotStatus(
-            botUsername,
-            invitedByUsername,
-            status);
-
-        _logger.LogInformation("Successfully initiated bot change status.");
-    }*/
-
     public async ValueTask HandleMessageAsync(
         string chatId,
         string botId,
@@ -200,14 +167,14 @@ public sealed class ChatPool : IAsyncDisposable
             chat.MessageReceived += trigger;
 
             // When we fail to send a message to chat, cleanup the bot (it will be recreated with more messages if we receive any).
-            bot.BotFailed += async (sender, e) =>
+            bot.Shutdown += async (sender, e) =>
             {
                 chat.MessageReceived -= trigger;
 
-                await bot.DisposeAsync();
-
                 _joinedBots.Remove($"{botId}{chatId}");
                 _joinedBotsObjects.Remove($"{botId}{chatId}");
+
+                await bot.DisposeAsync();
             };
 
             if (invitedBy != null)
@@ -223,30 +190,20 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    public async ValueTask GracefullyStopAsync()
+    public async ValueTask GracefullyCloseAsync()
     {
         if (_isStopping) return;
-
         _isStopping = true;
-        await DisposeAsync();
 
         await Task.WhenAll(
-            _chats.Values.Select(chat => chat.GracefullyCloseAsync()));
-
-        await Task.Delay(TimeSpan.FromSeconds(5));
+            _chats.Values.ToList().Select(chat => chat.GracefullyCloseAsync()).Concat(
+                _joinedBotsObjects.Values.ToList().Select(bot => bot.GracefulShutdownAsync())));
     }
 
     public async ValueTask DisposeAsync()
     {
-        //if (!_isStopping)
-            // TODO: Do this without circular references.
-            //await GracefullyStopAsync();
-
-        foreach (var bot in _joinedBotsObjects.Values)
-        {
-            // TODO: Figure out whether interface should be disposable.
-            await ((FoulBot)bot).DisposeAsync();
-        }
+        if (!_isStopping)
+            await GracefullyCloseAsync();
 
         _lock.Dispose();
     }
