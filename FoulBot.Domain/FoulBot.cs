@@ -59,7 +59,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         }
 
         var directive = $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
-        var greetingsMessage = await _aiClient.GetCustomResponseAsync(directive);
+        var greetingsMessage = await _aiClient.GetCustomResponseAsync(directive); // TODO: Pass cancellation token.
         await _botMessenger.SendTextMessageAsync(greetingsMessage);
     }
 
@@ -83,19 +83,19 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
             var i = 0;
-            var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context);
+            var aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync(context); // TODO: Pass cancellation token.
             while (!_messageFilter.IsGoodMessage(aiGeneratedTextResponse) && i < 3)
             {
                 i++;
-                aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([
+                aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([ // TODO: Pass cancellation token.
                     new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false),
                     .. context
                 ]);
             }
 
-            await typing.FinishTypingText(aiGeneratedTextResponse);
+            await typing.FinishTypingText(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
-            await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse);
+            await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
             if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
             {
@@ -112,7 +112,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         {
             // TODO: Consider returning boolean from all botMessenger operations
             // instead of relying on exceptions.
-            BotFailed?.Invoke(this, EventArgs.Empty);
+            BotFailed?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
             throw;
         }
         finally
