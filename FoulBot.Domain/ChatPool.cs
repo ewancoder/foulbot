@@ -70,6 +70,51 @@ public sealed class ChatPool : IAsyncDisposable
         return chat;
     }
 
+    public async ValueTask InviteBotToChatAsync(
+        FoulChatId chatId,
+        FoulBotId foulBotId,
+        string? invitedBy,
+        JoinBotToChatAsync botFactory,
+        CancellationToken cancellationToken)
+    {
+        using var _l = Logger
+            .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", foulBotId)
+            .AddScoped("InvitedBy", invitedBy)
+            .BeginScope();
+
+        _logger.LogDebug("Bot has been invited to a new chat by {InvitedBy}.", invitedBy);
+
+        _ = await InitializeChatAndBotAsync(
+            chatId,
+            foulBotId,
+            botFactory,
+            invitedBy: invitedBy,
+            cancellationToken: cancellationToken);
+
+        // TODO: Consider throwing exception above. If bot wasn't able to join the chat - it just returns.
+        _logger.LogInformation("Potentially joined the chat.");
+    }
+
+    public async ValueTask KickBotFromChatAsync(
+        FoulChatId chatId,
+        FoulBotId foulBotId,
+        CancellationToken cancellationToken)
+    {
+        using var _l = Logger
+            .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", foulBotId)
+            .BeginScope();
+
+        var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
+        if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chat), out var bot))
+            _logger.LogDebug("Could not kick bot from chat. It already doesn't exist.");
+
+        await bot!.GracefulShutdownAsync();
+
+        _logger.LogDebug("Kicked bot from chat.");
+    }
+
     public async ValueTask HandleMessageAsync(
         FoulChatId chatId,
         FoulBotId foulBotId,

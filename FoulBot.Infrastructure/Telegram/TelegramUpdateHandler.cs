@@ -122,7 +122,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             return;
         }
 
-        /*if (update.Type == UpdateType.MyChatMember)
+        if (update.Type == UpdateType.MyChatMember)
         {
             _logger.LogDebug("Received MyChatMember update, initiating bot change status.");
 
@@ -137,19 +137,26 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             var chatId = update.MyChatMember.Chat.Id.ToString();
             var invitedByUsername = update.MyChatMember.From?.Username; // Who invited / kicked the bot.
 
-            await _chatPool.UpdateStatusAsync(
-                chatId,
-                botId,
-                member.User.Username,
-                ToBotChatStatus(member.Status),
-                invitedByUsername,
-                update.MyChatMember.Chat.Type == ChatType.Private,
-                botFactory,
-                cancellationToken);
+            if (member.Status == ChatMemberStatus.Left || member.Status == ChatMemberStatus.Kicked)
+            {
+                await _chatPool.KickBotFromChatAsync(
+                    new(chatId), // Chat is never private when invited.
+                    foulBotId,
+                    cancellationToken);
+            }
+            else
+            {
+                await _chatPool.InviteBotToChatAsync(
+                    new(chatId), // Chat is never private when invited.
+                    foulBotId,
+                    invitedByUsername,
+                    botFactory,
+                    cancellationToken);
+            }
 
             _logger.LogInformation("Successfully handled NewChatMember update.");
             return;
-        }*/
+        }
 
         if (update.Type == UpdateType.Message && update.Message?.Type == MessageType.Text)
         {
