@@ -177,6 +177,9 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             if (!await _allowedChatsProvider.IsAllowedChatAsync(new(chatId)))
             {
+                // TODO: We need to DISPOSE of those bots that have been added to chats that are not allowed.
+                // And don't create them at all.
+                // Save memory!
                 _logger.LogWarning("Received a message from not allowed chat: {ChatId}", chatId);
                 return; // Bot is not allowed to write to this chat.
                         // This is a temporary measure so that bots don't reply to random people.
