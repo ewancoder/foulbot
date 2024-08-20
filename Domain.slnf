@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "FoulBot.sln",
+    "projects": [
+      "FoulBot.Domain.Tests\\FoulBot.Domain.Tests.csproj",
+      "FoulBot.Domain\\FoulBot.Domain.csproj"
+    ]
+  }
+}
