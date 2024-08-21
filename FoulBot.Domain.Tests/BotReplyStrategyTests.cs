@@ -2,6 +2,15 @@
 
 namespace FoulBot.Domain.Tests;
 
+public class NotABotMessage : ICustomization
+{
+    public void Customize(IFixture fixture)
+    {
+        fixture.Customize<FoulMessage>(
+            composer => composer.With(p => p.IsOriginallyBotMessage, false));
+    }
+}
+
 public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 {
     public const string BotName = "botName";
@@ -12,17 +21,46 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         _chat = Freeze<IFoulChat>();
         _chat.Setup(x => x.IsPrivateChat)
             .Returns(false);
+
+        Fixture.Customize(new NotABotMessage());
     }
 
-    [Theory, AutoMoqData]
-    public void GetContextForReplying_ShouldProduceResults_EvenWithoutTriggers_WhenChatIsPrivate()
+    private IList<FoulMessage> ConfigureWithContext(IList<FoulMessage>? messages = null)
     {
-        var context = Fixture.CreateMany<FoulMessage>()
+        var context = messages ?? Fixture.CreateMany<FoulMessage>()
             .OrderBy(x => x.Date)
             .ToList();
 
         _chat.Setup(x => x.GetContextSnapshot())
             .Returns(context);
+
+        return context;
+    }
+
+    private FoulBotConfiguration ConfigureBot(string[]? triggers = null, string[]? keywords = null)
+    {
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.Triggers, triggers ?? [])
+            .With(x => x.KeyWords, keywords ?? [])
+            .Create();
+
+        Customize("config", config);
+
+        return config;
+    }
+
+    private FoulMessage GenerateMessageWithPart(string part)
+    {
+        return Fixture.Build<FoulMessage>()
+            .With(x => x.Text, $"{Fixture.Create<string>()}{part}{Fixture.Create<string>()}")
+            .Create();
+    }
+
+    // Always send messages to private chats. But only unprocessed ones.
+    [Fact]
+    public void ShouldAlwaysProduceResults_WhenChatIsPrivate()
+    {
+        var context = ConfigureWithContext();
 
         _chat.Setup(x => x.IsPrivateChat)
             .Returns(true);
@@ -30,40 +68,383 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
 
+        var message = Fixture.Create<FoulMessage>();
+        context.Add(message);
+
+        result = sut.GetContextForReplying(message);
         Assert.NotNull(result);
     }
 
-    [Theory, AutoMoqData]
-    public void GetContextForReplying_ShouldReturnNull_WhenTimeHasPassed_ButNoNewMessagesAppeared()
+    // Do not process already processed messages even in private chats.
+    [Fact]
+    public void ShouldNotProduceResults_WhenChatIsPrivate_AndMessageHasAlreadyBeenHandled()
     {
-        var context = Fixture
-            .Build<FoulMessage>()
-            .With(x => x.Text, "trigger")
-            .CreateMany()
-            .OrderBy(x => x.Date)
-            .ToList();
+        var context = ConfigureWithContext();
 
-        _chat.Setup(x => x.GetContextSnapshot())
-            .Returns(context);
+        _chat.Setup(x => x.IsPrivateChat)
+            .Returns(true);
 
-        var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ "trigger" ])
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
+
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+    }
+
+    // When message is a direct reply to the bot - always process it.
+    [Fact]
+    public void ShouldAlwaysProduceResults_WhenItsAReplyToTheBot()
+    {
+        var config = ConfigureBot();
+
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.ReplyTo, config.BotId)
             .Create();
 
-        Customize("config", config);
+        var context = ConfigureWithContext([ messages ]);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
+
+        var message = Fixture.Create<FoulMessage>();
+        context.Add(message);
+
+        result = sut.GetContextForReplying(message);
+        Assert.Null(result);
+
+        message = Fixture.Build<FoulMessage>()
+            .With(x => x.ReplyTo, config.BotId)
+            .Create();
+        context.Add(message);
+
+        result = sut.GetContextForReplying(message);
+        Assert.NotNull(result);
+    }
+
+    // When message is a direct reply to the bot but it has already been processed - do not reply.
+    [Fact]
+    public void ShouldNotProduceResults_WhenItsAReplyToTheBot_AndMessageHasAlreadyBeenHandled()
+    {
+        var config = ConfigureBot();
+
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.ReplyTo, config.BotId)
+            .CreateMany()
+            .ToList();
+
+        var context = ConfigureWithContext(messages);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
+
+        result = sut.GetContextForReplying(context[1]);
+        Assert.Null(result);
+    }
+
+    // When there are unprocessed messages that have keyword in them - process them.
+    [Theory, AutoMoqData]
+    public void ShouldProduceResults_WhenTriggeredByKeyWord(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0]),
+            Fixture.Create<FoulMessage>()
+        ]);
+
+        ConfigureBot(keywords: keywords);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.NotNull(result);
+    }
+
+    // When multiple messages with keywords in them come in short succession - skip the second one.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByKeyWord_MultipleTimes_WithoutWaiting(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0])
+        ]);
+
+        ConfigureBot(keywords: keywords);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var result = sut.GetContextForReplying(context[^1]);
         Assert.NotNull(result);
 
+        context.Add(GenerateMessageWithPart(keywords[1]));
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
+    }
+
+    // When enough time has passed between multiple messages with keywords - process both.
+    [Theory, AutoMoqData]
+    public void ShouldProduceResults_WhenTriggeredByKeyWord_MultipleTimes_AfterMinimumTimeBetweenMessagesHasPassed(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0])
+        ]);
+
+        ConfigureBot(keywords: keywords);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+
+        context.Add(GenerateMessageWithPart(keywords[1]));
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages);
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+    }
+
+    // When enough time has passed between multiple messages with keywords, but latest message has already been processed - skip.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByKeyWord_MultipleTimes_WithWaiting_AndMessageHasAlreadyBeenProcessed(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0])
+        ]);
+
+        ConfigureBot(keywords: keywords);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
 
         TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages);
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
+    }
+
+    // When new messages appear in context while debounce is in effect - skip them.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByKeyWord_AfterWaiting_ButThatMessageHasBeenAddedWhileWaiting(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0])
+        ]);
+
+        ConfigureBot(keywords: keywords);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
+
+        context.Add(Fixture.Create<FoulMessage>());
+        sut.GetContextForReplying(context[0]);
+
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages);
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+    }
+
+    // When second message comes after waiting - but it was already present when we processed the first one - do not process it again.
+    [Theory, AutoMoqData]
+    public void ShouldNotProcessOldMessage_WhenTriggeredSecondTimeAfterWaiting(string[] keywords)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(keywords[0]),
+            GenerateMessageWithPart(keywords[1])
+        ]);
+
+        ConfigureBot(keywords: keywords);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.NotNull(result);
+
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[2]);
+        Assert.Null(result);
+    }
+
+    // When there are unprocessed messages that have trigger in them with spaces - process them.
+    [Theory, AutoMoqData]
+    public void ShouldProduceResults_WhenTriggeredByTrigger(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart($" {triggers[0]} "),
+            Fixture.Create<FoulMessage>()
+        ]);
+
+        ConfigureBot(keywords: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.NotNull(result);
+    }
+
+    // When there are unprocessed messages that have trigger in them without spaces - skip them.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByTrigger_AndItsNotSpaced(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart(triggers[0]),
+            Fixture.Create<FoulMessage>()
+        ]);
+
+        ConfigureBot(keywords: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.NotNull(result);
+    }
+
+    // When multiple messages with triggers in them come in short succession - process the second one too.
+    [Theory, AutoMoqData]
+    public void ShouldProduceResults_WhenTriggeredByTrigger_MultipleTimes_WithoutWaiting(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart($" {triggers[0]} ")
+        ]);
+
+        ConfigureBot(triggers: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+
+        context.Add(GenerateMessageWithPart($" {triggers[1]} "));
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+    }
+
+    // When multiple messages with triggers in them come in short succession - process the second one too.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByTrigger_MultipleTimes_WithoutWaiting_ButSecondOneNotSpaced(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart($" {triggers[0]} ")
+        ]);
+
+        ConfigureBot(triggers: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+
+        context.Add(GenerateMessageWithPart(triggers[1]));
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
+    }
+
+    // When second message comes after waiting - but it was already present when we processed the first one - do not process it again.
+    [Theory, AutoMoqData]
+    public void ShouldNotProcessOldMessage_WhenTriggeredSecondTimeAfterWaiting_ByTriggers(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart($" {triggers[0]} "),
+            GenerateMessageWithPart($" {triggers[1]} ")
+        ]);
+
+        ConfigureBot(triggers: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.NotNull(result);
+
+        TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
+        result = sut.GetContextForReplying(context[2]);
+        Assert.Null(result);
+    }
+
+    [Theory, AutoMoqData]
+    public void ShouldProcess_WhenCurrentMessageIsAReplyToTheBot(
+        FoulBotConfiguration config)
+    {
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+            .With(x => x.ReplyTo, config.BotId)
+            .Create());
+
+        Assert.NotNull(response);
+    }
+
+    [Theory, AutoMoqData]
+    public void ShouldNotProcess_WhenCurrentMessageIsAMessageFromTheBot(
+        FoulBotConfiguration config)
+    {
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+            .With(x => x.SenderName, config.BotName)
+            .With(x => x.IsOriginallyBotMessage, true)
+            .Create());
+
+        Assert.Null(response);
+    }
+
+    [Theory, AutoMoqData]
+    public void ShouldProcess_WhenCurrentMessageIsFromAUserWithTheSameNameAsABot(
+        FoulBotConfiguration config)
+    {
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+            .With(x => x.SenderName, config.BotName)
+            .With(x => x.IsOriginallyBotMessage, false)
+            .With(x => x.ReplyTo, config.BotId) // To make the message trigger a reply.
+            .Create());
+
+        Assert.NotNull(response);
+    }
+
+    [Fact]
+    public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
+    {
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.MessageType, FoulMessageType.Bot)
+            .With(x => x.Text, "trigger")
+            .CreateMany()
+            .ToList();
+
+        ConfigureWithContext(messages);
+        ConfigureBot(keywords: ["trigger"]);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var response = sut.GetContextForReplying(messages[^1]);
+        // Skipping system directive.
+        Assert.True(response!.Skip(1).All(message => message.MessageType == FoulMessageType.User));
     }
 
     [Theory]
@@ -73,7 +454,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     [InlineData("tRiGGer")]
     [InlineData("  abtRiGGer")]
     [InlineData("  tRiGGer  ")]
-    public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenTriggers_WorksAnyCase(
+    public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenKeywords_WorksAnyCase(
         string trigger)
     {
         var context = Fixture
@@ -83,21 +464,15 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .OrderBy(x => x.Date)
             .ToList();
 
-        void AddMessages(string trigger)
+        void AddMessages(string keyword)
         {
             context.Add(Fixture.Build<FoulMessage>()
-                .With(x => x.Text, $"{Fixture.Create<string>()}{trigger}{Fixture.Create<string>()}")
+                .With(x => x.Text, $"{Fixture.Create<string>()}{keyword}{Fixture.Create<string>()}")
                 .Create());
         }
 
-        _chat.Setup(x => x.GetContextSnapshot())
-            .Returns(context);
-
-        var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ "trigGer" ])
-            .Create();
-
-        Customize("config", config);
+        ConfigureWithContext(context);
+        ConfigureBot(keywords: ["trigGer"]);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
@@ -145,21 +520,17 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
                 .Create());
         }
 
-        _chat.Setup(x => x.GetContextSnapshot())
-            .Returns(context);
-
-        var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.Triggers, [ "mandatorytrigger" ])
-            .With(x => x.KeyWords, [ "trigger" ])
-            .Create();
-
-        Customize("config", config);
+        ConfigureWithContext(context);
+        ConfigureBot(triggers: ["mandatorytrigger"]);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var result = sut.GetContextForReplying(context[^1]);
 
-        Assert.NotNull(result);
+        if (shouldReply)
+            Assert.NotNull(result);
+        else
+            Assert.Null(result);
 
         AddMessages(trigger);
         result = sut.GetContextForReplying(context[^1]);
@@ -170,7 +541,6 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             Assert.Null(result);
 
         // Adding regular message after a hard-triggered one should not trigger a bot.
-        // TODO: Split into separate test properly.
         AddMessages("something");
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
@@ -198,14 +568,8 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .OrderBy(x => x.Date)
             .ToList();
 
-        _chat.Setup(x => x.GetContextSnapshot())
-            .Returns(context);
-
-        var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.Triggers, [ "mandatoRYTRIgger" ])
-            .Create();
-
-        Customize("config", config);
+        ConfigureWithContext(context);
+        ConfigureBot(triggers: ["mandatoRYTRIgger"]);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
@@ -215,46 +579,6 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             Assert.NotNull(result);
         else
             Assert.Null(result);
-    }
-
-    [Theory, AutoMoqData]
-    public void GetContextForReplying_ShouldReturnResults_WhenCurrentMessageIsAReplyToTheBot(
-        FoulBotConfiguration config)
-    {
-        Customize("config", config);
-
-        var sut = Fixture.Create<BotReplyStrategy>();
-
-        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
-            .With(x => x.ReplyTo, config.BotId)
-            .Create());
-
-        Assert.NotNull(response);
-    }
-
-    [Theory, AutoMoqData]
-    public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
-    {
-        var messages = Fixture.Build<FoulMessage>()
-            .With(x => x.MessageType, FoulMessageType.Bot)
-            .With(x => x.Text, "trigger")
-            .CreateMany()
-            .ToList();
-
-        var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ "trigger" ])
-            .Create();
-
-        Customize("config", config);
-
-        var sut = Fixture.Create<BotReplyStrategy>();
-
-        _chat.Setup(x => x.GetContextSnapshot())
-            .Returns(messages);
-
-        var response = sut.GetContextForReplying(messages[^1]);
-        // Skipping system directive.
-        Assert.True(response!.Skip(1).All(message => message.MessageType == FoulMessageType.User));
     }
 
     [Theory]
@@ -329,7 +653,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         // When bot is the sender - do not reply.
         Add(
             GenerateMessages(),
-            Message(senderName: BotReplyStrategyTests.BotName),
+            Message(senderName: BotReplyStrategyTests.BotName, true),
             null,
             100, 100);
 
@@ -384,21 +708,24 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             .Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
             .With(x => x.MessageType, FoulMessageType.User)
+            .With(x => x.IsOriginallyBotMessage, false)
             .CreateMany(20)
             .Concat(_fixture
                 .Build<FoulMessage>()
                 .With(x => x.Text, _fixture.Create<string>())
                 .With(x => x.MessageType, FoulMessageType.User)
+                .With(x => x.IsOriginallyBotMessage, false)
                 .CreateMany(40))
             .ToList();
     }
 
-    private FoulMessage Message(string senderName = "default")
+    private FoulMessage Message(string senderName = "default", bool isOriginallyBotMessage = false)
     {
         return _fixture.Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
             .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.SenderName, senderName)
+            .With(x => x.IsOriginallyBotMessage, isOriginallyBotMessage)
             .Create();
     }
 
@@ -408,6 +735,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             .With(x => x.Date, DateTime.MinValue + TimeSpan.FromHours(hours))
             .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.Text, isTriggered ? "trigger": _fixture.Create<string>())
+            .With(x => x.IsOriginallyBotMessage, false)
             .Create();
     }
 

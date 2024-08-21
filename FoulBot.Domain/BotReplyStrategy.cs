@@ -27,29 +27,33 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
     public IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage)
     {
-        if (currentMessage.SenderName == _config.BotName)
+        var context = _chat.GetContextSnapshot();
+        var unprocessedMessages = context
+            .SkipWhile(message => _lastProcessedMessageId != null && message.Id != _lastProcessedMessageId)
+            .Skip(_lastProcessedMessageId != null ? 1 : 0)
+            .ToList();
+
+        if ((currentMessage.SenderName == _config.BotName
+            && currentMessage.IsOriginallyBotMessage)
+            || unprocessedMessages.Count == 0)
             return null; // Do not reply to yourself.
 
         // Reply to every message in private chat, and to Replies.
         if (_chat.IsPrivateChat || currentMessage.ReplyTo == _config.BotId)
         {
-            _lastProcessedMessageId = currentMessage.Id;
-            return Reduce(_chat.GetContextSnapshot());
+            _lastProcessedMessageId = context[^1].Id;
+            return Reduce(context);
         }
-
-        var context = _chat.GetContextSnapshot();
 
         // HACK: Duplicated code with triggerMessage.
         // TODO: Refactor this to not iterate on context multiple times.
         // And to potentially iterate only as last resort.
-        var alwaysTriggerMessage = context
-            .SkipWhile(message => _lastProcessedMessageId != null && message.Id != _lastProcessedMessageId)
-            .Skip(_lastProcessedMessageId != null ? 1 : 0)
+        var alwaysTriggerMessage = unprocessedMessages
             .FirstOrDefault(ShouldAlwaysTrigger);
 
         if (alwaysTriggerMessage != null)
         {
-            _lastProcessedMessageId = currentMessage.Id;
+            _lastProcessedMessageId = context[^1].Id;
             return Reduce(context);
         }
 
@@ -57,7 +61,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         {
             // Still consider all messages processed at this point,
             // so that when _minimumTimeBetweenMessages passes we don't reply instantly to old messages.
-            _lastProcessedMessageId = currentMessage.Id;
+            _lastProcessedMessageId = context[^1].Id;
             return null; // Reply to triggers only once per _minimumTimeBetweenMessages.
         }
 
