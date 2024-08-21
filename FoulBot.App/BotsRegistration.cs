@@ -108,10 +108,11 @@ public static class BotsRegistration
         if (isDebug)
         {
             services.RegisterBot(configuration, "EwTest1BotApiKey", new FoulBotConfiguration(
-                "ew_test1bot", "First_TestBot", newtonDirective, ["newton"])
+                "ew_test1bot", "First_TestBot", grumpyDirective, ["pidor"])
                 .NeverReplyOutOfTurn()
                 .SetOnlyReadAddressedToBotMessages()
-                .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ"));
+                .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
+                .UseGpt35());
 
             services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
                 "ew_test2bot", "Second_TestBot", grumpyDirective, ["pidor"])
@@ -122,7 +123,7 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAAPPZkjBhJM9ujwTp1gJOFAXgAzq3acAAhcDAALPu9QOfWnbEIRIz601BA",
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
-                ).UseGpt35());
+                ));
         }
         else
         {

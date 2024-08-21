@@ -348,8 +348,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         _aiClient.Setup(x => x.GetCustomResponseAsync(It.Is<string>(
             r => r.Contains(config.Directive)
-                && r.Contains("You should do the following")
-                && r.Contains($"{requester.Name} asked you")
+                && r.Contains($"You've been asked by {requester.Name} to do")
                 && r.Contains($"{request}")
             )))
             .Returns(() => new(requestResponse));
