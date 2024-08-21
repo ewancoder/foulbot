@@ -87,6 +87,26 @@ public class FoulBotTests : Testing<FoulBot>
         _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, generatedMessage));
     }
 
+    [Theory, AutoMoqData]
+    public async Task GreetEveryoneAsync_ShouldAddTheGreetingsMessageToContext(
+        ChatParticipant invitedBy,
+        string generatedMessage)
+    {
+        var config = CreateDefaultConfig();
+
+        _aiClient.Setup(x => x.GetCustomResponseAsync(It.Is<string>(
+            directive => directive.Contains(config.Directive)
+                && directive.Contains(invitedBy.Name)
+                && directive.Contains("You have just been added to a chat group"))))
+            .Returns(() => new(generatedMessage));
+
+        var sut = CreateFoulBot(config);
+
+        await sut.GreetEveryoneAsync(invitedBy);
+
+        AssertContextNotified(generatedMessage, config.BotName);
+    }
+
     #endregion
 
     #region DisposeAsync
@@ -167,11 +187,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.TriggerAsync(message);
 
-        _chat.Verify(x => x.AddMessage(It.Is<FoulMessage>(
-            message => message.MessageType == FoulMessageType.Bot
-                && message.IsOriginallyBotMessage == true
-                && message.Text == responseMessage
-                && message.SenderName == config.BotName)));
+        AssertContextNotified(responseMessage, config.BotName);
     }
 
     [Theory, AutoMoqData]
@@ -190,11 +206,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.TriggerAsync(message);
 
-        _chat.Verify(x => x.AddMessage(It.Is<FoulMessage>(
-            message => message.MessageType == FoulMessageType.Bot
-                && message.IsOriginallyBotMessage == true
-                && message.Text == responseMessage
-                && message.SenderName == config.BotName)), Times.Never);
+        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -317,6 +329,15 @@ public class FoulBotTests : Testing<FoulBot>
     }
 
     #endregion
+
+    private void AssertContextNotified(string messageAddedToContext, string botName)
+    {
+        _chat.Verify(x => x.AddMessage(It.Is<FoulMessage>(
+            message => message.MessageType == FoulMessageType.Bot
+                && message.IsOriginallyBotMessage == true
+                && message.Text == messageAddedToContext
+                && message.SenderName == botName)));
+    }
 
     private FoulBotConfiguration CreateDefaultConfig()
     {

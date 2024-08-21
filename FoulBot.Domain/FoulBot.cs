@@ -64,6 +64,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         var directive = $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
         var greetingsMessage = await _aiClient.GetCustomResponseAsync(directive); // TODO: Pass cancellation token.
         await _botMessenger.SendTextMessageAsync(greetingsMessage);
+        NotifyContext(greetingsMessage);
     }
 
     public async ValueTask TriggerAsync(FoulMessage message)
@@ -101,16 +102,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
             if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
-            {
-                _chat.AddMessage(new FoulMessage(
-                    Guid.NewGuid().ToString(),
-                    FoulMessageType.Bot,
-                    _config.BotName,
-                    aiGeneratedTextResponse,
-                    DateTime.UtcNow, // TODO: Consider using timeprovider.
-                    true,
-                    null));
-            }
+                NotifyContext(aiGeneratedTextResponse);
         }
         catch
         {
@@ -146,5 +138,17 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await GracefulShutdownAsync();
 
         _cts.Dispose();
+    }
+
+    private void NotifyContext(string message)
+    {
+        _chat.AddMessage(new FoulMessage(
+            Guid.NewGuid().ToString(),
+            FoulMessageType.Bot,
+            _config.BotName,
+            message,
+            DateTime.UtcNow, // TODO: Consider using timeprovider.
+            true,
+            null));
     }
 }
