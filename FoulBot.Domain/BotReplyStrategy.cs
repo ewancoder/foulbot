@@ -48,7 +48,10 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
             .FirstOrDefault(ShouldAlwaysTrigger);
 
         if (alwaysTriggerMessage != null)
+        {
+            _lastProcessedMessageId = currentMessage.Id;
             return Reduce(context);
+        }
 
         if (_timeProvider.GetUtcNow().UtcDateTime - _lastTriggeredAt < MinimumTimeBetweenMessages)
         {

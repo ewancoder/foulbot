@@ -168,6 +168,12 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             Assert.NotNull(result);
         else
             Assert.Null(result);
+
+        // Adding regular message after a hard-triggered one should not trigger a bot.
+        // TODO: Split into separate test properly.
+        AddMessages("something");
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.Null(result);
     }
 
     [Theory]
