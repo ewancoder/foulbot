@@ -20,6 +20,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FoulBot.Domain.Tests", "Fou
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FoulBot.App", "FoulBot.App\FoulBot.App.csproj", "{958AF54B-147D-4581-B007-A95DE72CE776}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoulBot.App.Tests", "FoulBot.App.Tests\FoulBot.App.Tests.csproj", "{640C882C-FA15-4D3F-8B56-8DA2D5FDEB34}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FoulBot.Infrastructure.Tests", "FoulBot.Infrastructure.Tests\FoulBot.Infrastructure.Tests.csproj", "{135F1BEB-F2AB-40A0-9121-4467CE7C2922}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +46,14 @@ Global
 		{958AF54B-147D-4581-B007-A95DE72CE776}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{958AF54B-147D-4581-B007-A95DE72CE776}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{958AF54B-147D-4581-B007-A95DE72CE776}.Release|Any CPU.Build.0 = Release|Any CPU
+		{640C882C-FA15-4D3F-8B56-8DA2D5FDEB34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{640C882C-FA15-4D3F-8B56-8DA2D5FDEB34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{640C882C-FA15-4D3F-8B56-8DA2D5FDEB34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{640C882C-FA15-4D3F-8B56-8DA2D5FDEB34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{135F1BEB-F2AB-40A0-9121-4467CE7C2922}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{135F1BEB-F2AB-40A0-9121-4467CE7C2922}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{135F1BEB-F2AB-40A0-9121-4467CE7C2922}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{135F1BEB-F2AB-40A0-9121-4467CE7C2922}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
