@@ -14,9 +14,6 @@ public sealed record FoulBotConfiguration
         if (botId == null || botName == null || directive == null || keyWords == null)
             throw new ArgumentException("One of the arguments is null.");
 
-        if (keyWords.Count == 0)
-            throw new ArgumentException("Should have at least one keyword.");
-
         FoulBotId = new FoulBotId(botId, botName);
         Directive = directive.Replace("\r", string.Empty).Replace('\n', ' ');
         KeyWords = keyWords;
