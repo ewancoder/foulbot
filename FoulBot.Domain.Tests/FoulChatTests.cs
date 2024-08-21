@@ -34,6 +34,7 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Fact]
+    [Trait("Category", "LongRunning")]
     public async Task GetContextSnapshot_ShouldWorkConcurrently()
     {
         // We clean up to 200, when we reach 501.
@@ -72,6 +73,7 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Fact]
+    [Trait("Category", "LongRunning")]
     public async Task GetContextSnapshot_ShouldWorkConcurrently_UntilLimit()
     {
         // This test tests specific data without cleanup process.
@@ -109,9 +111,8 @@ public class FoulChatTests : Testing<FoulChat>
 
         var messages = Fixture.Build<FoulMessage>()
             .With(x => x.Date, () => DateTime.UtcNow + Fixture.Create<TimeSpan>())
-            .CreateMany(amountOfMessagesInSnapshot)
+            .CreateMany(/*amountOfMessagesInSnapshot*/ 10)
             .OrderBy(x => x.Date)
-            .TakeLast(10)
             .ToList();
 
         _duplicateMessageHandler.Setup(x => x.Merge(It.IsAny<IEnumerable<FoulMessage>>()))
