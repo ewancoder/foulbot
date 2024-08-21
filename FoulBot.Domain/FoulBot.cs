@@ -67,6 +67,13 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         NotifyContext(greetingsMessage);
     }
 
+    public async ValueTask PerformRequestAsync(ChatParticipant requester, string request)
+    {
+        var directive = $"{_config.Directive}. You should do the following ({requester.Name} asked you): {request}";
+        var requestPerformedMessage = await _aiClient.GetCustomResponseAsync(directive);
+        await _botMessenger.SendTextMessageAsync(requestPerformedMessage);
+    }
+
     public async ValueTask TriggerAsync(FoulMessage message)
     {
         var value = Interlocked.Increment(ref _triggerCalls);
