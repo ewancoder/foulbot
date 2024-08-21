@@ -108,14 +108,14 @@ public static class BotsRegistration
         if (isDebug)
         {
             services.RegisterBot(configuration, "EwTest1BotApiKey", new FoulBotConfiguration(
-                "ew_test1bot", "First_TestBot", grumpyDirective, ["pidor"])
+                "ew_test1bot", "First_TestBot", grumpyDirective, ["pidor"], ["some"])
                 .NeverReplyOutOfTurn()
                 .SetOnlyReadAddressedToBotMessages()
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35());
 
             services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
-                "ew_test2bot", "Second_TestBot", grumpyDirective, ["pidor"])
+                "ew_test2bot", "Second_TestBot", grumpyDirective, ["pidor"], ["some"])
                 .WithOnlyVoice()
                 .AddStickers(
                     "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",
@@ -129,7 +129,7 @@ public static class BotsRegistration
         {
             services.RegisterBot(configuration, "EwPidorBotApiKey", new FoulBotConfiguration(
                 "ew_pidorbot", "Pidor_Bot", grumpyDirective,
-                ["пидор", "бот"])
+                ["пидор", "бот", "pidor", "bot"], [])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35());
@@ -139,7 +139,7 @@ public static class BotsRegistration
                 //"ew_meatbagsbot", "Robot", bostonDirective,
                 //["робот", "человек", "ии", "ai", "кожан", "ублюд"])
                 "ew_meatbagsbot", "Cool_Guy", slavnyDirective,
-                ["славный", "парень", "спасибо", "пожалуйста", "сенкс", "плиз"])
+                ["славный", "парень", "cool", "guy"], [])
                 .AddStickers("CAACAgEAAxkBAAIDKGZdtklkN9mSgQUz4rlaOTZ9ZsekAAKGCQACv4yQBMtRYZ5zF5YNNQQ"));
             //.WithOnlyVoice());
             /*.AddStickers(
@@ -152,37 +152,37 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwVovaBotApiKey", new FoulBotConfiguration(
                 "ew_vovabot", "Vova", vovaDirective,
-                keyWords: ["вова", "vova", "linux", "gentoo", "линукс", "генту", "govno", "говно", "кофе", "coffee", "вову", "вовы"])
+                ["вов", "линукс", "кофе", "vov", "linux", "coffee"], [])
                     .SetContextSize(40));
 
             services.RegisterBot(configuration, "EwGirlBotApiKey", new FoulBotConfiguration(
                 "ew_girlbot", "Girl_Bot", girlDirective,
-                keyWords: ["girl", "мот", "испан", "вежл", "сн", "ду"])
+                ["girl", "мот"], [])
                     .SetContextSize(40));
 
             services.RegisterBot(configuration, "EwYakuzaBotApiKey", new FoulBotConfiguration(
                 "ew_yakuzabot", "Yakuza_Boss", yakuzaDirective,
-                keyWords: ["босс"])
+                ["босс", "якудза", "boss", "jakuza"], [])
                     .SetContextSize(20).NeverReplyOutOfTurn());
 
             services.RegisterBot(configuration, "EwStathemBotApiKey", new FoulBotConfiguration(
                 "ew_stathembot", "Jason_Stathah", stathemDirective,
-                keyWords: ["стетх", "стэтх", "джейс", "stath", "бро", "бра"])
+                ["stathem", "bro", "стетхем", "бро"], [])
                     .UseGpt35());
 
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
                 "ew_realtorbot", "Realtor", realtorDirective,
-                keyWords: ["realt", "квартир", "дом", "риэлт", "реалт", "риалт", "реэлт"])
+                ["realtor", "риелтор", "дом", "house"], [])
                     .SetContextSize(35));
 
             services.RegisterBot(configuration, "EwGggBotApiKey", new FoulBotConfiguration(
                 "ew_gggbot", "Assistant", assistantDirective,
-                keyWords: ["ggg"])
+                ["ggg"], [])
                     .SetContextSize(40).NeverReplyOutOfTurn().DoNotWriteOnYourOwn());
 
             services.RegisterBot(configuration, "EwSmartAssBotApiKey", new FoulBotConfiguration(
                 "ew_smartassbot", "Assistant", newtonDirective,
-                keyWords: ["smart", "isaac", "newt", "ньют", "исаак", "исак"])
+                ["исаак", "isaac"], [])
                     .SetContextSize(40));
         }
 

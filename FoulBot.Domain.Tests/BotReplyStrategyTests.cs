@@ -1,9 +1,10 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using Xunit.Sdk;
+
+namespace FoulBot.Domain.Tests;
 
 public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 {
     public const string BotName = "botName";
-    public const string Trigger = "Trigger";
     private readonly Mock<IFoulChat> _chat;
 
     public BotReplyStrategyTests()
@@ -38,7 +39,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     {
         var context = Fixture
             .Build<FoulMessage>()
-            .With(x => x.Text, Trigger)
+            .With(x => x.Text, "trigger")
             .CreateMany()
             .OrderBy(x => x.Date)
             .ToList();
@@ -47,7 +48,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .Returns(context);
 
         var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ Trigger ])
+            .With(x => x.KeyWords, [ "trigger" ])
             .Create();
 
         Customize("config", config);
@@ -65,20 +66,27 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         Assert.Null(result);
     }
 
-    [Theory, AutoMoqData]
-    public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenTriggers()
+    [Theory]
+    [InlineData("Trigger")]
+    [InlineData("trigger")]
+    [InlineData("TRIGGER")]
+    [InlineData("tRiGGer")]
+    [InlineData("  tRiGGer")]
+    [InlineData("  tRiGGer  ")]
+    public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenTriggers_WorksAnyCase(
+        string trigger)
     {
         var context = Fixture
             .Build<FoulMessage>()
-            .With(x => x.Text, Trigger)
+            .With(x => x.Text, "trigger")
             .CreateMany()
             .OrderBy(x => x.Date)
             .ToList();
 
-        void AddMessages()
+        void AddMessages(string trigger)
         {
             context.Add(Fixture.Build<FoulMessage>()
-                .With(x => x.Text, Trigger)
+                .With(x => x.Text, $"{Fixture.Create<string>()}{trigger}{Fixture.Create<string>()}")
                 .Create());
         }
 
@@ -86,7 +94,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .Returns(context);
 
         var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ Trigger ])
+            .With(x => x.KeyWords, [ "trigGer" ])
             .Create();
 
         Customize("config", config);
@@ -97,23 +105,62 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         Assert.NotNull(result);
 
-        AddMessages();
+        AddMessages(trigger);
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
 
-        AddMessages();
+        AddMessages(trigger);
         TimeProvider.Advance(BotReplyStrategy.MinimumTimeBetweenMessages - TimeSpan.FromSeconds(1));
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
 
-        AddMessages();
+        AddMessages(trigger);
         TimeProvider.Advance(TimeSpan.FromSeconds(1));
         result = sut.GetContextForReplying(context[^1]);
         Assert.NotNull(result);
 
-        AddMessages();
+        AddMessages(trigger);
         result = sut.GetContextForReplying(context[^1]);
         Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData("Trigger", false)]
+    [InlineData("TRIGGER", false)]
+    [InlineData("  tRiGGer  ", false)]
+    [InlineData("atoeuMandatoryTriggerthoeu", false)]
+    [InlineData("thoeuMandatoryTrigger oteuh", false)]
+    [InlineData("oteuh MandatoryTrigger oetuh", true)]
+    [InlineData("otaehu MandatoryTrigger", true)]
+    [InlineData("mandatorytRIGGER aoteuh", true)]
+    [InlineData("mandatorytRIGGER", true)]
+    public void GetContextForReplying_ShouldReturnResult_WhenMandatoryTriggerIsFound_WorksAnyCase_ButWithSpaces(
+        string trigger, bool returns)
+    {
+        var context = Fixture
+            .Build<FoulMessage>()
+            .With(x => x.Text, trigger)
+            .CreateMany()
+            .OrderBy(x => x.Date)
+            .ToList();
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(context);
+
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.Triggers, [ "mandatoRYTRIgger" ])
+            .Create();
+
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+
+        if (returns)
+            Assert.NotNull(result);
+        else
+            Assert.Null(result);
     }
 
     [Theory, AutoMoqData]
@@ -136,12 +183,12 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     {
         var messages = Fixture.Build<FoulMessage>()
             .With(x => x.MessageType, FoulMessageType.Bot)
-            .With(x => x.Text, Trigger)
+            .With(x => x.Text, "trigger")
             .CreateMany()
             .ToList();
 
         var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ Trigger ])
+            .With(x => x.KeyWords, [ "trigger" ])
             .Create();
 
         Customize("config", config);
@@ -172,7 +219,8 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .Create();
 
         var config = Fixture.Build<FoulBotConfiguration>()
-            .With(x => x.KeyWords, [ Trigger ])
+            .With(x => x.KeyWords, [ "trigger" ])
+            .With(x => x.Triggers, [ "mandatory" ])
             .With(x => x.FoulBotId, foulBotId)
             .With(x => x.ContextSize, contextSize)
             .With(x => x.MaxContextSizeInCharacters, maxContextSizeInCharacters)
@@ -235,12 +283,12 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         var messages = GenerateMessages();
 
         var triggered = messages
-            .Where(x => x.Text.Contains(BotReplyStrategyTests.Trigger))
+            .Where(x => x.Text.Contains("trigger"))
             .OrderByDescending(x => x.Date)
             .ToList();
 
         var nonTriggered = messages
-            .Where(x => !x.Text.Contains(BotReplyStrategyTests.Trigger))
+            .Where(x => !x.Text.Contains("trigger"))
             .OrderByDescending(x => x.Date)
             .ToList();
 
@@ -305,12 +353,12 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         return _fixture.Build<FoulMessage>()
             .With(x => x.Date, DateTime.MinValue + TimeSpan.FromHours(hours))
             .With(x => x.MessageType, FoulMessageType.User)
-            .With(x => x.Text, isTriggered ? BotReplyStrategyTests.Trigger : _fixture.Create<string>())
+            .With(x => x.Text, isTriggered ? "trigger": _fixture.Create<string>())
             .Create();
     }
 
     private string GenerateTriggeredText()
     {
-        return $"{_fixture.Create<string>()} {BotReplyStrategyTests.Trigger} {_fixture.Create<string>()}";
+        return $"{_fixture.Create<string>()}{"trigger"}{_fixture.Create<string>()}";
     }
 }
