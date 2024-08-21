@@ -17,19 +17,22 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly ILogger<TypingImitator> _typingImitatorLogger;
+    private readonly ILogger<ReminderCreator> _reminderCreatorLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
-        ILogger<TypingImitator> typingImitatorLogger)
+        ILogger<TypingImitator> typingImitatorLogger,
+        ILogger<ReminderCreator> reminderCreatorLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
         _typingImitatorLogger = typingImitatorLogger;
+        _reminderCreatorLogger = reminderCreatorLogger;
     }
 
     /// <summary>
@@ -54,7 +57,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             ? new AssistantMessageFilter()
             : new FoulMessageFilter();
 
-        return new FoulBot(
+        var bot = new FoulBot(
             messenger,
             _delayStrategy,
             replyStrategy,
@@ -65,5 +68,16 @@ public sealed class FoulBotFactory : IFoulBotFactory
             chat,
             cts,
             config);
+
+        // Legacy class to be reworked. Currently starts reminders mechanism
+        // on creation, so no need to keep the reference.
+        _ = new ReminderCreator(
+            _reminderCreatorLogger,
+            chat.ChatId,
+            config.FoulBotId,
+            bot,
+            cts.Token);
+
+        return bot;
     }
 }
