@@ -33,7 +33,7 @@ public class BotDelayStrategyTests : Testing<BotDelayStrategy>
         Assert.False(task.IsCompleted);
 
         AdvanceTime(1);
-        await WaitAsync(task);
+        await task;
         Assert.True(task.IsCompletedSuccessfully);
     }
 
