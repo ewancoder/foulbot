@@ -108,14 +108,14 @@ public static class BotsRegistration
         if (isDebug)
         {
             services.RegisterBot(configuration, "EwTest1BotApiKey", new FoulBotConfiguration(
-                "ew_test1bot", "First_TestBot", grumpyDirective, ["pidor"], ["some"])
-                .NeverReplyOutOfTurn()
-                .SetOnlyReadAddressedToBotMessages()
+                "ew_test1bot", "First_TestBot", grumpyDirective,
+                ["пидор", "бот", "pidor", "bot"], [])
+                .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35());
 
             services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
-                "ew_test2bot", "Second_TestBot", grumpyDirective, ["pidor"], ["some"])
+                "ew_test2bot", "Second_TestBot", grumpyDirective, ["xxx"], ["xxx"])
                 .WithOnlyVoice()
                 .AddStickers(
                     "CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA",

@@ -67,18 +67,18 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     }
 
     [Theory]
-    [InlineData("Trigger")]
+    [InlineData("some_Trigger")]
     [InlineData("trigger")]
-    [InlineData("TRIGGER")]
+    [InlineData("TRIGGERabc")]
     [InlineData("tRiGGer")]
-    [InlineData("  tRiGGer")]
+    [InlineData("  abtRiGGer")]
     [InlineData("  tRiGGer  ")]
     public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenTriggers_WorksAnyCase(
         string trigger)
     {
         var context = Fixture
             .Build<FoulMessage>()
-            .With(x => x.Text, "trigger")
+            .With(x => x.Text, "some_trigger_some")
             .CreateMany()
             .OrderBy(x => x.Date)
             .ToList();
@@ -125,6 +125,52 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     }
 
     [Theory]
+    [InlineData("mandatorytrigger", true)]
+    [InlineData("hi mandatorytrigger bye", true)]
+    [InlineData("mandatorytrigger_with trigger", false)]
+    public void GetContextForReplying_ShouldReturnResult_EvenWhenNotEnoughTimePassedBetweenTriggers_IfMandatoryTrigger(
+        string trigger, bool shouldReply)
+    {
+        var context = Fixture
+            .Build<FoulMessage>()
+            .With(x => x.Text, $"something {trigger} something")
+            .CreateMany()
+            .OrderBy(x => x.Date)
+            .ToList();
+
+        void AddMessages(string trigger)
+        {
+            context.Add(Fixture.Build<FoulMessage>()
+                .With(x => x.Text, $"{Fixture.Create<string>()} {trigger} {Fixture.Create<string>()}")
+                .Create());
+        }
+
+        _chat.Setup(x => x.GetContextSnapshot())
+            .Returns(context);
+
+        var config = Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.Triggers, [ "mandatorytrigger" ])
+            .With(x => x.KeyWords, [ "trigger" ])
+            .Create();
+
+        Customize("config", config);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[^1]);
+
+        Assert.NotNull(result);
+
+        AddMessages(trigger);
+        result = sut.GetContextForReplying(context[^1]);
+
+        if (shouldReply)
+            Assert.NotNull(result);
+        else
+            Assert.Null(result);
+    }
+
+    [Theory]
     [InlineData("Trigger", false)]
     [InlineData("TRIGGER", false)]
     [InlineData("  tRiGGer  ", false)]
@@ -134,6 +180,8 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     [InlineData("otaehu MandatoryTrigger", true)]
     [InlineData("mandatorytRIGGER aoteuh", true)]
     [InlineData("mandatorytRIGGER", true)]
+    [InlineData("mandatorytRIGGERsomething", false)]
+    [InlineData("somethingmandatorytrigger", false)]
     public void GetContextForReplying_ShouldReturnResult_WhenMandatoryTriggerIsFound_WorksAnyCase_ButWithSpaces(
         string trigger, bool returns)
     {

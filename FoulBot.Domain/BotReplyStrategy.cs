@@ -37,6 +37,19 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
             return Reduce(_chat.GetContextSnapshot());
         }
 
+        var context = _chat.GetContextSnapshot();
+
+        // HACK: Duplicated code with triggerMessage.
+        // TODO: Refactor this to not iterate on context multiple times.
+        // And to potentially iterate only as last resort.
+        var alwaysTriggerMessage = context
+            .SkipWhile(message => _lastProcessedMessageId != null && message.Id != _lastProcessedMessageId)
+            .Skip(_lastProcessedMessageId != null ? 1 : 0)
+            .FirstOrDefault(ShouldAlwaysTrigger);
+
+        if (alwaysTriggerMessage != null)
+            return Reduce(context);
+
         if (_timeProvider.GetUtcNow().UtcDateTime - _lastTriggeredAt < MinimumTimeBetweenMessages)
         {
             // Still consider all messages processed at this point,
@@ -44,8 +57,6 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
             _lastProcessedMessageId = currentMessage.Id;
             return null; // Reply to triggers only once per _minimumTimeBetweenMessages.
         }
-
-        var context = _chat.GetContextSnapshot();
 
         // TODO: Handle potential situation when there is no _lastProcessedMessageId in messages.
         var triggerMessage = context
@@ -112,9 +123,15 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
     private bool ShouldTrigger(FoulMessage message)
     {
         return _config.KeyWords.Any(keyword => message.Text.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
-            || _config.Triggers.Any(trigger =>
-                message.Text.StartsWith(trigger, StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.EndsWith(trigger, StringComparison.InvariantCultureIgnoreCase)
+            || ShouldAlwaysTrigger(message);
+    }
+
+    private bool ShouldAlwaysTrigger(FoulMessage message)
+    {
+        return _config.Triggers.Any(trigger =>
+                message.Text.Equals(trigger, StringComparison.InvariantCultureIgnoreCase)
+                || message.Text.StartsWith($"{trigger} ", StringComparison.InvariantCultureIgnoreCase)
+                || message.Text.EndsWith($" {trigger}", StringComparison.InvariantCultureIgnoreCase)
                 || message.Text.Contains($" {trigger} ", StringComparison.InvariantCultureIgnoreCase));
     }
 
