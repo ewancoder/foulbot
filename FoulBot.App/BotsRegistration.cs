@@ -152,7 +152,7 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwVovaBotApiKey", new FoulBotConfiguration(
                 "ew_vovabot", "Vova", vovaDirective,
-                ["вов", "линукс", "кофе", "vov", "linux", "coffee"], [])
+                ["вов", "линукс", "кофе", "vov", "linux", "coffee", "вова", "vova"], [])
                     .SetContextSize(40));
 
             services.RegisterBot(configuration, "EwGirlBotApiKey", new FoulBotConfiguration(
