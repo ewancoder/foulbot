@@ -7,6 +7,9 @@ public abstract class Testing<TSut> : IDisposable
         Fixture.Register<TimeProvider>(() => TimeProvider);
     }
 
+    public const string Category = "Category";
+    public const string Concurrency = "Concurrency";
+
     protected IFixture Fixture { get; } = AutoMoqDataAttribute.CreateFixture();
     protected FakeTimeProvider TimeProvider { get; } = new FakeTimeProvider(startDateTime: DateTimeOffset.UtcNow);
     protected CancellationTokenSource Cts { get; } = new CancellationTokenSource();
@@ -26,6 +29,11 @@ public abstract class Testing<TSut> : IDisposable
             new CustomParameterBuilder<TSut, TParameter>(
                 parameterName, value));
     }
+
+    protected ParallelOptions ParallelOptions => new()
+    {
+        MaxDegreeOfParallelism = 10
+    };
 
     public virtual void Dispose()
     {

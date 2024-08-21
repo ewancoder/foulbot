@@ -34,7 +34,7 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Fact]
-    [Trait("Category", "LongRunning")]
+    [Trait(Category, Concurrency)]
     public async Task GetContextSnapshot_ShouldWorkConcurrently()
     {
         // We clean up to 200, when we reach 501.
@@ -56,12 +56,15 @@ public class FoulChatTests : Testing<FoulChat>
 
         var t1 = Task.Run(() =>
         {
-            Parallel.ForEach(messages, message => sut.AddMessage(message));
+            Parallel.ForEach(
+                messages,
+                ParallelOptions,
+                message => sut.AddMessage(message));
         });
 
         var t2 = Task.Run(() =>
         {
-            Parallel.For(1, 1000, index => sut.GetContextSnapshot());
+            Parallel.For(1, 1000, ParallelOptions, index => sut.GetContextSnapshot());
         });
 
         await Task.WhenAll(t1, t2);
@@ -73,7 +76,7 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Fact]
-    [Trait("Category", "LongRunning")]
+    [Trait(Category, Concurrency)]
     public async Task GetContextSnapshot_ShouldWorkConcurrently_UntilLimit()
     {
         // This test tests specific data without cleanup process.
@@ -86,12 +89,12 @@ public class FoulChatTests : Testing<FoulChat>
 
         var t1 = Task.Run(() =>
         {
-            Parallel.ForEach(messages, message => sut.AddMessage(message));
+            Parallel.ForEach(messages, ParallelOptions, message => sut.AddMessage(message));
         });
 
         var t2 = Task.Run(() =>
         {
-            Parallel.For(1, 1000, index => sut.GetContextSnapshot());
+            Parallel.For(1, 1000, ParallelOptions, index => sut.GetContextSnapshot());
         });
 
         await Task.WhenAll(t1, t2);
@@ -104,6 +107,7 @@ public class FoulChatTests : Testing<FoulChat>
     // However due to 2000 ms delay in FoulChat the test takes 1 minute to run with 1000 items.
     // For now using 10 items just to keep the test code here.
     [Fact]
+    [Trait(Category, Concurrency)]
     public async Task HandleMessageAsync_ShouldWorkConcurrently_UntilLimit()
     {
         // This test tests specific data without cleanup process.
@@ -126,7 +130,7 @@ public class FoulChatTests : Testing<FoulChat>
 
         var t2 = Task.Run(() =>
         {
-            Parallel.For(1, 1000, index => sut.GetContextSnapshot());
+            Parallel.For(1, 1000, ParallelOptions, index => sut.GetContextSnapshot());
         });
 
         await Task.WhenAll(t1, t2);

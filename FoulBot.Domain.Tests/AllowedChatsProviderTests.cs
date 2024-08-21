@@ -8,7 +8,7 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
     public AllowedChatsProviderTests()
     {
         _fileName = Fixture.Create<string>();
-        Fixture.Customizations.Add(new AllowedChatsProviderBuilder(_fileName));
+        Customize("fileName", _fileName);
 
         _sut = Fixture.Create<AllowedChatsProvider>();
     }
@@ -38,19 +38,16 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
     }
 
     [Fact]
+    [Trait(Category, Concurrency)]
     public async Task ShouldWorkConcurrently()
     {
         var ids = Fixture.CreateMany<FoulChatId>(100);
 
-        await Parallel.ForEachAsync(ids, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = 10
-        }, (id, _) => _sut.AllowChatAsync(id));
+        await Parallel.ForEachAsync(
+            ids, ParallelOptions, (id, _) => _sut.AllowChatAsync(id));
 
-        await Parallel.ForEachAsync(ids, new ParallelOptions
-        {
-            MaxDegreeOfParallelism = 10
-        }, async (id, _) => Assert.True(await _sut.IsAllowedChatAsync(id)));
+        await Parallel.ForEachAsync(
+            ids, ParallelOptions, async (id, _) => Assert.True(await _sut.IsAllowedChatAsync(id)));
     }
 
     [Theory, AutoMoqData]
@@ -71,6 +68,3 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
         base.Dispose();
     }
 }
-
-public sealed class AllowedChatsProviderBuilder(string fileName)
-    : CustomParameterBuilder<AllowedChatsProvider, string>("fileName", fileName);
