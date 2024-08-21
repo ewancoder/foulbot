@@ -339,6 +339,49 @@ public class FoulBotTests : Testing<FoulBot>
                 && message.SenderName == botName)));
     }
 
+    #region PerformRequestAsync
+
+    private void SetupPerformRequest(ChatParticipant requester, string request, string requestResponse)
+    {
+        var config = CreateDefaultConfig();
+        Customize("config", config);
+
+        _aiClient.Setup(x => x.GetCustomResponseAsync(It.Is<string>(
+            r => r.Contains(config.Directive)
+                && r.Contains($"You've been asked by {requester.Name} to do")
+                && r.Contains($"{request}")
+            )))
+            .Returns(() => new(requestResponse));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task PerformRequestAsync_ShouldPerformRequest(
+        ChatParticipant requester, string request, string requestMessage)
+    {
+        SetupPerformRequest(requester, request, requestMessage);
+
+        var sut = CreateFoulBot();
+
+        await sut.PerformRequestAsync(requester, request);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(_chat.Object.ChatId, requestMessage));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task PerformRequestAsync_ShouldNotAddTheRequestToContext(
+        ChatParticipant requester, string request, string requestMessage)
+    {
+        SetupPerformRequest(requester, request, requestMessage);
+
+        var sut = CreateFoulBot();
+
+        await sut.PerformRequestAsync(requester, request);
+
+        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Never);
+    }
+
+    #endregion
+
     private FoulBotConfiguration CreateDefaultConfig()
     {
         return Fixture.Build<FoulBotConfiguration>()

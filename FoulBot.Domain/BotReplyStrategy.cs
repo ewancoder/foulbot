@@ -111,7 +111,11 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
     private bool ShouldTrigger(FoulMessage message)
     {
-        return _config.KeyWords.Any(keyword => message.Text.Contains(keyword, StringComparison.InvariantCultureIgnoreCase));
+        return _config.KeyWords.Any(keyword => message.Text.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
+            || _config.Triggers.Any(trigger =>
+                message.Text.StartsWith(trigger, StringComparison.InvariantCultureIgnoreCase)
+                || message.Text.EndsWith(trigger, StringComparison.InvariantCultureIgnoreCase)
+                || message.Text.Contains($" {trigger} ", StringComparison.InvariantCultureIgnoreCase));
     }
 
     private bool IsMyOwnMessage(FoulMessage message)

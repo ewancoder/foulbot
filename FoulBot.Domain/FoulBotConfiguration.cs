@@ -8,6 +8,7 @@ public sealed record FoulBotConfiguration
         string botId,
         string botName,
         string directive,
+        HashSet<string> triggers,
         HashSet<string> keyWords)
     {
         if (botId == null || botName == null || directive == null || keyWords == null)
@@ -19,6 +20,7 @@ public sealed record FoulBotConfiguration
         FoulBotId = new FoulBotId(botId, botName);
         Directive = directive.Replace("\r", string.Empty).Replace('\n', ' ');
         KeyWords = keyWords;
+        Triggers = triggers;
     }
 
     public FoulBotId FoulBotId { get; init; }
@@ -28,6 +30,7 @@ public sealed record FoulBotConfiguration
     public string OpenAIModel { get; init; } = "gpt-4o-mini";
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; init; }
+    public IEnumerable<string> Triggers { get; init; }
     public int ContextSize { get; init; } = 30;
     public int MaxContextSizeInCharacters { get; init; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;
