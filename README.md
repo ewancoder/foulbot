@@ -14,6 +14,7 @@
 ![ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=develop)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/coverage-develop.json)
 ![status](https://img.shields.io/github/last-commit/ewancoder/foulbot/main)
+![diff](https://img.shields.io/github/commits-difference/ewancoder/foulbot?base=main&head=develop&logo=git&label=diff&color=orange)
 
 ## What it's about
 
