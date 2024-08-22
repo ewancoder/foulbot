@@ -1,4 +1,5 @@
-﻿using Azure;
+﻿using System.Text.RegularExpressions;
+using Azure;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.Configuration;
 using UnidecodeSharpCore;
@@ -61,13 +62,13 @@ public sealed class FoulAIClient : IFoulAIClient
             if (message.MessageType == FoulMessageType.User)
                 return new ChatRequestUserMessage(message.Text)
                 {
-                    Name = message.SenderName.Unidecode()
+                    Name = Regex.Replace(message.SenderName.Unidecode(), "[^a-zA-Z_]", string.Empty)
                 };
 
             if (message.MessageType == FoulMessageType.Bot)
                 return new ChatRequestAssistantMessage(message.Text)
                 {
-                    Name = message.SenderName.Unidecode()
+                    Name = Regex.Replace(message.SenderName.Unidecode(), "[^a-zA-Z_]", string.Empty)
                 };
 
             throw new InvalidOperationException("Could not determine the type.");
