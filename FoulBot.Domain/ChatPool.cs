@@ -7,8 +7,10 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatStore _chatStore;
     private readonly IFoulChatFactory _chatFactory;
-    private readonly IFoulBotFactory _botFactory;
+    // TODO: Consider using this factory instead of a delegate.
+    //private readonly IFoulBotFactory _botFactory;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
+    private readonly IAllowedChatsProvider _allowedChatsProvider;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ConcurrentDictionary<string, IFoulBot> _bots = []; // Key is {BotId}{ChatId}
     private readonly ConcurrentDictionary<string, IFoulChat> _chats = new(); // Key is {ChatId}${BotId}
@@ -18,14 +20,14 @@ public sealed class ChatPool : IAsyncDisposable
         ILogger<ChatPool> logger,
         IChatStore chatCache,
         IFoulChatFactory foulChatFactory,
-        IFoulBotFactory foulBotFactory,
-        IDuplicateMessageHandler duplicateMessageHandler)
+        IDuplicateMessageHandler duplicateMessageHandler,
+        IAllowedChatsProvider allowedChatsProvider)
     {
         _logger = logger;
         _chatStore = chatCache;
         _chatFactory = foulChatFactory;
-        _botFactory = foulBotFactory;
         _duplicateMessageHandler = duplicateMessageHandler;
+        _allowedChatsProvider = allowedChatsProvider;
 
         _logger.LogInformation("ChatPool instance is created with {DuplicateMessageHandler}", _duplicateMessageHandler.GetType());
     }
@@ -35,6 +37,7 @@ public sealed class ChatPool : IAsyncDisposable
     /// <summary>
     /// Used by chatloader to initially load all the known chats on app startup.
     /// And also internally by HandleMessageAsync method.
+    /// Returns null when chat is not allowed.
     /// </summary>
     public async Task<IFoulChat> InitializeChatAndBotAsync(
         FoulChatId chatId,
@@ -83,7 +86,10 @@ public sealed class ChatPool : IAsyncDisposable
 
         _logger.LogDebug("Bot has been invited to a new chat by {InvitedBy}.", invitedBy);
 
-        _ = await InitializeChatAndBotAsync(
+        if (!await IsAllowedChatAsync(chatId))
+            return;
+
+        var chat = await InitializeChatAndBotAsync(
             chatId,
             foulBotId,
             botFactory,
@@ -103,6 +109,9 @@ public sealed class ChatPool : IAsyncDisposable
             .AddScoped("ChatId", chatId)
             .AddScoped("BotId", foulBotId)
             .BeginScope();
+
+        if (!await IsAllowedChatAsync(chatId))
+            return; // HACK: This will cause disallowing any existing chat to stay in memory forever.
 
         var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
         if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chat), out var bot))
@@ -129,6 +138,9 @@ public sealed class ChatPool : IAsyncDisposable
             .BeginScope();
 
         _logger.LogDebug("Received {@Message}, handling the message.", message);
+
+        if (!await IsAllowedChatAsync(chatId))
+            return;
 
         var chat = await InitializeChatAndBotAsync(
             chatId,
@@ -213,15 +225,16 @@ public sealed class ChatPool : IAsyncDisposable
                 return;
             }
 
-            EventHandler<FoulMessage> trigger = (s, message) => _ = bot.TriggerAsync(message).AsTask();
+            void Trigger(object? s, FoulMessage message)
+                => _ = bot.TriggerAsync(message).AsTask();
 
             // Consider rewriting to System.Reactive.
-            chat.MessageReceived += trigger;
+            chat.MessageReceived += Trigger;
 
             // When we fail to send a message to chat, cleanup the bot (it will be recreated after more messages received).
             bot.Shutdown += async (sender, e) =>
             {
-                chat.MessageReceived -= trigger;
+                chat.MessageReceived -= Trigger;
 
                 _bots.Remove(key, out _);
 
@@ -272,4 +285,13 @@ public sealed class ChatPool : IAsyncDisposable
     private static string GetKeyForChat(FoulChatId chatId) => chatId.IsPrivate
         ? $"{chatId.Value}${chatId.FoulBotId?.BotId}"
         : $"{chatId.Value}";
+
+    private async ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId)
+    {
+        var isAllowed = await _allowedChatsProvider.IsAllowedChatAsync(chatId);
+        if (!isAllowed)
+            _logger.LogWarning("Chat is not allowed.");
+
+        return isAllowed;
+    }
 }

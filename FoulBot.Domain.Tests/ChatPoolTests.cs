@@ -7,6 +7,7 @@ public class ChatPoolTests : Testing<ChatPool>
     private readonly Mock<IDuplicateMessageHandler> _duplicateMessageHandler;
     private readonly Mock<IFoulChatFactory> _foulChatFactory;
     private readonly Mock<IFoulChat> _chat;
+    private readonly Mock<IAllowedChatsProvider> _allowedChatsProvider;
 
     public enum ChatMethodType
     {
@@ -32,8 +33,12 @@ public class ChatPoolTests : Testing<ChatPool>
         _botMessenger = Freeze<IBotMessenger>();
         _duplicateMessageHandler = Freeze<IDuplicateMessageHandler>();
         _foulChatFactory = Freeze<IFoulChatFactory>();
+        _allowedChatsProvider = Freeze<IAllowedChatsProvider>();
         _chat = new Mock<IFoulChat>(); // Do not freeze IFoulChat as we need different instances for tests.
         Fixture.Register(() => new ChatScopedBotMessenger(_botMessenger.Object, _chatId, Cts.Token));
+
+        _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(It.IsAny<FoulChatId>()))
+            .Returns(() => new(true));
     }
 
     private void SetupChatPool()
@@ -71,11 +76,52 @@ public class ChatPoolTests : Testing<ChatPool>
         _chat.Verify(x => x.HandleMessageAsync(message));
     }
 
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldNotSendMessages_ToDisallowedChats_AndShouldNotCreateChat(
+        FoulBotId botId,
+        FoulMessage message,
+        JoinBotToChatAsync factory)
+    {
+        SetupChatPool();
+
+        _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(_chatId))
+            .Returns(() => new(false));
+
+        await using var sut = CreateChatPool();
+
+        await sut.HandleMessageAsync(
+            _chatId, botId, message, factory, Cts.Token);
+
+        _chat.Verify(x => x.HandleMessageAsync(It.IsAny<FoulMessage>()), Times.Never);
+        _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task KickBotAsync_ShouldNotCreateChat_WhenNotAllowed(FoulBotId botId)
+    {
+        SetupChatPool();
+
+        _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(_chatId))
+            .Returns(() => new(false));
+
+        await using var sut = CreateChatPool();
+
+        await sut.KickBotFromChatAsync(_chatId, botId, Cts.Token);
+
+        _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+    }
+
+    /// <summary>
+    /// This test also tests that bots can do this only in allowed chats.
+    /// Other tests skip this check.
+    /// </summary>
     [Theory]
-    [InlineAutoMoqData(ChatMethodType.HandleMessageAsync, BotMethodType.TriggerAsync)]
-    [InlineAutoMoqData(ChatMethodType.InviteBotToChatAsync, BotMethodType.GreetEveryoneAsync)]
-    public async Task HandleMessageAsync_AndInviteBotToChat_ShouldTriggerBot_ViaSubscription(
-        ChatMethodType chatMethodType, BotMethodType botMethodType,
+    [InlineAutoMoqData(ChatMethodType.HandleMessageAsync, BotMethodType.TriggerAsync, true)]
+    [InlineAutoMoqData(ChatMethodType.HandleMessageAsync, BotMethodType.TriggerAsync, false)]
+    [InlineAutoMoqData(ChatMethodType.InviteBotToChatAsync, BotMethodType.GreetEveryoneAsync, true)]
+    [InlineAutoMoqData(ChatMethodType.InviteBotToChatAsync, BotMethodType.GreetEveryoneAsync, false)]
+    public async Task HandleMessageAsync_AndInviteBotToChat_ShouldTriggerBot_ViaSubscription_UnlessProhibited(
+        ChatMethodType chatMethodType, BotMethodType botMethodType, bool isAllowedChat,
         FoulBotId botId,
         FoulMessage message,
         IFoulBot bot,
@@ -87,6 +133,12 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await using var sut = Fixture.Create<ChatPool>();
 
+        if (!isAllowedChat)
+        {
+            _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(_chatId))
+                .Returns(() => new(false));
+        }
+
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
             await sut.HandleMessageAsync(
                 _chatId, botId, message, factory, Cts.Token);
@@ -96,9 +148,15 @@ public class ChatPoolTests : Testing<ChatPool>
                 _chatId, botId, invitedBy, factory, Cts.Token);
 
         if (botMethodType == BotMethodType.TriggerAsync)
-            Mock.Get(bot).Verify(x => x.TriggerAsync(message));
+            Mock.Get(bot).Verify(x => x.TriggerAsync(message), isAllowedChat ? Times.Once : Times.Never);
         if (botMethodType == BotMethodType.GreetEveryoneAsync)
-            Mock.Get(bot).Verify(x => x.GreetEveryoneAsync(new(invitedBy)));
+            Mock.Get(bot).Verify(x => x.GreetEveryoneAsync(new(invitedBy)), isAllowedChat ? Times.Once : Times.Never);
+
+        if (!isAllowedChat)
+        {
+            // Should not create chat when not allowed.
+            _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+        }
     }
 
     [Theory]
