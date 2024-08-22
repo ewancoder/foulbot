@@ -1,14 +1,19 @@
 # FoulBot
 
+![license](https://img.shields.io/github/license/ewancoder/foulbot?color=blue)
+![activity](https://img.shields.io/github/commit-activity/m/ewancoder/foulbot)
+
 ## Production status
 
 ![ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=main)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/coverage-main.json)
+![status](https://img.shields.io/github/last-commit/ewancoder/foulbot/main)
 
 ## Development status
 
 ![ci](https://github.com/ewancoder/foulbot/actions/workflows/deploy.yml/badge.svg?branch=develop)
 ![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ewancoder/0184962696ef0364be7a3f491133f2f9/raw/coverage-develop.json)
+![status](https://img.shields.io/github/last-commit/ewancoder/foulbot/main)
 
 ## What it's about
 
@@ -21,4 +26,3 @@ The following technologies were used here:
 - OpenAI API for TTS generation (voice messages)
 - Google API for TTS generation (voice messages)
 - Serilog for logging (to Seq)
-
