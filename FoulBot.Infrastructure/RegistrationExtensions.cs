@@ -44,7 +44,6 @@ public static class RegistrationExtensions
                 provider.GetRequiredService<ILogger<ChatPool>>(),
                 provider.GetRequiredService<IChatStore>(),
                 provider.GetRequiredService<IFoulChatFactory>(),
-                provider.GetRequiredService<IFoulBotFactory>(),
                 provider.GetRequiredService<TDuplicateMessageHandler>())); // TODO: Rewrite into ChatPool factory.
     }
 

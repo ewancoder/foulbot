@@ -7,7 +7,8 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly ILogger<ChatPool> _logger;
     private readonly IChatStore _chatStore;
     private readonly IFoulChatFactory _chatFactory;
-    private readonly IFoulBotFactory _botFactory;
+    // TODO: Consider using this factory instead of a delegate.
+    //private readonly IFoulBotFactory _botFactory;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ConcurrentDictionary<string, IFoulBot> _bots = []; // Key is {BotId}{ChatId}
@@ -18,13 +19,11 @@ public sealed class ChatPool : IAsyncDisposable
         ILogger<ChatPool> logger,
         IChatStore chatCache,
         IFoulChatFactory foulChatFactory,
-        IFoulBotFactory foulBotFactory,
         IDuplicateMessageHandler duplicateMessageHandler)
     {
         _logger = logger;
         _chatStore = chatCache;
         _chatFactory = foulChatFactory;
-        _botFactory = foulBotFactory;
         _duplicateMessageHandler = duplicateMessageHandler;
 
         _logger.LogInformation("ChatPool instance is created with {DuplicateMessageHandler}", _duplicateMessageHandler.GetType());
@@ -213,15 +212,16 @@ public sealed class ChatPool : IAsyncDisposable
                 return;
             }
 
-            EventHandler<FoulMessage> trigger = (s, message) => _ = bot.TriggerAsync(message).AsTask();
+            void Trigger(object? s, FoulMessage message)
+                => _ = bot.TriggerAsync(message).AsTask();
 
             // Consider rewriting to System.Reactive.
-            chat.MessageReceived += trigger;
+            chat.MessageReceived += Trigger;
 
             // When we fail to send a message to chat, cleanup the bot (it will be recreated after more messages received).
             bot.Shutdown += async (sender, e) =>
             {
-                chat.MessageReceived -= trigger;
+                chat.MessageReceived -= Trigger;
 
                 _bots.Remove(key, out _);
 
