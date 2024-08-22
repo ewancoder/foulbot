@@ -1,10 +1,10 @@
 ﻿namespace FoulBot.Domain;
 
-public delegate ValueTask<FoulBot?> JoinBotToChatAsync(IFoulChat chat);
+public delegate ValueTask<IFoulBot?> JoinBotToChatAsync(IFoulChat chat);
 
 public interface IFoulBotFactory
 {
-    ValueTask<FoulBot?> JoinBotToChatAsync(
+    ValueTask<IFoulBot?> JoinBotToChatAsync(
         IBotMessenger botMessenger,
         IFoulChat chat,
         FoulBotConfiguration config);
@@ -38,7 +38,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     /// <summary>
     /// Returns null when it's not possible to join this bot to this chat.
     /// </summary>
-    public async ValueTask<FoulBot?> JoinBotToChatAsync(
+    public async ValueTask<IFoulBot?> JoinBotToChatAsync(
         IBotMessenger botMessenger,
         IFoulChat chat,
         FoulBotConfiguration config)

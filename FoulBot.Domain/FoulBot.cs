@@ -1,9 +1,11 @@
 ﻿namespace FoulBot.Domain;
 
-public interface IFoulBot
+public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispose of it.
 {
     event EventHandler? Shutdown;
 
+    ValueTask GreetEveryoneAsync(ChatParticipant invitedBy);
+    ValueTask TriggerAsync(FoulMessage message);
     Task GracefulShutdownAsync();
 }
 

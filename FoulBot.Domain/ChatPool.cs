@@ -2,8 +2,6 @@
 
 namespace FoulBot.Domain;
 
-// TODO: Unit test this.
-// This class is difficult to unit test because it encapsulates most state and subscribes internally.
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
@@ -12,7 +10,7 @@ public sealed class ChatPool : IAsyncDisposable
     private readonly IFoulBotFactory _botFactory;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly ConcurrentDictionary<string, FoulBot> _bots = []; // Key is {BotId}{ChatId}
+    private readonly ConcurrentDictionary<string, IFoulBot> _bots = []; // Key is {BotId}{ChatId}
     private readonly ConcurrentDictionary<string, IFoulChat> _chats = new(); // Key is {ChatId}${BotId}
     private bool _isStopping;
 
@@ -108,7 +106,10 @@ public sealed class ChatPool : IAsyncDisposable
 
         var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
         if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chat), out var bot))
+        {
             _logger.LogDebug("Could not kick bot from chat. It already doesn't exist.");
+            return;
+        }
 
         await bot!.GracefulShutdownAsync();
 
