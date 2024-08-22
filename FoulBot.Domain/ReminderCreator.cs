@@ -9,7 +9,10 @@ public sealed record Reminder(
     public string? Id { get; set; }
 }
 
-public sealed record FoulBotId(string BotId, string BotName);
+public readonly record struct FoulBotId(string BotId, string BotName)
+{
+    public override string ToString() => $"{BotId} {BotName}";
+}
 
 public sealed class ReminderCreator
 {
@@ -20,16 +23,19 @@ public sealed class ReminderCreator
     private readonly Dictionary<string, Reminder> _reminders;
     private readonly ILogger<ReminderCreator> _logger;
     private readonly Task _running;
+    private readonly FoulBot _bot;
 
     public ReminderCreator(
         ILogger<ReminderCreator> logger,
         FoulChatId chatId,
         FoulBotId botId,
+        FoulBot bot,
         CancellationToken cancellationToken)
     {
         _logger = logger;
         _chatId = chatId;
         _botId = botId;
+        _bot = bot;
 
         if (!Directory.Exists("reminders"))
             Directory.CreateDirectory("reminders");
@@ -45,7 +51,6 @@ public sealed class ReminderCreator
     }
 
     public IEnumerable<Reminder> AllReminders => _reminders.Values;
-    public EventHandler<Reminder>? Remind;
 
     public void AddReminder(Reminder reminder)
     {
@@ -91,7 +96,10 @@ public sealed class ReminderCreator
 
     private async Task RunRemindersAsync(CancellationToken cancellationToken)
     {
-        using var _ = _logger
+        var captureToNotDispose = this;
+        _ = captureToNotDispose;
+
+        using var _l = _logger
             .AddScoped("ChatId", _chatId)
             .AddScoped("BotId", _botId.BotId)
             .BeginScope();
@@ -141,7 +149,8 @@ public sealed class ReminderCreator
 
     private void TriggerReminder(Reminder reminder)
     {
-        Remind?.Invoke(this, reminder);
+        // Hacky way to do it with legacy ReminderCreator.
+        _ = _bot.PerformRequestAsync(new(reminder.From), reminder.Request);
     }
 
     private void SaveReminders()

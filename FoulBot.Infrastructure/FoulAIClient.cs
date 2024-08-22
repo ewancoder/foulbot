@@ -10,16 +10,16 @@ public sealed class FoulAIClientFactory : IFoulAIClientFactory
     private readonly ILogger<FoulAIClient> _logger;
     private readonly IConfiguration _configuration;
 
-    public FoulAIClientFactory(ILogger<FoulAIClient> logger, IConfiguration configuration)
+    public FoulAIClientFactory(
+        ILogger<FoulAIClient> logger,
+        IConfiguration configuration)
     {
         _logger = logger;
         _configuration = configuration;
     }
 
     public IFoulAIClient Create(string openAiModel)
-    {
-        return new FoulAIClient(_logger, _configuration, openAiModel);
-    }
+        => new FoulAIClient(_logger, _configuration, openAiModel);
 }
 
 public sealed class FoulAIClient : IFoulAIClient

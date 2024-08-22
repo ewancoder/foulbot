@@ -3,7 +3,7 @@
 /// <summary>
 /// This class is responsible for initially loading all the bots to chats.
 /// </summary>
-public sealed class ChatLoader : IChatCache, IDisposable
+public sealed class ChatLoader : IChatStore, IDisposable
 {
     private const string FileName = "chats";
     private readonly ILogger<ChatLoader> _logger;
@@ -35,10 +35,16 @@ public sealed class ChatLoader : IChatCache, IDisposable
             if (chatId.Contains('$') && chatId.Split('$')[1] != configuration.BotId)
                 return Task.CompletedTask;
 
+            var foulBotId = new FoulBotId(configuration.BotId, configuration.BotName);
+            FoulChatId foulChatId = chatId.Contains('$')
+                ? new(chatId.Split('$')[0]) { FoulBotId = foulBotId }
+                : new(chatId);
+
             return chatPool.InitializeChatAndBotAsync(
-                configuration.BotId,
-                chatId,
-                _botFactory.CreateBotFactoryFromChat(botMessenger, configuration),
+                foulChatId,
+                foulBotId,
+                chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, configuration),
+                invitedBy: null,
                 cancellationToken: cancellationToken);
         }));
     }
@@ -48,14 +54,14 @@ public sealed class ChatLoader : IChatCache, IDisposable
     /// This method is called from the main code whenever bot is added to a new chat.
     /// So we can cache it for after app restarts.
     /// </summary>
-    public void AddChat(string chatId)
+    public void AddChat(FoulChatId chatId)
     {
         _ = Task.Run(async () =>
         {
             await _lock.WaitAsync();
             try
             {
-                _chatIds.Add(chatId);
+                _chatIds.Add(GetUniqueKey(chatId));
                 await File.WriteAllTextAsync(FileName, string.Join(',', _chatIds));
             }
             catch (Exception exception)
@@ -68,6 +74,14 @@ public sealed class ChatLoader : IChatCache, IDisposable
                 _lock.Release();
             }
         });
+    }
+
+    private static string GetUniqueKey(FoulChatId chatId)
+    {
+        if (!chatId.IsPrivate)
+            return chatId.Value;
+
+        return $"{chatId.Value}${chatId.FoulBotId?.BotId}";
     }
 
     public void Dispose()

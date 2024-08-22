@@ -1,26 +1,17 @@
 ﻿namespace FoulBot.Domain;
 
-public enum BotChatStatus
-{
-    Left = 1,
-    Joined = 2
-}
-
-public sealed record FoulStatusChanged(
-    string WhoName,
-    string? ByName,
-    BotChatStatus Status);
-
+/// <summary>
+/// Id should be implementation-agnostic UNIQUE value between messages.
+/// </summary>
 public sealed record FoulMessage(
     string Id,
     FoulMessageType MessageType,
     string SenderName,
     string Text,
     DateTime Date,
-    bool IsOriginallyBotMessage)
+    bool IsOriginallyBotMessage,
+    string? ReplyTo)
 {
-    public string? ReplyTo { get; set; }
-
     public FoulMessage AsUser()
     {
         return this with
@@ -28,11 +19,4 @@ public sealed record FoulMessage(
             MessageType = FoulMessageType.User
         };
     }
-
-    public override string ToString()
-    {
-        return $"{Date}.{Date.Millisecond}\t\t{SenderName} - {MessageType} - {Text} - {ReplyTo} - {(IsOriginallyBotMessage ? "bot" : "user")}";
-    }
-
-    public static FoulMessage ByTime() => new("ByTime", FoulMessageType.System, "ByTime", "ByTime", DateTime.UtcNow, false);
 }

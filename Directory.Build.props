@@ -28,10 +28,13 @@
         <PackageReference Include="AutoFixture.AutoMoq" />
         <!-- Next packages are added just so PrivateAssets works with global using -->
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
         <Using Include="Xunit" />
         <Using Include="AutoFixture" />
         <Using Include="AutoFixture.Xunit2" />
         <Using Include="AutoFixture.AutoMoq" />
+        <Using Include="Microsoft.Extensions.Time.Testing" />
+        <Using Include="Moq" />
       </ItemGroup>
     </When>
   </Choose>

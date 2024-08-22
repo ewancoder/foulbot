@@ -8,26 +8,26 @@ public sealed record FoulBotConfiguration
         string botId,
         string botName,
         string directive,
+        HashSet<string> triggers,
         HashSet<string> keyWords)
     {
         if (botId == null || botName == null || directive == null || keyWords == null)
             throw new ArgumentException("One of the arguments is null.");
 
-        if (keyWords.Count == 0)
-            throw new ArgumentException("Should have at least one keyword.");
-
         FoulBotId = new FoulBotId(botId, botName);
         Directive = directive.Replace("\r", string.Empty).Replace('\n', ' ');
         KeyWords = keyWords;
+        Triggers = triggers;
     }
 
-    public FoulBotId FoulBotId { get; }
+    public FoulBotId FoulBotId { get; init; }
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
 
     public string OpenAIModel { get; init; } = "gpt-4o-mini";
     public string Directive { get; }
-    public IEnumerable<string> KeyWords { get; }
+    public IEnumerable<string> KeyWords { get; init; }
+    public IEnumerable<string> Triggers { get; init; }
     public int ContextSize { get; init; } = 30;
     public int MaxContextSizeInCharacters { get; init; } = 8000;
     public int ReplyEveryMessages { get; init; } = 20;
@@ -36,9 +36,11 @@ public sealed record FoulBotConfiguration
     public int BotOnlyMaxMessagesBetweenDebounce { get; init; } = 1;
     public int DecrementBotToBotCommunicationCounterIntervalSeconds { get; init; } = 8 * 60 * 60;
     public bool NotAnAssistant { get; init; } = true;
-    public HashSet<string> Stickers { get; } = [];
+    public IList<string> Stickers { get; init; } = [];
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool WriteOnYourOwn { get; init; } = true;
+
+    public bool IsAssistant => !NotAnAssistant;
 
     public FoulBotConfiguration UseGpt35()
     {

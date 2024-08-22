@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\FoulBot.Infrastructure\FoulBot.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

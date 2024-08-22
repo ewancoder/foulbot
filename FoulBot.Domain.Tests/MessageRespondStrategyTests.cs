@@ -1,9 +1,6 @@
-﻿using System.Reflection;
-using AutoFixture.Kernel;
+﻿namespace FoulBot.Domain.Tests;
 
-namespace FoulBot.Domain.Tests;
-
-public class MessageRespondStrategyTests
+public class MessageRespondStrategyTests : Testing<MessageRespondStrategy>
 {
     private readonly IFixture _fixture;
     private readonly MessageRespondStrategy _sut;
@@ -41,7 +38,7 @@ public class MessageRespondStrategyTests
     [Fact]
     public void GetReason_ShouldReturnPrivateChat_WhenIsPrivateChatIsTrue()
     {
-        _fixture.Customizations.Add(new MessageRespondStrategyBuilder(true));
+        Customize("isPrivateChat", true);
         var sut = _fixture.Create<MessageRespondStrategy>();
 
         Assert.Equal("Private chat", sut.GetReasonForResponding(CreateMessage()));
@@ -73,7 +70,7 @@ public class MessageRespondStrategyTests
     public void ShouldRespond_ShouldReturnTrue_WhenAtLeastOneMessageHasReasonToRespondTo(
         List<FoulMessage> messages)
     {
-        messages[1].ReplyTo = _configuration.BotId;
+        messages[1] = messages[1] with { ReplyTo = _configuration.BotId };
 
         Assert.True(_sut.ShouldRespond(messages));
         Assert.True(_sut.ShouldRespond(messages[1]));
@@ -81,32 +78,9 @@ public class MessageRespondStrategyTests
 
     private FoulMessage CreateMessage(string? senderName = null, string? replyTo = null, string? text = null)
     {
-        return new FoulMessage("id", FoulMessageType.Bot, senderName ?? _fixture.Create<string>(), text ?? _fixture.Create<string>(), DateTime.UtcNow, true)
-        {
-            ReplyTo = replyTo
-        };
+        return new FoulMessage("id", FoulMessageType.Bot, senderName ?? _fixture.Create<string>(), text ?? _fixture.Create<string>(), DateTime.UtcNow, true, replyTo);
     }
 }
 
-public sealed class MessageRespondStrategyBuilder : ISpecimenBuilder
-{
-    private readonly bool _isPrivateChat;
-
-    public MessageRespondStrategyBuilder(bool isPrivateChat)
-    {
-        _isPrivateChat = isPrivateChat;
-    }
-
-    public object Create(object request, ISpecimenContext context)
-    {
-        if (request is not ParameterInfo pi)
-            return new NoSpecimen();
-
-        if (pi.Member.DeclaringType != typeof(MessageRespondStrategy)
-            || pi.ParameterType != typeof(bool)
-            || pi.Name != "isPrivateChat")
-            return new NoSpecimen();
-
-        return _isPrivateChat;
-    }
-}
+public sealed class MessageRespondStrategyBuilder(bool isPrivateChat)
+    : CustomParameterBuilder<MessageRespondStrategy, bool>("isPrivateChat", isPrivateChat);

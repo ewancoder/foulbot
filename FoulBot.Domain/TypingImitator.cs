@@ -2,7 +2,7 @@
 
 public interface ITypingImitatorFactory
 {
-    TypingImitator ImitateTyping(FoulChatId chatId, bool isVoice);
+    ITypingImitator ImitateTyping(FoulChatId chatId, bool isVoice);
 }
 
 public sealed class TypingImitatorFactory : ITypingImitatorFactory
@@ -24,18 +24,24 @@ public sealed class TypingImitatorFactory : ITypingImitatorFactory
         _random = random;
     }
 
-    public TypingImitator ImitateTyping(FoulChatId chatId, bool isVoice)
+    public ITypingImitator ImitateTyping(FoulChatId chatId, bool isVoice)
     {
         return new TypingImitator(
             _logger, _botMessenger, _timeProvider, _random, chatId, isVoice);
     }
 }
 
+// HACK: Antipattern, but I need IDisposable on this interface for now.
+public interface ITypingImitator : IAsyncDisposable
+{
+    ValueTask FinishTypingText(string text);
+}
+
 /// <summary>
 /// Imitates an action such as Typing or Recording voice.
 /// Disposing of it stops the action.
 /// </summary>
-public sealed class TypingImitator : IAsyncDisposable
+public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
 {
     private const int MinRandomWaitMs = 1500;
     private const int MaxRandomWaitMs = 10000;
@@ -146,7 +152,7 @@ public sealed class TypingImitator : IAsyncDisposable
         _logger.LogDebug("Stopped typing imitation.");
     }
 
-    public async Task FinishTypingText(string text)
+    public async ValueTask FinishTypingText(string text)
     {
         _text = text; // This stops the while loop that sends typing events.
         await _cts.CancelAsync();

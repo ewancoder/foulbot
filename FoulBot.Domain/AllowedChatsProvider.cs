@@ -1,51 +1,111 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Collections.Concurrent;
+
+namespace FoulBot.Domain;
 
 public interface IAllowedChatsProvider
 {
-    bool IsAllowedChat(FoulChatId chatId);
-    void AddAllowedChat(FoulChatId chatId);
-    void RemoveAllowedChat(FoulChatId chatId);
+    ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId);
+    ValueTask AllowChatAsync(FoulChatId chatId);
+    ValueTask DisallowChatAsync(FoulChatId chatId);
 }
 
-public sealed class AllowedChatsProvider : IAllowedChatsProvider
+public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 {
+    private readonly ILogger<AllowedChatsProvider> _logger;
     private readonly string _fileName;
-    private readonly object _lock = new();
-    private readonly List<string> _allowedChats;
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    private ConcurrentDictionary<string, bool>? _allowedChats;
 
-    public AllowedChatsProvider(string fileName = "allowed_chats")
+    public AllowedChatsProvider(
+        ILogger<AllowedChatsProvider> logger,
+        string fileName = "allowed_chats")
     {
         _fileName = fileName;
-        if (!File.Exists(_fileName))
-            File.WriteAllText(_fileName, "[]");
-
-        var content = File.ReadAllText(_fileName);
-        _allowedChats = JsonSerializer.Deserialize<List<string>>(content)!;
+        _logger = logger;
     }
 
-    public void AddAllowedChat(FoulChatId chatId)
+    public async ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId)
     {
-        lock (_lock)
+        var allowedChats = await GetAllowedChatsAsync();
+
+        return allowedChats.ContainsKey(GetKey(chatId));
+    }
+
+    public async ValueTask AllowChatAsync(FoulChatId chatId)
+    {
+        _logger.LogWarning("Allowing chat {ChatId}", chatId.Value);
+
+        var allowedChats = await GetAllowedChatsAsync();
+        allowedChats.TryAdd(GetKey(chatId), false);
+
+        await SaveChangesAsync();
+    }
+
+    public async ValueTask DisallowChatAsync(FoulChatId chatId)
+    {
+        _logger.LogWarning("Disallowing chat {ChatId}", chatId.Value);
+
+        var allowedChats = await GetAllowedChatsAsync();
+        allowedChats.TryRemove(GetKey(chatId), out _);
+
+        await SaveChangesAsync();
+    }
+
+    private async ValueTask SaveChangesAsync()
+    {
+        var allowedChats = await GetAllowedChatsAsync();
+
+        var serialized = JsonSerializer.Serialize(
+            allowedChats.Keys.Select(chatId => chatId));
+
+        await _lock.WaitAsync();
+        try
         {
-            _allowedChats.Add(chatId.ToString());
-            File.WriteAllText(_fileName, JsonSerializer.Serialize(_allowedChats));
+            _logger.LogDebug("Saving list of allowed chats: {SerializedAllowedChats}", serialized);
+            await File.WriteAllTextAsync(_fileName, serialized);
+        }
+        finally
+        {
+            _lock.Release();
         }
     }
 
-    public void RemoveAllowedChat(FoulChatId chatId)
+    public void Dispose()
     {
-        lock (_lock)
+        _lock.Dispose();
+    }
+
+    private async ValueTask<ConcurrentDictionary<string, bool>> GetAllowedChatsAsync()
+    {
+        if (_allowedChats != null)
+            return _allowedChats;
+
+        await _lock.WaitAsync();
+        try
         {
-            _allowedChats.Remove(chatId.ToString());
-            File.WriteAllText(_fileName, JsonSerializer.Serialize(_allowedChats));
+#pragma warning disable CA1508 // False positive: It is updated below.
+            if (_allowedChats != null)
+                return _allowedChats;
+#pragma warning restore CA1508
+
+            if (!File.Exists(_fileName))
+                await File.WriteAllTextAsync(_fileName, "[]");
+
+            var fileContent = await File.ReadAllTextAsync(_fileName);
+            var chats = JsonSerializer.Deserialize<string[]>(fileContent)?.Distinct()
+                ?? throw new InvalidOperationException("Failed to deserialize allowed chats.");
+
+            _allowedChats = new ConcurrentDictionary<string, bool>(
+                chats.Select(chat => new KeyValuePair<string, bool>(GetKey(new(chat)), false)));
+
+            return _allowedChats;
+        }
+        finally
+        {
+            _lock.Release();
         }
     }
 
-    public bool IsAllowedChat(FoulChatId chatId)
-    {
-        lock (_lock)
-        {
-            return _allowedChats.Contains(chatId.ToString());
-        }
-    }
+    private static string GetKey(FoulChatId chatId)
+        => chatId.Value;
 }

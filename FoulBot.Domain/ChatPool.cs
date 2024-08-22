@@ -5,48 +5,59 @@ namespace FoulBot.Domain;
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
-    private readonly IChatCache _chatCache;
-    private readonly IFoulChatFactory _foulChatFactory;
+    private readonly IChatStore _chatStore;
+    private readonly IFoulChatFactory _chatFactory;
+    private readonly IFoulBotFactory _botFactory;
+    private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly HashSet<string> _joinedBots = [];
-    private readonly Dictionary<string, IFoulBot> _joinedBotsObjects = [];
-    private readonly ConcurrentDictionary<string, IFoulChat> _chats = new();
+    private readonly ConcurrentDictionary<string, IFoulBot> _bots = []; // Key is {BotId}{ChatId}
+    private readonly ConcurrentDictionary<string, IFoulChat> _chats = new(); // Key is {ChatId}${BotId}
     private bool _isStopping;
 
     public ChatPool(
         ILogger<ChatPool> logger,
-        IChatCache chatCache,
-        IFoulChatFactory foulChatFactory)
+        IChatStore chatCache,
+        IFoulChatFactory foulChatFactory,
+        IFoulBotFactory foulBotFactory,
+        IDuplicateMessageHandler duplicateMessageHandler)
     {
         _logger = logger;
-        _chatCache = chatCache;
-        _foulChatFactory = foulChatFactory;
+        _chatStore = chatCache;
+        _chatFactory = foulChatFactory;
+        _botFactory = foulBotFactory;
+        _duplicateMessageHandler = duplicateMessageHandler;
 
-        _logger.LogInformation("ChatPool instance is created.");
+        _logger.LogInformation("ChatPool instance is created with {DuplicateMessageHandler}", _duplicateMessageHandler.GetType());
     }
-
-    public IEnumerable<IFoulBot> AllBots => _joinedBotsObjects.Values;
 
     private IScopedLogger Logger => _logger.AddScoped();
 
-    public async Task<IFoulChat> InitializeChatAndBotAsync(string botId, string chatId, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Used by chatloader to initially load all the known chats on app startup.
+    /// And also internally by HandleMessageAsync method.
+    /// </summary>
+    public async Task<IFoulChat> InitializeChatAndBotAsync(
+        FoulChatId chatId,
+        FoulBotId botId,
+        JoinBotToChatAsync botFactory,
+        string? invitedBy,
+        CancellationToken cancellationToken)
     {
         using var _ = Logger
-            .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", botId)
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
-        // TODO: Here we can alter chatId to include botId in it if we need to, then the bot will have its own context separate from all the other bots.
-        if (!_chats.TryGetValue(chatId, out var chat))
-        {
-            _logger.LogInformation("Did not find the chat, creating it.");
-            chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
-        }
+        // TODO: Here we can alter chatId to include botId in it if we need to,
+        // then the bot will have its own context separate from all the other bots.
+
+        var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
 
         try
         {
-            await JoinBotToChatIfNecessaryAsync(botId, chatId, chat, botFactory, invitedBy, cancellationToken);
+            await JoinBotToChatIfNecessaryAsync(
+                botId, chat, botFactory, invitedBy, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -57,70 +68,86 @@ public sealed class ChatPool : IAsyncDisposable
         return chat;
     }
 
-    public async ValueTask UpdateStatusAsync(
-        string chatId,
-        string botId,
-        string botUsername,
-        BotChatStatus status,
-        string? invitedByUsername,
-        bool isPrivate,
-        FoulChatToBotFactory botFactory,
+    public async ValueTask InviteBotToChatAsync(
+        FoulChatId chatId,
+        FoulBotId foulBotId,
+        string? invitedBy,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
-        using var _ = Logger
-            .AddScoped("BotId", botId)
+        using var _l = Logger
             .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", foulBotId)
+            .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
-        _logger.LogDebug("Updating bot status: {BotUsername}, {Status}.", botUsername, status);
+        _logger.LogDebug("Bot has been invited to a new chat by {InvitedBy}.", invitedBy);
 
-        if (isPrivate)
+        _ = await InitializeChatAndBotAsync(
+            chatId,
+            foulBotId,
+            botFactory,
+            invitedBy: invitedBy,
+            cancellationToken: cancellationToken);
+
+        // TODO: Consider throwing exception above. If bot wasn't able to join the chat - it just returns.
+        _logger.LogInformation("Potentially joined the chat.");
+    }
+
+    public async ValueTask KickBotFromChatAsync(
+        FoulChatId chatId,
+        FoulBotId foulBotId,
+        CancellationToken cancellationToken)
+    {
+        using var _l = Logger
+            .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", foulBotId)
+            .BeginScope();
+
+        var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
+        if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chat), out var bot))
         {
-            _logger.LogDebug("Chat is private, adding bot ID to chat ID so that its separate from other bots.");
-            chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
+            _logger.LogDebug("Could not kick bot from chat. It already doesn't exist.");
+            return;
         }
 
-        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, invitedByUsername, cancellationToken);
+        await bot!.GracefulShutdownAsync();
 
-        chat.ChangeBotStatus(
-            botUsername,
-            invitedByUsername,
-            status);
-
-        _logger.LogInformation("Successfully initiated bot change status.");
+        _logger.LogDebug("Kicked bot from chat.");
     }
 
     public async ValueTask HandleMessageAsync(
-        string chatId,
-        string botId,
+        FoulChatId chatId,
+        FoulBotId foulBotId,
         FoulMessage message,
-        bool isPrivate,
-        FoulChatToBotFactory botFactory,
+        JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
         using var _ = Logger
-            .AddScoped("BotId", botId)
             .AddScoped("ChatId", chatId)
+            .AddScoped("BotId", foulBotId)
             .BeginScope();
 
         _logger.LogDebug("Received {@Message}, handling the message.", message);
 
-        if (isPrivate)
-        {
-            _logger.LogDebug("Chat is private, adding bot ID to chat ID so that its separate from other bots.");
-            chatId += $"${botId}"; // Make separate chats for every bot, when talking to it in private. $ is a hack to split it later.
-        }
+        var chat = await InitializeChatAndBotAsync(
+            chatId,
+            foulBotId,
+            botFactory,
+            invitedBy: null,
+            cancellationToken: cancellationToken);
 
-        var chat = await InitializeChatAndBotAsync(botId, chatId, botFactory, cancellationToken: cancellationToken);
-
-        chat.HandleMessage(message);
+        await chat.HandleMessageAsync(message);
 
         _logger.LogInformation("Successfully handled message.");
     }
 
-    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(string chatId, CancellationToken cancellationToken)
+    private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(
+        FoulChatId chatId, CancellationToken cancellationToken)
     {
-        _chats.TryGetValue(chatId, out var chat);
+        var key = GetKeyForChat(chatId);
+
+        _chats.TryGetValue(key, out var chat);
         if (chat != null)
             return chat;
 
@@ -129,7 +156,7 @@ public sealed class ChatPool : IAsyncDisposable
         try
         {
             _logger.LogInformation("Entered lock for creating the chat.");
-            _chats.TryGetValue(chatId, out chat);
+            _chats.TryGetValue(key, out chat);
             if (chat != null)
             {
                 _logger.LogInformation("Some other thread has created the chat, skipping.");
@@ -137,16 +164,13 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the chat and caching it for future.");
-            var longChatId = chatId.Contains('$')
-                ? Convert.ToInt64(chatId.Split("$")[0])
-                : Convert.ToInt64(chatId);
-            chat = _foulChatFactory.Create(new FoulChatId(longChatId.ToString()), chatId.Contains('$'));
-            chat = _chats.GetOrAdd(chatId, chat);
+            chat = _chatFactory.Create(_duplicateMessageHandler, chatId);
+            chat = _chats.GetOrAdd(key, chat);
 
-            if (chatId.Contains('$'))
+            if (chatId.IsPrivate)
                 _logger.LogInformation("Created a PRIVATE chat.");
 
-            _chatCache.AddChat(chatId);
+            _chatStore.AddChat(chatId);
             _logger.LogInformation("Successfully created the chat.");
 
             return chat;
@@ -158,33 +182,61 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    private async ValueTask JoinBotToChatIfNecessaryAsync(string botId, string chatId, IFoulChat chat, FoulChatToBotFactory botFactory, string? invitedBy = null, CancellationToken cancellationToken = default)
+    private async ValueTask JoinBotToChatIfNecessaryAsync(
+        FoulBotId foulBotId,
+        IFoulChat chat,
+        JoinBotToChatAsync botFactory,
+        string? invitedBy,
+        CancellationToken cancellationToken)
     {
-        if (_joinedBots.Contains($"{botId}{chatId}"))
-            return;
+        var key = GetKeyForBot(foulBotId, chat);
 
-        using var _ = Logger
-            .AddScoped("BotId", botId)
-            .AddScoped("ChatId", chatId)
-            .AddScoped("InvitedBy", invitedBy)
-            .BeginScope();
+        if (_bots.ContainsKey(key))
+            return;
 
         _logger.LogInformation("Did not find the bot, creating and joining it to the chat. Waiting to acquire lock.");
         await _lock.WaitAsync(cancellationToken);
         try
         {
             _logger.LogInformation("Entered lock for creating and joining the bot.");
-            if (_joinedBots.Contains($"{botId}{chatId}"))
+            if (_bots.ContainsKey(key))
             {
                 _logger.LogInformation("Another thread has added this bot, skipping.");
                 return;
             }
 
             _logger.LogInformation("Creating the bot and joining it to chat.");
-            var bot = botFactory(chat);
-            await bot.JoinChatAsync(invitedBy); // TODO: Consider refactoring this to inside of botFactory or FoulBot constructor altogether.
-            _joinedBots.Add($"{botId}{chatId}");
-            _joinedBotsObjects.Add($"{botId}{chatId}", bot);
+            var bot = await botFactory(chat);
+            if (bot == null)
+            {
+                _logger.LogInformation("Could not add this bot to this chat.");
+                return;
+            }
+
+            EventHandler<FoulMessage> trigger = (s, message) => _ = bot.TriggerAsync(message).AsTask();
+
+            // Consider rewriting to System.Reactive.
+            chat.MessageReceived += trigger;
+
+            // When we fail to send a message to chat, cleanup the bot (it will be recreated after more messages received).
+            bot.Shutdown += async (sender, e) =>
+            {
+                chat.MessageReceived -= trigger;
+
+                _bots.Remove(key, out _);
+
+                await bot.DisposeAsync();
+            };
+
+            if (invitedBy != null)
+                await bot.GreetEveryoneAsync(new(invitedBy));
+
+            if (!_bots.TryAdd($"{foulBotId.BotId}{chat.ChatId.Value}", bot))
+            {
+                await bot.GracefulShutdownAsync();
+                throw new InvalidOperationException("Could not add bot to chat.");
+            }
+
             _logger.LogInformation("Adding bot to chat operation was performed.");
         }
         finally
@@ -194,28 +246,30 @@ public sealed class ChatPool : IAsyncDisposable
         }
     }
 
-    public async ValueTask GracefullyStopAsync()
+    public Task GracefullyCloseAsync()
     {
+        if (_isStopping)
+            return Task.CompletedTask;
+
         _isStopping = true;
 
-        await Task.WhenAll(
-            _chats.Values.Select(chat => chat.GracefullyStopAsync()).Concat(
-                _joinedBotsObjects.Values.Select(bot => bot.GracefullyStopAsync())));
-
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        return Task.WhenAll(
+            _chats.Values.ToList().Select(chat => chat.GracefullyCloseAsync()).Concat(
+                _bots.Values.ToList().Select(bot => bot.GracefulShutdownAsync())));
     }
 
     public async ValueTask DisposeAsync()
     {
         if (!_isStopping)
-            await GracefullyStopAsync();
-
-        foreach (var bot in _joinedBotsObjects.Values)
-        {
-            // TODO: Figure out whether interface should be disposable.
-            await ((FoulBot)bot).DisposeAsync();
-        }
+            await GracefullyCloseAsync();
 
         _lock.Dispose();
     }
+
+    private static string GetKeyForBot(FoulBotId botId, IFoulChat chat)
+        => $"{botId.BotId}{chat.ChatId.Value}";
+
+    private static string GetKeyForChat(FoulChatId chatId) => chatId.IsPrivate
+        ? $"{chatId.Value}${chatId.FoulBotId?.BotId}"
+        : $"{chatId.Value}";
 }

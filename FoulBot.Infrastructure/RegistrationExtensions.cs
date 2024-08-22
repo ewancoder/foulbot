@@ -23,7 +23,7 @@ public static class RegistrationExtensions
         return services
             .AddScoped<IAllowedChatsProvider, AllowedChatsProvider>()    // Domain
             .AddScoped<IBotDelayStrategy, BotDelayStrategy>()
-            .AddScoped<ChatPool>()
+            .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
@@ -32,6 +32,20 @@ public static class RegistrationExtensions
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
             .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
             .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
+    }
+
+    public static IServiceCollection AddChatPool<TDuplicateMessageHandler>(
+        this IServiceCollection services, string key)
+        where TDuplicateMessageHandler : class, IDuplicateMessageHandler
+    {
+        return services
+            .AddTransient<TDuplicateMessageHandler>()
+            .AddKeyedScoped(key, (provider, _) => new ChatPool(
+                provider.GetRequiredService<ILogger<ChatPool>>(),
+                provider.GetRequiredService<IChatStore>(),
+                provider.GetRequiredService<IFoulChatFactory>(),
+                provider.GetRequiredService<IFoulBotFactory>(),
+                provider.GetRequiredService<TDuplicateMessageHandler>())); // TODO: Rewrite into ChatPool factory.
     }
 
     public static IConfiguration AddConfiguration(

@@ -99,7 +99,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await HandleUpdateAsync(_botConfiguration.BotId, update, _botFactory.CreateBotFactoryFromChat(botMessenger, _botConfiguration), cancellationToken);
+            await HandleUpdateAsync(new(_botConfiguration.BotId, _botConfiguration.BotName), update, chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, _botConfiguration), cancellationToken);
         }
         catch (Exception exception)
         {
@@ -107,10 +107,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         }
     }
 
-    private async ValueTask HandleUpdateAsync(string botId, Update update, FoulChatToBotFactory botFactory, CancellationToken cancellationToken)
+    private async ValueTask HandleUpdateAsync(FoulBotId foulBotId, Update update, JoinBotToChatAsync botFactory, CancellationToken cancellationToken)
     {
         using var _ = Logger
-            .AddScoped("BotId", botId)
+            .AddScoped("BotId", foulBotId.BotId)
             .AddScoped("ChatId", update?.MyChatMember?.Chat?.Id ?? update?.Message?.Chat?.Id)
             .AddScoped("ChatName", update?.MyChatMember?.Chat?.Username ?? update?.Message?.Chat?.Username
                 ?? update?.MyChatMember?.Chat?.Title ?? update?.Message?.Chat?.Title)
@@ -137,15 +137,22 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             var chatId = update.MyChatMember.Chat.Id.ToString();
             var invitedByUsername = update.MyChatMember.From?.Username; // Who invited / kicked the bot.
 
-            await _chatPool.UpdateStatusAsync(
-                chatId,
-                botId,
-                member.User.Username,
-                ToBotChatStatus(member.Status),
-                invitedByUsername,
-                update.MyChatMember.Chat.Type == ChatType.Private,
-                botFactory,
-                cancellationToken);
+            if (member.Status == ChatMemberStatus.Left || member.Status == ChatMemberStatus.Kicked)
+            {
+                await _chatPool.KickBotFromChatAsync(
+                    new(chatId), // Chat is never private when invited.
+                    foulBotId,
+                    cancellationToken);
+            }
+            else
+            {
+                await _chatPool.InviteBotToChatAsync(
+                    new(chatId), // Chat is never private when invited.
+                    foulBotId,
+                    invitedByUsername,
+                    botFactory,
+                    cancellationToken);
+            }
 
             _logger.LogInformation("Successfully handled NewChatMember update.");
             return;
@@ -165,11 +172,14 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             if (update.Message.Text == "$activate")
             {
-                _allowedChatsProvider.AddAllowedChat(new(chatId));
+                await _allowedChatsProvider.AllowChatAsync(new(chatId));
             }
 
-            if (!_allowedChatsProvider.IsAllowedChat(new(chatId)))
+            if (!await _allowedChatsProvider.IsAllowedChatAsync(new(chatId)))
             {
+                // TODO: We need to DISPOSE of those bots that have been added to chats that are not allowed.
+                // And don't create them at all.
+                // Save memory!
                 _logger.LogWarning("Received a message from not allowed chat: {ChatId}", chatId);
                 return; // Bot is not allowed to write to this chat.
                         // This is a temporary measure so that bots don't reply to random people.
@@ -184,10 +194,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             await _chatPool.HandleMessageAsync(
-                chatId,
-                botId,
+                update.Message.Chat.Type == ChatType.Private
+                    ? new(chatId) { FoulBotId = foulBotId }
+                    : new(chatId),
+                foulBotId,
                 message,
-                update.Message.Chat.Type == ChatType.Private,
                 botFactory,
                 cancellationToken);
 
@@ -199,11 +210,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _logger.LogDebug("Received unnecessary update, skipping handling.");
     }
 
-    private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
+    /*private BotChatStatus ToBotChatStatus(ChatMemberStatus status)
     {
         if (status == ChatMemberStatus.Left || status == ChatMemberStatus.Kicked)
             return BotChatStatus.Left;
 
         return BotChatStatus.Joined;
-    }
+    }*/
 }

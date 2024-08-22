@@ -1,34 +1,58 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Collections.Concurrent;
+
+namespace FoulBot.Domain;
+
+public interface IFoulChat
+{
+    event EventHandler<FoulMessage>? MessageReceived;
+
+    FoulChatId ChatId { get; }
+    bool IsPrivateChat { get; }
+
+    IList<FoulMessage> GetContextSnapshot();
+    ValueTask HandleMessageAsync(FoulMessage message);
+    void AddMessage(FoulMessage message);
+
+    Task GracefullyCloseAsync();
+}
 
 public sealed class FoulChat : IFoulChat
 {
-    private readonly Guid _chatInstanceId = Guid.NewGuid();
+    // Consider making these numbers configurable.
+    public const int MaxContextSizeLimit = 500;
+    public const int CleanupContextSizeLimit = 200;
+
+    private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly ILogger<FoulChat> _logger;
-    private readonly DateTime _chatCreatedAt;
-    private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly Guid _chatInstanceId = Guid.NewGuid();
+    private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
     private readonly List<FoulMessage> _context = new(1000);
+    private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
     private readonly object _lock = new();
     private bool _isStopping;
 
-    public FoulChat(ILogger<FoulChat> logger, FoulChatId chatId, bool isPrivateChat)
+    public FoulChat(
+        IDuplicateMessageHandler duplicateMessageHandler,
+        ILogger<FoulChat> logger,
+        FoulChatId chatId)
     {
+        _duplicateMessageHandler = duplicateMessageHandler;
         _logger = logger;
         ChatId = chatId;
-        IsPrivateChat = isPrivateChat;
-        _chatCreatedAt = DateTime.UtcNow;
 
         using var _ = Logger.BeginScope();
-        _logger.LogInformation("Created instance of FoulChat with start time {StartTime}.", _chatCreatedAt);
+        _logger.LogInformation("Created instance of FoulChat with start time {StartTime}", _chatCreatedAt);
     }
+
+    public event EventHandler<FoulMessage>? MessageReceived;
 
     private IScopedLogger Logger => _logger
         .AddScoped("ChatInstanceId", _chatInstanceId)
-        .AddScoped("ChatId", ChatId);
+        .AddScoped("ChatId", ChatId); // TODO: Add name of the chat.
 
-    public bool IsPrivateChat { get; }
     public FoulChatId ChatId { get; }
-    public event EventHandler<FoulMessage>? MessageReceived;
-    public event EventHandler<FoulStatusChanged>? StatusChanged;
+    public bool IsPrivateChat => ChatId.IsPrivate;
 
     public IList<FoulMessage> GetContextSnapshot()
     {
@@ -40,165 +64,148 @@ public sealed class FoulChat : IFoulChat
                 var snapshot = _context
                     .OrderBy(x => x.Date) // Order by date so we're sure context is in correct order at decision making step.
                     .ToList();
+
                 return snapshot;
             }
             catch (Exception exception)
             {
                 using var _ = Logger.BeginScope();
-                _logger.LogWarning(exception, "Concurrency error when getting the context snapshot. Trying again.");
+                _logger.LogWarning(exception, "Concurrency error when getting the context snapshot. Trying again");
             }
         }
     }
 
-    public void ChangeBotStatus(string whoName, string? byName, BotChatStatus status)
+    public async ValueTask HandleMessageAsync(FoulMessage message)
     {
-        using var _ = Logger.BeginScope();
-
-        if (_isStopping)
-        {
-            _logger.LogWarning("Gracefully stopping the application. Skipping status update {WhoName}, {ByName}, {Status}", whoName, byName, status);
-            return;
-        }
-
-        _logger.LogDebug("Notifying bots about status change: {WhoName} was changed by {ByName}, {Status}", whoName, byName, status);
-
-        StatusChanged?.Invoke(this, new FoulStatusChanged(whoName, byName, status));
-    }
-
-    public void HandleMessage(FoulMessage message)
-    {
-        // TODO: Consider including Message to the scope, but filter out all non-relevant fields.
         using var l = Logger
             .AddScoped("MessageId", message.Id)
             .BeginScope();
 
+        _logger.LogInformation("Received message by FoulChat: {@Message}", message);
+
         if (_isStopping)
         {
-            _logger.LogWarning("Gracefully stopping the application. Skipping message update.");
+            _logger.LogWarning("Gracefully stopping the application. Skipping handling message");
             return;
         }
-
-        _logger.LogInformation("Received message by FoulChat");
 
         // Allow reading messages for the last minute, to not filter out the first message in the chat.
         if (message.Date < _chatCreatedAt.AddMinutes(-1))
         {
-            _logger.LogTrace("Skipping out old message since it's date {MessageTime} is less than started date {StartTime}", message.Date, _chatCreatedAt);
+            _logger.LogDebug("Skipping old message since it's date {MessageDate} is less than started date {StartTime}", message.Date, _chatCreatedAt);
             return;
         }
 
-        if (!AddFoulMessageToContext(message))
-        {
-            _logger.LogDebug("Skipping this message by rules.");
+        var consolidatedMessage = await ConsolidateAndAddMessageToContextAsync(message);
+        if (consolidatedMessage == null) // Other bots are too late.
             return;
-        }
 
-        // Mega super duper HACK to wait for the message from ALL the bots.
-        _logger.LogTrace("Entering a very hacky 2-second way to consolidate the same message from different bots");
-
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(2000);
-
-            // For some reason logging scope is still present here (using Serilog).
-            // Which is Great for me, but need to investigate why.
-            // !!! It even bleeds through the event into the ensuing FoulBot instance which is wild.
-
-            // TODO: Consider debouncing at this level.
-            _logger.LogTrace("Finished waiting for 2 seconds in super-hack, now notifying bots about the message.");
-            _logger.LogInformation("Notifying bots about the message: {@Message}, From {SenderName}, Text {MessageText}", message, message.SenderName, message.Text);
-
-            try
-            {
-                MessageReceived?.Invoke(this, message);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error during invoking MessageReceived event handler.");
-            }
-        });
+        // TODO: Consider debouncing at this level.
+        _logger.LogInformation("Notifying bots about the message");
+        MessageReceived?.Invoke(this, consolidatedMessage);
     }
 
     public void AddMessage(FoulMessage message)
     {
+        using var l = Logger
+            .AddScoped("MessageId", message.Id)
+            .BeginScope();
+
+        _logger.LogInformation("Manually adding message to chat: {@Message}", message);
+
         if (_isStopping)
         {
-            _logger.LogWarning("Gracefully stopping the application. Skipping adding message to context.");
+            _logger.LogWarning("Gracefully stopping the application. Skipping adding message");
             return;
         }
 
         lock (_lock)
         {
-            _logger.LogDebug("Entered a lock for adding the message to the context manually. Chat {ChatId}, message {@Message}.", ChatId, message);
-            // TODO: Consider storing separate contexts for separate bots cause they might not be talking for a long time while others do.
+            _logger.LogDebug("Entered a lock for adding the message to the context manually");
 
-            _context.Add(message);
-            _contextMessages.Add(message.Id, message);
+            AddMessageToContext(message);
 
-            CleanupContext();
-
-            // TODO: Consider debouncing at this level (see handleupdate method to consolidate).
-            _logger.LogDebug("Notifying bots about the manual message {@Message}.", message);
+            // TODO: Consider debouncing at this level.
+            _logger.LogDebug("Notifying bots about the manual message");
             MessageReceived?.Invoke(this, message);
         }
     }
 
-    public Task GracefullyStopAsync()
+    public Task GracefullyCloseAsync()
     {
+        if (_isStopping) return Task.CompletedTask;
         _isStopping = true;
+
         return Task.Delay(TimeSpan.FromSeconds(5)); // HACK implementation.
     }
 
-    private bool AddFoulMessageToContext(FoulMessage message)
+    private async ValueTask<FoulMessage?> ConsolidateAndAddMessageToContextAsync(FoulMessage message)
     {
-        if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
-        {
-            _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-            return false;
-        }
+        var list = _unconsolidatedMessages.GetOrAdd(message.Id, []);
 
-        _logger.LogDebug("Entering lock for adding (updating) message to context.");
         lock (_lock)
         {
-            _logger.LogDebug("Entered lock for adding (updating) message to context.");
-            if (_contextMessages.ContainsKey(message.Id) && message.ReplyTo == null)
+            list.Add(message);
+
+            if (list.Count > 1)
+                return null; // Only process the rest by the first handler.
+        }
+
+        // HACK: Waiting for messages from other bots to come.
+        // This can be improved in future if Chat knew how many bots are in it.
+        // TODO: Consider passing TimeProvider here to improve test execution time.
+        await Task.Delay(2000);
+
+        var consolidatedMessage = _duplicateMessageHandler.Merge(list);
+
+        _logger.LogDebug("Entering lock for adding message to context.");
+        lock (_lock)
+        {
+            AddMessageToContext(consolidatedMessage);
+            _logger.LogDebug("Added message to context.");
+            _logger.LogDebug("Exiting the lock for adding message to context.");
+        }
+
+        _unconsolidatedMessages.Remove(message.Id, out _);
+
+        return consolidatedMessage;
+    }
+
+    private void CleanupContextIfNeeded()
+    {
+        if (_context.Count > MaxContextSizeLimit)
+        {
+            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, CleanupContextSizeLimit);
+            var orderedByDate = _context.OrderBy(x => x.Date);
+            foreach (var message in orderedByDate)
             {
-                _logger.LogDebug("Message has already been added to context by another bot and it doesn't need an update, skipping.");
-                return false;
+                RemoveMessageFromContext(message);
+
+                if (_context.Count <= CleanupContextSizeLimit)
+                    break;
             }
 
-            if (_contextMessages.TryGetValue(message.Id, out var existing))
-            {
-                _logger.LogDebug("Message has already been added to context by another bot, but this one has ReplyToMessage set. Updating the property and skipping the message.");
-                existing.ReplyTo = message.ReplyTo;
-                return false; // Discard the message after updating existing message.
-            }
-
-            {
-                _context.Add(message);
-                _contextMessages.Add(message.Id, message);
-                _logger.LogDebug("Added message to context.");
-
-                CleanupContext();
-
-                _logger.LogDebug("Exiting the lock for adding message to context.");
-                return true;
-            }
+            _logger.LogDebug("Successfully cleaned up the context.");
         }
     }
 
-    private void CleanupContext()
+    /// <summary>
+    /// Should only be called within a lock.
+    /// </summary>
+    private void AddMessageToContext(FoulMessage message)
     {
-        if (_context.Count > 400) // TODO: Make these numbers configurable.
-        {
-            _logger.LogDebug("Context has more than 400 messages. Cleaning it up to 300.");
-            while (_context.Count > 300)
-            {
-                var msg = _context[0];
-                _context.RemoveAt(0);
-                _contextMessages.Remove(msg.Id);
-            }
-            _logger.LogDebug("Successfully cleaned up the context.");
-        }
+        _context.Add(message);
+        _contextMessages.Add(message.Id, message);
+
+        CleanupContextIfNeeded();
+    }
+
+    /// <summary>
+    /// Should only be called within a lock.
+    /// </summary>
+    private void RemoveMessageFromContext(FoulMessage message)
+    {
+        _context.Remove(message);
+        _contextMessages.Remove(message.Id);
     }
 }

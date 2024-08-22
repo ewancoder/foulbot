@@ -10,7 +10,7 @@ public sealed class ApplicationInitializer
     private readonly IServiceProvider _provider;
 
     public ApplicationInitializer(
-        ChatPool chatPool,
+        [FromKeyedServices("Telegram")]ChatPool chatPool,
         IEnumerable<BotConnectionConfiguration> botConfigs,
         ChatLoader chatLoader,
         IServiceProvider provider)
@@ -24,8 +24,8 @@ public sealed class ApplicationInitializer
     public Task InitializeAsync(CancellationToken cancellationToken) => Task.WhenAll(
         _botConfigs.Select(x => StartHandlingAsync(x, cancellationToken)));
 
-    public ValueTask GracefullyShutdownAsync()
-        => _chatPool.GracefullyStopAsync();
+    public Task GracefullyShutdownAsync()
+        => _chatPool.GracefullyCloseAsync();
 
     private async Task StartHandlingAsync(
         BotConnectionConfiguration configuration,

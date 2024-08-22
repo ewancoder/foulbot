@@ -26,22 +26,3 @@ public interface IBotMessenger
     ValueTask NotifyRecordingVoiceAsync(FoulChatId chatId);
     ValueTask NotifyTyping(FoulChatId chatId);
 }
-
-
-public interface IFoulChat
-{
-    bool IsPrivateChat { get; }
-    FoulChatId ChatId { get; }
-    event EventHandler<FoulMessage> MessageReceived;
-    event EventHandler<FoulStatusChanged> StatusChanged;
-
-    IList<FoulMessage> GetContextSnapshot();
-    void ChangeBotStatus(string whoName, string? byName, BotChatStatus status);
-
-    // TODO: Get rid of Telegram dependency for this method. For now this is the only method left that uses it.
-    void HandleMessage(FoulMessage message);
-
-    void AddMessage(FoulMessage message);
-
-    Task GracefullyStopAsync();
-}
