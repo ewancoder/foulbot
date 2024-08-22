@@ -1,5 +1,18 @@
 ﻿namespace FoulBot.Domain;
 
+// Tested through FoulBot. Convenience class.
+public sealed class ChatScopedBotMessenger(
+    IBotMessenger messenger,
+    FoulChatId chatId,
+    CancellationToken cancellationToken) // TODO: Pass CancellationToken to messenger.
+{
+    public ValueTask SendTextMessageAsync(string message)
+        => messenger.SendTextMessageAsync(chatId, message);
+
+    public ValueTask SendStickerAsync(string stickerId)
+        => messenger.SendStickerAsync(chatId, stickerId);
+}
+
 public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispose of it.
 {
     event EventHandler? Shutdown;
