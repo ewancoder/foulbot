@@ -129,7 +129,7 @@ public static class BotsRegistration
         {
             services.RegisterBot(configuration, "EwPidorBotApiKey", new FoulBotConfiguration(
                 "ew_pidorbot", "Pidor_Bot", grumpyDirective,
-                ["пидор", "бот", "pidor", "bot"], [])
+                ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35());
