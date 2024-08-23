@@ -109,8 +109,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             // Simulate "reading" the chat.
             await _delayStrategy.DelayAsync(_cts.Token);
 
+            var replyType = _replyModePicker.GetBotReplyMode(context);
+
             // TODO: pass isVoice.
-            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, false);
+            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyType.Type == ReplyType.Voice);
 
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
@@ -127,7 +129,6 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
             await typing.FinishTypingText(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
-            var replyType = _replyModePicker.GetBotReplyMode(context);
             if (replyType.Type == ReplyType.Text)
             {
                 await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.

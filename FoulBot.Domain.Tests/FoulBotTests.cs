@@ -151,7 +151,7 @@ public class FoulBotTests : Testing<FoulBot>
     #region TriggerAsync
 
     [Theory, AutoMoqData]
-    public async Task TriggerAsync_ShouldSendGeneratedReply_OnThePositiveFlow(
+    public async Task TriggerAsync_ShouldSendGeneratedReply_OnThePositiveFlow_BySendingAndImitatingText(
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage)
@@ -169,11 +169,14 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.TriggerAsync(message);
 
+        _typingImitatorFactory.Verify(x => x.ImitateTyping(ChatId, false));
+        _typingImitatorFactory.Verify(x => x.ImitateTyping(ChatId, true), Times.Never);
+
         _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage));
     }
 
     [Theory, AutoMoqData]
-    public async Task TriggerAsync_ShouldSendVoice_WhenReplyModePickerReturnsVoice(
+    public async Task TriggerAsync_ShouldSendVoice_WhenReplyModePickerReturnsVoice_BySendingAndImitatingVoice(
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage,
@@ -194,6 +197,9 @@ public class FoulBotTests : Testing<FoulBot>
         var sut = CreateFoulBot();
 
         await sut.TriggerAsync(message);
+
+        _typingImitatorFactory.Verify(x => x.ImitateTyping(ChatId, true));
+        _typingImitatorFactory.Verify(x => x.ImitateTyping(ChatId, false), Times.Never);
 
         _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage), Times.Never);
         _botMessenger.Verify(x => x.SendVoiceMessageAsync(ChatId, voiceStream));
