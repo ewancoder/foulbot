@@ -73,12 +73,14 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         // Legacy class to be reworked. Currently starts reminders mechanism
         // on creation, so no need to keep the reference.
-        _ = new ReminderCreator(
+        var reminderCreator = new ReminderCreator(
             _reminderCreatorLogger,
             chat.ChatId,
             config.FoulBotId,
             bot,
             cts.Token);
+
+        bot.TryAddReminder = reminderCreator.AddReminder;
 
         return bot;
     }
