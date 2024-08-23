@@ -36,14 +36,14 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IBotReplyStrategy _replyStrategy;
     private readonly IBotReplyModePicker _replyModePicker;
-    private readonly IReplyImitatorFactory _typingImitatorFactory;
+    private readonly IReplyImitatorFactory _replyImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
     private readonly IMessageFilter _messageFilter;
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
-    private readonly List<IBotCommandProcessor> _commandProcessors = new();
+    private readonly List<IBotCommandProcessor> _commandProcessors = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
 
@@ -52,7 +52,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         IBotDelayStrategy delayStrategy,
         IBotReplyStrategy replyStrategy,
         IBotReplyModePicker replyModePicker,
-        IReplyImitatorFactory typingImitatorFactory,
+        IReplyImitatorFactory replyImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
         IMessageFilter messageFilter,
@@ -64,7 +64,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _delayStrategy = delayStrategy;
         _replyStrategy = replyStrategy;
         _replyModePicker = replyModePicker;
-        _typingImitatorFactory = typingImitatorFactory;
+        _replyImitatorFactory = replyImitatorFactory;
         _random = random;
         _aiClient = aiClient;
         _messageFilter = messageFilter;
@@ -126,7 +126,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             var replyMode = _replyModePicker.GetBotReplyMode(context);
 
             // TODO: pass isVoice.
-            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyMode);
+            await using var replying = _replyImitatorFactory.ImitateReplying(_chat.ChatId, replyMode);
 
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
@@ -141,7 +141,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                 ]);
             }
 
-            await typing.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            await replying.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
             if (replyMode.Type == ReplyType.Text)
             {

@@ -437,7 +437,7 @@ public class FoulBotTests : Testing<FoulBot>
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
             .Returns(mode);
 
-        _typingImitatorFactory.Setup(x => x.ImitateTyping(ChatId, mode))
+        _typingImitatorFactory.Setup(x => x.ImitateReplying(ChatId, mode))
             .Returns(typingImitator)
             .Callback(() => startedTyping = true);
 
