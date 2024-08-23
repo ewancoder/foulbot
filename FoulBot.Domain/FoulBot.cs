@@ -34,7 +34,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IBotReplyStrategy _replyStrategy;
     private readonly IBotReplyModePicker _replyModePicker;
-    private readonly ITypingImitatorFactory _typingImitatorFactory;
+    private readonly IReplyImitatorFactory _typingImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
     private readonly IMessageFilter _messageFilter;
@@ -49,7 +49,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         IBotDelayStrategy delayStrategy,
         IBotReplyStrategy replyStrategy,
         IBotReplyModePicker replyModePicker,
-        ITypingImitatorFactory typingImitatorFactory,
+        IReplyImitatorFactory typingImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
         IMessageFilter messageFilter,
@@ -109,10 +109,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             // Simulate "reading" the chat.
             await _delayStrategy.DelayAsync(_cts.Token);
 
-            var replyType = _replyModePicker.GetBotReplyMode(context);
+            var replyMode = _replyModePicker.GetBotReplyMode(context);
 
             // TODO: pass isVoice.
-            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyType.Type == ReplyType.Voice);
+            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyMode);
 
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
@@ -127,9 +127,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                 ]);
             }
 
-            await typing.FinishTypingText(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            await typing.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
-            if (replyType.Type == ReplyType.Text)
+            if (replyMode.Type == ReplyType.Text)
             {
                 await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
             }

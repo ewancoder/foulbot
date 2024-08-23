@@ -16,7 +16,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
-    private readonly ILogger<TypingImitator> _typingImitatorLogger;
+    private readonly ILogger<ReplyImitator> _typingImitatorLogger;
     private readonly ILogger<ReminderCreator> _reminderCreatorLogger;
 
     public FoulBotFactory(
@@ -24,7 +24,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
-        ILogger<TypingImitator> typingImitatorLogger,
+        ILogger<ReplyImitator> typingImitatorLogger,
         ILogger<ReminderCreator> reminderCreatorLogger)
     {
         _timeProvider = timeProvider;
