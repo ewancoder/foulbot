@@ -23,7 +23,7 @@ public sealed class FoulAIClientFactory : IFoulAIClientFactory
         => new FoulAIClient(_logger, _configuration, openAiModel);
 }
 
-public sealed class FoulAIClient : IFoulAIClient
+public sealed partial class FoulAIClient : IFoulAIClient
 {
     private readonly Random _random = new Random();
     private readonly ILogger<FoulAIClient> _logger;
@@ -39,6 +39,9 @@ public sealed class FoulAIClient : IFoulAIClient
         _client = new OpenAIClient(configuration["OpenAIKey"]);
         _openAiModel = openAiModel;
     }
+
+    [GeneratedRegex(@"[^a-zA-Z_]", RegexOptions.Compiled, matchTimeoutMilliseconds: 50)]
+    private static partial Regex NotAllowedCharacters();
 
     public async ValueTask<Stream> GetAudioResponseAsync(string text)
     {
@@ -62,13 +65,13 @@ public sealed class FoulAIClient : IFoulAIClient
             if (message.MessageType == FoulMessageType.User)
                 return new ChatRequestUserMessage(message.Text)
                 {
-                    Name = Regex.Replace(message.SenderName.Unidecode(), "[^a-zA-Z_]", string.Empty)
+                    Name = NotAllowedCharacters().Replace(message.SenderName.Unidecode(), string.Empty)
                 };
 
             if (message.MessageType == FoulMessageType.Bot)
                 return new ChatRequestAssistantMessage(message.Text)
                 {
-                    Name = Regex.Replace(message.SenderName.Unidecode(), "[^a-zA-Z_]", string.Empty)
+                    Name = NotAllowedCharacters().Replace(message.SenderName.Unidecode(), string.Empty)
                 };
 
             throw new InvalidOperationException("Could not determine the type.");
