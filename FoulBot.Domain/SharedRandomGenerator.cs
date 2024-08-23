@@ -1,10 +1,13 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace FoulBot.Domain;
 
 public interface ISharedRandomGenerator
 {
     int Generate(int minInclusive, int maxInclusive);
 }
 
+[ExcludeFromCodeCoverage(Justification = "This is a simple wrapper around Random class")]
 public sealed class SharedRandomGenerator : ISharedRandomGenerator
 {
     private readonly Random _random = Random.Shared;

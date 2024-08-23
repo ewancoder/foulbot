@@ -36,6 +36,26 @@ public class FoulBotTests : Testing<FoulBot>
 
     public FoulChatId ChatId => _chat.Object.ChatId;
 
+    [Theory, AutoMoqData]
+    public async Task SendRawAsync_ShouldJustSendToChat(string message)
+    {
+        var sut = CreateFoulBot();
+
+        await sut.SendRawAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, message));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task SendRawAsync_ShouldNotAddMessageToContext(string message)
+    {
+        var sut = CreateFoulBot();
+
+        await sut.SendRawAsync(message);
+
+        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Never);
+    }
+
     #region GreetEveryoneAsync
 
     [Theory, AutoMoqData]
@@ -172,6 +192,173 @@ public class FoulBotTests : Testing<FoulBot>
         _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage));
     }
 
+    #region Command processors
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldNotSendAnything_WhenAnyOfCommandProcessorsReturnTrue(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+
+        processor1.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(false));
+        processor2.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+
+        var sut = CreateFoulBot();
+        sut.AddCommandProcessor(processor1.Object);
+        sut.AddCommandProcessor(processor2.Object);
+
+        await sut.TriggerAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldSendMessage_WhenAllCommandProcessorsReturnFalse(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+
+        processor1.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(false));
+        processor2.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(false));
+
+        var sut = CreateFoulBot();
+        sut.AddCommandProcessor(processor1.Object);
+        sut.AddCommandProcessor(processor2.Object);
+
+        await sut.TriggerAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldProcessOnlyOnce_WithCommandProcessor(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+
+        processor1.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+        processor2.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+
+        var sut = CreateFoulBot();
+        sut.AddCommandProcessor(processor1.Object);
+        sut.AddCommandProcessor(processor2.Object);
+
+        await sut.TriggerAsync(message);
+
+        processor1.Verify(x => x.ProcessCommandAsync(message));
+        processor2.Verify(x => x.ProcessCommandAsync(message), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task DisposeAsync_ShouldStopAllCommandProcessors(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+
+        processor1.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+        processor2.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+
+        var sut = CreateFoulBot();
+        sut.AddCommandProcessor(processor1.Object);
+        sut.AddCommandProcessor(processor2.Object);
+
+        await sut.DisposeAsync();
+
+        processor1.Verify(x => x.StopProcessingAsync());
+        processor2.Verify(x => x.StopProcessingAsync());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task GracefulShutdown_ShouldStopAllCommandProcessors(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+
+        processor1.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+        processor2.Setup(x => x.ProcessCommandAsync(message))
+            .Returns(() => new(true));
+
+        var sut = CreateFoulBot();
+        sut.AddCommandProcessor(processor1.Object);
+        sut.AddCommandProcessor(processor2.Object);
+
+        await sut.GracefulShutdownAsync();
+
+        processor1.Verify(x => x.StopProcessingAsync());
+        processor2.Verify(x => x.StopProcessingAsync());
+    }
+
+    #endregion
+
     [Theory, AutoMoqData]
     public async Task TriggerAsync_ShouldAddGeneratedMessageToContext_OnThePositiveFlow(
         FoulMessage message,
@@ -270,7 +457,7 @@ public class FoulBotTests : Testing<FoulBot>
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
             .Returns(mode);
 
-        _typingImitatorFactory.Setup(x => x.ImitateTyping(ChatId, mode))
+        _typingImitatorFactory.Setup(x => x.ImitateReplying(ChatId, mode))
             .Returns(typingImitator)
             .Callback(() => startedTyping = true);
 

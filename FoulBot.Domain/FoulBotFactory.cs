@@ -16,21 +16,24 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
+    private readonly IReminderStore _reminderStore;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
-    private readonly ILogger<ReminderCreator> _reminderCreatorLogger;
+    private readonly ILogger<ReminderCommandProcessor> _reminderCreatorLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
+        IReminderStore reminderStore,
         ILogger<ReplyImitator> typingImitatorLogger,
-        ILogger<ReminderCreator> reminderCreatorLogger)
+        ILogger<ReminderCommandProcessor> reminderCreatorLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
+        _reminderStore = reminderStore;
         _typingImitatorLogger = typingImitatorLogger;
         _reminderCreatorLogger = reminderCreatorLogger;
     }
@@ -50,7 +53,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var cts = new CancellationTokenSource();
         var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
         var replyStrategy = new BotReplyStrategy(_timeProvider, chat, config);
-        var typingImitatorFactory = new TypingImitatorFactory(
+        var typingImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
         var aiClient = _aiClientFactory.Create(config.OpenAIModel);
         IMessageFilter messageFilter = config.IsAssistant
@@ -73,14 +76,18 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         // Legacy class to be reworked. Currently starts reminders mechanism
         // on creation, so no need to keep the reference.
-        var reminderCreator = new ReminderCreator(
-            _reminderCreatorLogger,
-            chat.ChatId,
-            config.FoulBotId,
-            bot,
-            cts.Token);
 
-        bot.TryAddReminder = reminderCreator.AddReminder;
+        // TODO: Come up with a better VISIBLE solution to dispose of it.
+#pragma warning disable CA2000 // It is being disposed on bot Shutdown.
+        var reminderCreator = new ReminderCommandProcessor(
+            _reminderCreatorLogger,
+            _reminderStore,
+            config,
+            chat.ChatId,
+            bot,
+            cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
+
+        bot.AddCommandProcessor(reminderCreator);
 
         return bot;
     }

@@ -1,4 +1,5 @@
 ﻿using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -56,7 +57,15 @@ public sealed class TelegramBotMessenger : IBotMessenger
 
     public async ValueTask SendTextMessageAsync(FoulChatId chatId, string message)
     {
-        await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message);
+        try
+        {
+            await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message, parseMode: ParseMode.MarkdownV2);
+        }
+        catch (ApiRequestException exception)
+        {
+            _logger.LogDebug(exception, "Error when sending markdown in telegram. Sending regular text now.");
+            await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message);
+        }
     }
 
     public async ValueTask SendVoiceMessageAsync(FoulChatId chatId, Stream message)

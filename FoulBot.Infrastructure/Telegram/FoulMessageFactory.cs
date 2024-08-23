@@ -30,7 +30,7 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
         return new FoulMessage(
             messageId,
             FoulMessageType.User,
-            senderName,
+            new(senderName),
             telegramMessage.Text,
             telegramMessage.Date,
             false,

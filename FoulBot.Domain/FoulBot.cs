@@ -20,9 +20,16 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
 {
     event EventHandler? Shutdown;
 
+    /// <summary>
+    /// This method sends custom text to the chat, without adding it to the chat context.
+    /// </summary>
+    ValueTask SendRawAsync(string text);
     ValueTask GreetEveryoneAsync(ChatParticipant invitedBy);
     ValueTask TriggerAsync(FoulMessage message);
+    ValueTask PerformRequestAsync(ChatParticipant requester, string request);
     Task GracefulShutdownAsync();
+
+    void AddCommandProcessor(IBotCommandProcessor commandProcessor);
 }
 
 /// <summary>
@@ -34,13 +41,14 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IBotReplyStrategy _replyStrategy;
     private readonly IBotReplyModePicker _replyModePicker;
-    private readonly IReplyImitatorFactory _typingImitatorFactory;
+    private readonly IReplyImitatorFactory _replyImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
     private readonly IMessageFilter _messageFilter;
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
+    private readonly List<IBotCommandProcessor> _commandProcessors = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
 
@@ -49,7 +57,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         IBotDelayStrategy delayStrategy,
         IBotReplyStrategy replyStrategy,
         IBotReplyModePicker replyModePicker,
-        IReplyImitatorFactory typingImitatorFactory,
+        IReplyImitatorFactory replyImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
         IMessageFilter messageFilter,
@@ -61,7 +69,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _delayStrategy = delayStrategy;
         _replyStrategy = replyStrategy;
         _replyModePicker = replyModePicker;
-        _typingImitatorFactory = typingImitatorFactory;
+        _replyImitatorFactory = replyImitatorFactory;
         _random = random;
         _aiClient = aiClient;
         _messageFilter = messageFilter;
@@ -72,8 +80,15 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public event EventHandler? Shutdown;
 
-    // HACK: Very hacky way to make legacy reminders work.
-    internal Func<FoulMessage, bool>? TryAddReminder { get; set; }
+    public void AddCommandProcessor(IBotCommandProcessor commandProcessor)
+    {
+        _commandProcessors.Add(commandProcessor);
+    }
+
+    public async ValueTask SendRawAsync(string text)
+    {
+        await _botMessenger.SendTextMessageAsync(text);
+    }
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
@@ -100,8 +115,11 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
-        if (TryAddReminder != null && TryAddReminder(message))
-            return; // Succeeded processing the command. No need to reply.
+        foreach (var processor in _commandProcessors)
+        {
+            if (await processor.ProcessCommandAsync(message))
+                return; // Message was processed by a command processor.
+        }
 
         var value = Interlocked.Increment(ref _triggerCalls);
         try
@@ -118,7 +136,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             var replyMode = _replyModePicker.GetBotReplyMode(context);
 
             // TODO: pass isVoice.
-            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyMode);
+            await using var replying = _replyImitatorFactory.ImitateReplying(_chat.ChatId, replyMode);
 
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
@@ -128,12 +146,12 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 i++;
                 aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([ // TODO: Pass cancellation token.
-                    new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
+                    new FoulMessage("Directive", FoulMessageType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
                     .. context
                 ]);
             }
 
-            await typing.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            await replying.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
             if (replyMode.Type == ReplyType.Text)
             {
@@ -171,6 +189,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
         await _cts.CancelAsync();
         Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
+
+        foreach (var commandProcessor in _commandProcessors)
+            await commandProcessor.StopProcessingAsync();
     }
 
     /// <summary>
@@ -189,7 +210,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _chat.AddMessage(new FoulMessage(
             Guid.NewGuid().ToString(),
             FoulMessageType.Bot,
-            _config.BotName,
+            new(_config.BotName),
             message,
             DateTime.UtcNow, // TODO: Consider using timeprovider.
             true,

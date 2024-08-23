@@ -2,17 +2,17 @@
 
 public interface IReplyImitatorFactory
 {
-    IReplyImitator ImitateTyping(FoulChatId chatId, BotReplyMode replyMode);
+    IReplyImitator ImitateReplying(FoulChatId chatId, BotReplyMode replyMode);
 }
 
-public sealed class TypingImitatorFactory : IReplyImitatorFactory
+public sealed class ReplyImitatorFactory : IReplyImitatorFactory
 {
     private readonly ILogger<ReplyImitator> _logger;
     private readonly IBotMessenger _botMessenger;
     private readonly TimeProvider _timeProvider;
     private readonly ISharedRandomGenerator _random;
 
-    public TypingImitatorFactory(
+    public ReplyImitatorFactory(
         ILogger<ReplyImitator> logger,
         IBotMessenger botMessenger,
         TimeProvider timeProvider,
@@ -24,7 +24,7 @@ public sealed class TypingImitatorFactory : IReplyImitatorFactory
         _random = random;
     }
 
-    public IReplyImitator ImitateTyping(FoulChatId chatId, BotReplyMode replyMode)
+    public IReplyImitator ImitateReplying(FoulChatId chatId, BotReplyMode replyMode)
     {
         return new ReplyImitator(
             _logger, _botMessenger, _timeProvider, _random, chatId, replyMode);
