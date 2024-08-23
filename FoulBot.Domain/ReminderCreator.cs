@@ -6,13 +6,8 @@ public sealed record Reminder(
     bool EveryDay,
     string RequestedByName);
 
-// TODO: However, consider using linked CTS to make this implementation
-// Cancel on Dispose to make it Bot-agnostic.
 /// <summary>
-/// This implementation is tightly coupled with the Bot class. There is no need
-/// to cancel cancellationToken in Dispose method, because the cancellation
-/// token that is passed into the constructor is being cancelled when the bot is
-/// disposed.
+/// This implementation is tightly coupled with the Bot class.
 /// </summary>
 public sealed class ReminderCreator : IBotCommandProcessor, IAsyncDisposable
 {
