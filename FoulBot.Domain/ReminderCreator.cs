@@ -64,34 +64,52 @@ public sealed class ReminderCreator
         }
     }
 
-    public void AddReminder(FoulMessage foulMessage)
+    public bool AddReminder(FoulMessage foulMessage)
     {
-        var message = foulMessage.Text.Replace($"@{_botId.BotId}", string.Empty).Trim();
-        var from = foulMessage.SenderName;
-
-        var everyDay = false;
-        if (message.StartsWith("каждый день"))
+        if (foulMessage.Text.StartsWith($"@{_botId.BotId}"))
         {
-            everyDay = true;
-            message = message.Replace("каждый день", string.Empty);
+            try
+            {
+                var message = foulMessage.Text.Replace($"@{_botId.BotId}", string.Empty).Trim();
+
+                var from = foulMessage.SenderName;
+
+                var everyDay = false;
+                if (message.StartsWith("каждый день"))
+                {
+                    everyDay = true;
+                    message = message.Replace("каждый день", string.Empty);
+                }
+
+                var command = message.Replace("через", string.Empty).Trim();
+                var number = Convert.ToInt32(command.Split(' ')[0]);
+                var units = command.Split(' ')[1];
+                var request = string.Join(' ', command.Split(' ').Skip(2));
+
+                var time = DateTime.UtcNow;
+                if (units.StartsWith("сек"))
+                    time = DateTime.UtcNow + TimeSpan.FromSeconds(number);
+                if (units.StartsWith("мин"))
+                    time = DateTime.UtcNow + TimeSpan.FromMinutes(number);
+                if (units.StartsWith("час"))
+                    time = DateTime.UtcNow + TimeSpan.FromHours(number);
+                if (units.StartsWith("де") || units.StartsWith("дн"))
+                    time = DateTime.UtcNow + TimeSpan.FromDays(number);
+
+                AddReminder(new Reminder(time, request, everyDay, from));
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Could not create a reminder.");
+                return false;
+            }
         }
-
-        var command = message.Replace("через", string.Empty).Trim();
-        var number = Convert.ToInt32(command.Split(' ')[0]);
-        var units = command.Split(' ')[1];
-        var request = string.Join(' ', command.Split(' ').Skip(2));
-
-        var time = DateTime.UtcNow;
-        if (units.StartsWith("сек"))
-            time = DateTime.UtcNow + TimeSpan.FromSeconds(number);
-        if (units.StartsWith("мин"))
-            time = DateTime.UtcNow + TimeSpan.FromMinutes(number);
-        if (units.StartsWith("час"))
-            time = DateTime.UtcNow + TimeSpan.FromHours(number);
-        if (units.StartsWith("де") || units.StartsWith("дн"))
-            time = DateTime.UtcNow + TimeSpan.FromDays(number);
-
-        AddReminder(new Reminder(time, request, everyDay, from));
+        else
+        {
+            return false;
+        }
     }
 
     private async Task RunRemindersAsync(CancellationToken cancellationToken)
