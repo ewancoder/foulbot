@@ -10,6 +10,7 @@ public class FoulBotTests : Testing<FoulBot>
     private readonly Mock<IMessageFilter> _messageFilter;
     private readonly Mock<IBotDelayStrategy> _delayStrategy;
     private readonly Mock<ITypingImitatorFactory> _typingImitatorFactory;
+    private readonly Mock<IBotReplyModePicker> _replyModePicker;
 
     public FoulBotTests()
     {
@@ -21,6 +22,10 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter = Freeze<IMessageFilter>();
         _delayStrategy = Freeze<IBotDelayStrategy>();
         _typingImitatorFactory = Freeze<ITypingImitatorFactory>();
+        _replyModePicker = Freeze<IBotReplyModePicker>();
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(It.IsAny<IList<FoulMessage>>()))
+            .Returns(() => new(ReplyType.Text));
 
         _messageFilter.Setup(x => x.IsGoodMessage(It.IsAny<string>()))
             .Returns(true);
@@ -165,6 +170,33 @@ public class FoulBotTests : Testing<FoulBot>
         await sut.TriggerAsync(message);
 
         _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldSendVoice_WhenReplyModePickerReturnsVoice(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage,
+        Stream voiceStream)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(context))
+            .Returns(() => new(ReplyType.Voice));
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _aiClient.Setup(x => x.GetAudioResponseAsync(responseMessage))
+            .Returns(() => new(voiceStream));
+
+        var sut = CreateFoulBot();
+
+        await sut.TriggerAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, responseMessage), Times.Never);
+        _botMessenger.Verify(x => x.SendVoiceMessageAsync(ChatId, voiceStream));
     }
 
     [Theory, AutoMoqData]

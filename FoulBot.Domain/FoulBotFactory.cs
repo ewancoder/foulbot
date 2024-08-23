@@ -56,11 +56,13 @@ public sealed class FoulBotFactory : IFoulBotFactory
         IMessageFilter messageFilter = config.IsAssistant
             ? new AssistantMessageFilter()
             : new FoulMessageFilter();
+        var replyModePicker = new BotReplyModePicker(config);
 
         var bot = new FoulBot(
             messenger,
             _delayStrategy,
             replyStrategy,
+            replyModePicker,
             typingImitatorFactory,
             _random,
             aiClient,

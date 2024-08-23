@@ -11,6 +11,9 @@ public sealed class ChatScopedBotMessenger(
 
     public ValueTask SendStickerAsync(string stickerId)
         => messenger.SendStickerAsync(chatId, stickerId);
+
+    public ValueTask SendVoiceMessageAsync(Stream voice)
+        => messenger.SendVoiceMessageAsync(chatId, voice);
 }
 
 public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispose of it.
@@ -30,6 +33,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly ChatScopedBotMessenger _botMessenger;
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IBotReplyStrategy _replyStrategy;
+    private readonly IBotReplyModePicker _replyModePicker;
     private readonly ITypingImitatorFactory _typingImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
@@ -44,6 +48,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         ChatScopedBotMessenger botMessenger,
         IBotDelayStrategy delayStrategy,
         IBotReplyStrategy replyStrategy,
+        IBotReplyModePicker replyModePicker,
         ITypingImitatorFactory typingImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
@@ -55,6 +60,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _botMessenger = botMessenger;
         _delayStrategy = delayStrategy;
         _replyStrategy = replyStrategy;
+        _replyModePicker = replyModePicker;
         _typingImitatorFactory = typingImitatorFactory;
         _random = random;
         _aiClient = aiClient;
@@ -121,7 +127,16 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
             await typing.FinishTypingText(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
-            await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            var replyType = _replyModePicker.GetBotReplyMode(context);
+            if (replyType.Type == ReplyType.Text)
+            {
+                await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            }
+            else
+            {
+                var stream = await _aiClient.GetAudioResponseAsync(aiGeneratedTextResponse);
+                await _botMessenger.SendVoiceMessageAsync(stream);
+            }
 
             if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
                 NotifyContext(aiGeneratedTextResponse);
