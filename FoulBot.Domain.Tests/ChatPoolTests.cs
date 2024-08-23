@@ -34,7 +34,8 @@ public class ChatPoolTests : Testing<ChatPool>
         _duplicateMessageHandler = Freeze<IDuplicateMessageHandler>();
         _foulChatFactory = Freeze<IFoulChatFactory>();
         _allowedChatsProvider = Freeze<IAllowedChatsProvider>();
-        _chat = new Mock<IFoulChat>(); // Do not freeze IFoulChat as we need different instances for tests.
+        _chat = Fixture.Create<Mock<IFoulChat>>(); // Do not freeze IFoulChat as we need different instances for tests.
+        _chat.Setup(x => x.ChatId).Returns(_chatId);
         Fixture.Register(() => new ChatScopedBotMessenger(_botMessenger.Object, _chatId, Cts.Token));
 
         _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(It.IsAny<FoulChatId>()))
@@ -97,7 +98,7 @@ public class ChatPoolTests : Testing<ChatPool>
     }
 
     [Theory, AutoMoqData]
-    public async Task KickBotAsync_ShouldNotCreateChat_WhenNotAllowed(FoulBotId botId)
+    public async Task KickBotAsync_ShouldNotCreateChat(FoulBotId botId)
     {
         SetupChatPool();
 
@@ -281,7 +282,6 @@ public class ChatPoolTests : Testing<ChatPool>
     [Theory]
     [InlineAutoMoqData(ChatMethodType.HandleMessageAsync)]
     [InlineAutoMoqData(ChatMethodType.InviteBotToChatAsync)]
-    [InlineAutoMoqData(ChatMethodType.KickBotFromChatAsync)]
     public async Task AnyMethod_ShouldCreateOnlyOneChatAndReturnItLater(
         ChatMethodType methodType,
         FoulBotId botId,
@@ -454,6 +454,27 @@ public class ChatPoolTests : Testing<ChatPool>
         await sut.KickBotFromChatAsync(_chatId, foulBotId, Cts.Token);
 
         Mock.Get(foulBot).Verify(x => x.GracefulShutdownAsync());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task KickBotFromChatAsync_ShouldNotCreateChat(
+        FoulBotId foulBotId, FoulMessage message, IFoulBot foulBot)
+    {
+        SetupChatPool();
+
+        await using var sut = CreateChatPool();
+
+        JoinBotToChatAsync factory = (chat) => new(foulBot);
+
+        await sut.HandleMessageAsync(
+            _chatId, foulBotId, message, factory, Cts.Token);
+
+        _foulChatFactory.ResetCalls();
+
+        await sut.KickBotFromChatAsync(_chatId, foulBotId, Cts.Token);
+
+        _foulChatFactory.Verify(x => x.Create(
+            _duplicateMessageHandler.Object, It.IsAny<FoulChatId>()), Times.Never);
     }
 
     [Theory]
