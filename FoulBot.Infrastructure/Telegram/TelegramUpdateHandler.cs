@@ -175,6 +175,11 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 await _allowedChatsProvider.AllowChatAsync(new(chatId));
             }
 
+            if (update.Message.Text == "$deactivate")
+            {
+                await _allowedChatsProvider.DisallowChatAsync(new(chatId));
+            }
+
             var message = _foulMessageFactory.CreateFrom(update.Message);
             if (message == null)
             {
