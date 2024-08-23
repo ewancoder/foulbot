@@ -5,7 +5,6 @@ namespace FoulBot.Domain;
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
-    private readonly IChatStore _chatStore;
     private readonly IFoulChatFactory _chatFactory;
     // TODO: Consider using this factory instead of a delegate.
     //private readonly IFoulBotFactory _botFactory;
@@ -18,13 +17,11 @@ public sealed class ChatPool : IAsyncDisposable
 
     public ChatPool(
         ILogger<ChatPool> logger,
-        IChatStore chatCache,
         IFoulChatFactory foulChatFactory,
         IDuplicateMessageHandler duplicateMessageHandler,
         IAllowedChatsProvider allowedChatsProvider)
     {
         _logger = logger;
-        _chatStore = chatCache;
         _chatFactory = foulChatFactory;
         _duplicateMessageHandler = duplicateMessageHandler;
         _allowedChatsProvider = allowedChatsProvider;
@@ -105,18 +102,16 @@ public sealed class ChatPool : IAsyncDisposable
         FoulBotId foulBotId,
         CancellationToken cancellationToken)
     {
+        _ = cancellationToken;
+
         using var _l = Logger
             .AddScoped("ChatId", chatId)
             .AddScoped("BotId", foulBotId)
             .BeginScope();
 
-        if (!await IsAllowedChatAsync(chatId))
-            return; // HACK: This will cause disallowing any existing chat to stay in memory forever.
-
-        var chat = await GetOrAddFoulChatAsync(chatId, cancellationToken);
-        if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chat), out var bot))
+        if (!_bots.TryGetValue(GetKeyForBot(foulBotId, chatId), out var bot))
         {
-            _logger.LogDebug("Could not kick bot from chat. It already doesn't exist.");
+            _logger.LogWarning("Could not kick bot from chat. It already doesn't exist.");
             return;
         }
 
@@ -182,7 +177,6 @@ public sealed class ChatPool : IAsyncDisposable
             if (chatId.IsPrivate)
                 _logger.LogInformation("Created a PRIVATE chat.");
 
-            _chatStore.AddChat(chatId);
             _logger.LogInformation("Successfully created the chat.");
 
             return chat;
@@ -201,7 +195,7 @@ public sealed class ChatPool : IAsyncDisposable
         string? invitedBy,
         CancellationToken cancellationToken)
     {
-        var key = GetKeyForBot(foulBotId, chat);
+        var key = GetKeyForBot(foulBotId, chat.ChatId);
 
         if (_bots.ContainsKey(key))
             return;
@@ -279,8 +273,8 @@ public sealed class ChatPool : IAsyncDisposable
         _lock.Dispose();
     }
 
-    private static string GetKeyForBot(FoulBotId botId, IFoulChat chat)
-        => $"{botId.BotId}{chat.ChatId.Value}";
+    private static string GetKeyForBot(FoulBotId botId, FoulChatId chatId)
+        => $"{botId.BotId}{chatId.Value}";
 
     private static string GetKeyForChat(FoulChatId chatId) => chatId.IsPrivate
         ? $"{chatId.Value}${chatId.FoulBotId?.BotId}"

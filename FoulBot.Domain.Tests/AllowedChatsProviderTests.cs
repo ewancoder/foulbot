@@ -62,6 +62,38 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
         Assert.True(await _sut2.IsAllowedChatAsync(chatId));
     }
 
+    [Fact]
+    public async Task ShouldAllowPublicChat_ForAllBots()
+    {
+        var chatId = Fixture.Build<FoulChatId>()
+            .With(x => x.FoulBotId, () => null)
+            .Create();
+
+        await _sut.AllowChatAsync(chatId);
+
+        Assert.True(await _sut.IsAllowedChatAsync(chatId));
+
+        var anotherBotChatId = chatId with { };
+
+        Assert.True(await _sut.IsAllowedChatAsync(anotherBotChatId));
+    }
+
+    [Fact]
+    public async Task ShouldAllowPrivateChat_ForSpecificBotOnly()
+    {
+        var chatId = Fixture.Build<FoulChatId>()
+            .With(x => x.FoulBotId, Fixture.Create<FoulBotId>())
+            .Create();
+
+        await _sut.AllowChatAsync(chatId);
+
+        Assert.True(await _sut.IsAllowedChatAsync(chatId));
+
+        var anotherBotSameChatId = chatId with { FoulBotId = Fixture.Create<FoulBotId>() };
+
+        Assert.False(await _sut.IsAllowedChatAsync(anotherBotSameChatId));
+    }
+
     public override void Dispose()
     {
         _sut.Dispose();

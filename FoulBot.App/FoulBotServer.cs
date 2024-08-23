@@ -20,7 +20,6 @@ public sealed class FoulBotServer
             .AddSingleton(TimeProvider.System)
             .AddScoped<ISharedRandomGenerator, SharedRandomGenerator>()
             .AddScoped<ChatLoader>()
-            .AddScoped<IChatStore>(x => x.GetRequiredService<ChatLoader>())
             .AddScoped<ApplicationInitializer>()
             .AddFoulBotInfrastructure()
             .RegisterBots(configuration, isDebug);
