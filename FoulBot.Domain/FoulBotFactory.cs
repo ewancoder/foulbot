@@ -50,7 +50,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var cts = new CancellationTokenSource();
         var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
         var replyStrategy = new BotReplyStrategy(_timeProvider, chat, config);
-        var typingImitatorFactory = new TypingImitatorFactory(
+        var typingImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
         var aiClient = _aiClientFactory.Create(config.OpenAIModel);
         IMessageFilter messageFilter = config.IsAssistant

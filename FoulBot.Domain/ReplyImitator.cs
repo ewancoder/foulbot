@@ -5,14 +5,14 @@ public interface IReplyImitatorFactory
     IReplyImitator ImitateTyping(FoulChatId chatId, BotReplyMode replyMode);
 }
 
-public sealed class TypingImitatorFactory : IReplyImitatorFactory
+public sealed class ReplyImitatorFactory : IReplyImitatorFactory
 {
     private readonly ILogger<ReplyImitator> _logger;
     private readonly IBotMessenger _botMessenger;
     private readonly TimeProvider _timeProvider;
     private readonly ISharedRandomGenerator _random;
 
-    public TypingImitatorFactory(
+    public ReplyImitatorFactory(
         ILogger<ReplyImitator> logger,
         IBotMessenger botMessenger,
         TimeProvider timeProvider,
