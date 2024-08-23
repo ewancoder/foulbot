@@ -1,19 +1,19 @@
 ﻿namespace FoulBot.Domain;
 
-public interface ITypingImitatorFactory
+public interface IReplyImitatorFactory
 {
-    ITypingImitator ImitateTyping(FoulChatId chatId, bool isVoice);
+    IReplyImitator ImitateTyping(FoulChatId chatId, BotReplyMode replyMode);
 }
 
-public sealed class TypingImitatorFactory : ITypingImitatorFactory
+public sealed class TypingImitatorFactory : IReplyImitatorFactory
 {
-    private readonly ILogger<TypingImitator> _logger;
+    private readonly ILogger<ReplyImitator> _logger;
     private readonly IBotMessenger _botMessenger;
     private readonly TimeProvider _timeProvider;
     private readonly ISharedRandomGenerator _random;
 
     public TypingImitatorFactory(
-        ILogger<TypingImitator> logger,
+        ILogger<ReplyImitator> logger,
         IBotMessenger botMessenger,
         TimeProvider timeProvider,
         ISharedRandomGenerator random)
@@ -24,62 +24,62 @@ public sealed class TypingImitatorFactory : ITypingImitatorFactory
         _random = random;
     }
 
-    public ITypingImitator ImitateTyping(FoulChatId chatId, bool isVoice)
+    public IReplyImitator ImitateTyping(FoulChatId chatId, BotReplyMode replyMode)
     {
-        return new TypingImitator(
-            _logger, _botMessenger, _timeProvider, _random, chatId, isVoice);
+        return new ReplyImitator(
+            _logger, _botMessenger, _timeProvider, _random, chatId, replyMode);
     }
 }
 
 // HACK: Antipattern, but I need IDisposable on this interface for now.
-public interface ITypingImitator : IAsyncDisposable
+public interface IReplyImitator : IAsyncDisposable
 {
-    ValueTask FinishTypingText(string text);
+    ValueTask FinishReplyingAsync(string text);
 }
 
 /// <summary>
 /// Imitates an action such as Typing or Recording voice.
 /// Disposing of it stops the action.
 /// </summary>
-public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
+public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
 {
     private const int MinRandomWaitMs = 1500;
     private const int MaxRandomWaitMs = 10000;
     private readonly CancellationTokenSource _cts = new();
-    private readonly ILogger<TypingImitator> _logger;
+    private readonly ILogger<ReplyImitator> _logger;
     private readonly IBotMessenger _messenger;
     private readonly TimeProvider _timeProvider;
     private readonly ISharedRandomGenerator _random;
     private readonly FoulChatId _chatId;
-    private readonly bool _isVoice;
+    private readonly BotReplyMode _replyMode;
     private readonly DateTime _startedAt;
     private readonly Task _typing;
     private string? _text;
 
-    public TypingImitator(
-        ILogger<TypingImitator> logger,
+    public ReplyImitator(
+        ILogger<ReplyImitator> logger,
         IBotMessenger messenger,
         TimeProvider timeProvider,
         ISharedRandomGenerator random,
         FoulChatId chatId,
-        bool isVoice)
+        BotReplyMode replyMode)
     {
         _logger = logger;
         _messenger = messenger;
         _timeProvider = timeProvider;
         _random = random;
         _chatId = chatId;
-        _isVoice = isVoice;
+        _replyMode = replyMode;
 
         _startedAt = _timeProvider.GetUtcNow().UtcDateTime;
-        _typing = ImitateTypingAsync();
+        _typing = ImitateReplyingAsync();
     }
 
-    private async Task ImitateTypingAsync()
+    private async Task ImitateReplyingAsync()
     {
         while (_text == null)
         {
-            _logger.LogDebug("Starting typing imitation, IsVoice = {IsVoice}.", _isVoice);
+            _logger.LogDebug("Starting typing imitation with {@ReplyMode}", _replyMode);
 
             if (_timeProvider.GetUtcNow().UtcDateTime - _startedAt > TimeSpan.FromMinutes(1))
             {
@@ -87,7 +87,7 @@ public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
                 return; // If we're typing for 1 minute straight - stop it.
             }
 
-            if (_isVoice)
+            if (_replyMode.Type == ReplyType.Voice)
             {
                 _logger.LogDebug("Notify messenger about voice recording.");
                 await _messenger.NotifyRecordingVoiceAsync(_chatId);
@@ -132,7 +132,7 @@ public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
                 break;
             }
 
-            if (_isVoice)
+            if (_replyMode.Type == ReplyType.Voice)
             {
                 _logger.LogDebug("Notify messenger about voice recording.");
                 await _messenger.NotifyRecordingVoiceAsync(_chatId);
@@ -152,7 +152,7 @@ public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
         _logger.LogDebug("Stopped typing imitation.");
     }
 
-    public async ValueTask FinishTypingText(string text)
+    public async ValueTask FinishReplyingAsync(string text)
     {
         _text = text; // This stops the while loop that sends typing events.
         await _cts.CancelAsync();
@@ -163,7 +163,7 @@ public sealed class TypingImitator : ITypingImitator, IAsyncDisposable
     {
         try
         {
-            await FinishTypingText(string.Empty);
+            await FinishReplyingAsync(string.Empty);
             _cts.Dispose();
         }
         catch (TaskCanceledException exception)

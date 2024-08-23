@@ -11,6 +11,9 @@ public sealed class ChatScopedBotMessenger(
 
     public ValueTask SendStickerAsync(string stickerId)
         => messenger.SendStickerAsync(chatId, stickerId);
+
+    public ValueTask SendVoiceMessageAsync(Stream voice)
+        => messenger.SendVoiceMessageAsync(chatId, voice);
 }
 
 public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispose of it.
@@ -30,7 +33,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly ChatScopedBotMessenger _botMessenger;
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly IBotReplyStrategy _replyStrategy;
-    private readonly ITypingImitatorFactory _typingImitatorFactory;
+    private readonly IBotReplyModePicker _replyModePicker;
+    private readonly IReplyImitatorFactory _typingImitatorFactory;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClient _aiClient;
     private readonly IMessageFilter _messageFilter;
@@ -44,7 +48,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         ChatScopedBotMessenger botMessenger,
         IBotDelayStrategy delayStrategy,
         IBotReplyStrategy replyStrategy,
-        ITypingImitatorFactory typingImitatorFactory,
+        IBotReplyModePicker replyModePicker,
+        IReplyImitatorFactory typingImitatorFactory,
         ISharedRandomGenerator random,
         IFoulAIClient aiClient,
         IMessageFilter messageFilter,
@@ -55,6 +60,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _botMessenger = botMessenger;
         _delayStrategy = delayStrategy;
         _replyStrategy = replyStrategy;
+        _replyModePicker = replyModePicker;
         _typingImitatorFactory = typingImitatorFactory;
         _random = random;
         _aiClient = aiClient;
@@ -103,8 +109,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             // Simulate "reading" the chat.
             await _delayStrategy.DelayAsync(_cts.Token);
 
+            var replyMode = _replyModePicker.GetBotReplyMode(context);
+
             // TODO: pass isVoice.
-            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, false);
+            await using var typing = _typingImitatorFactory.ImitateTyping(_chat.ChatId, replyMode);
 
             // TODO: Consider moving retry logic to a separate class.
             // It is untested for now.
@@ -119,9 +127,17 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                 ]);
             }
 
-            await typing.FinishTypingText(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            await typing.FinishReplyingAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
 
-            await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            if (replyMode.Type == ReplyType.Text)
+            {
+                await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
+            }
+            else
+            {
+                var stream = await _aiClient.GetAudioResponseAsync(aiGeneratedTextResponse);
+                await _botMessenger.SendVoiceMessageAsync(stream);
+            }
 
             if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
                 NotifyContext(aiGeneratedTextResponse);

@@ -9,7 +9,8 @@ public class FoulBotTests : Testing<FoulBot>
     private readonly Mock<IBotReplyStrategy> _replyStrategy;
     private readonly Mock<IMessageFilter> _messageFilter;
     private readonly Mock<IBotDelayStrategy> _delayStrategy;
-    private readonly Mock<ITypingImitatorFactory> _typingImitatorFactory;
+    private readonly Mock<IReplyImitatorFactory> _typingImitatorFactory;
+    private readonly Mock<IBotReplyModePicker> _replyModePicker;
 
     public FoulBotTests()
     {
@@ -20,7 +21,11 @@ public class FoulBotTests : Testing<FoulBot>
         _replyStrategy = Freeze<IBotReplyStrategy>();
         _messageFilter = Freeze<IMessageFilter>();
         _delayStrategy = Freeze<IBotDelayStrategy>();
-        _typingImitatorFactory = Freeze<ITypingImitatorFactory>();
+        _typingImitatorFactory = Freeze<IReplyImitatorFactory>();
+        _replyModePicker = Freeze<IBotReplyModePicker>();
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(It.IsAny<IList<FoulMessage>>()))
+            .Returns(() => new(ReplyType.Text));
 
         _messageFilter.Setup(x => x.IsGoodMessage(It.IsAny<string>()))
             .Returns(true);
@@ -146,7 +151,7 @@ public class FoulBotTests : Testing<FoulBot>
     #region TriggerAsync
 
     [Theory, AutoMoqData]
-    public async Task TriggerAsync_ShouldSendGeneratedReply_OnThePositiveFlow(
+    public async Task TriggerAsync_ShouldSendGeneratedReply_OnThePositiveFlow_BySendingAndImitatingText(
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage)
@@ -247,7 +252,7 @@ public class FoulBotTests : Testing<FoulBot>
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage,
-        ITypingImitator typingImitator)
+        IReplyImitator typingImitator)
     {
         var startedTyping = false;
         var finishedTyping = false;
@@ -261,11 +266,15 @@ public class FoulBotTests : Testing<FoulBot>
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
             .Returns(() => new(responseMessageTask));
 
-        _typingImitatorFactory.Setup(x => x.ImitateTyping(ChatId, false))
+        var mode = Fixture.Create<BotReplyMode>();
+        _replyModePicker.Setup(x => x.GetBotReplyMode(context))
+            .Returns(mode);
+
+        _typingImitatorFactory.Setup(x => x.ImitateTyping(ChatId, mode))
             .Returns(typingImitator)
             .Callback(() => startedTyping = true);
 
-        Mock.Get(typingImitator).Setup(x => x.FinishTypingText(responseMessage))
+        Mock.Get(typingImitator).Setup(x => x.FinishReplyingAsync(responseMessage))
             .Returns(() => new(typingImitatorFinishTask));
 
         var sut = CreateFoulBot();
