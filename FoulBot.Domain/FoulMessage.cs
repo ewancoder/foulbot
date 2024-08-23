@@ -6,12 +6,14 @@
 public sealed record FoulMessage(
     string Id,
     FoulMessageType MessageType,
-    string SenderName,
+    ChatParticipant Sender,
     string Text,
     DateTime Date,
     bool IsOriginallyBotMessage,
     string? ReplyTo)
 {
+    public string SenderName => Sender.Name;
+
     public FoulMessage AsUser()
     {
         return this with

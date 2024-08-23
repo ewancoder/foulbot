@@ -272,7 +272,7 @@ public class FoulBotTests : Testing<FoulBot>
     }
 
     [Theory, AutoMoqData]
-    public async Task DisposeAsync_ShouldDisposeOfAllCommandProcessors(
+    public async Task DisposeAsync_ShouldStopAllCommandProcessors(
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage)
@@ -300,12 +300,12 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.DisposeAsync();
 
-        processor1.Verify(x => x.DisposeAsync());
-        processor2.Verify(x => x.DisposeAsync());
+        processor1.Verify(x => x.StopProcessingAsync());
+        processor2.Verify(x => x.StopProcessingAsync());
     }
 
     [Theory, AutoMoqData]
-    public async Task GracefulShutdown_ShouldNotDisposeOfCommandProcessors(
+    public async Task GracefulShutdown_ShouldStopAllCommandProcessors(
         FoulMessage message,
         IList<FoulMessage> context,
         string responseMessage)
@@ -333,8 +333,8 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.GracefulShutdownAsync();
 
-        processor1.Verify(x => x.DisposeAsync(), Times.Never);
-        processor2.Verify(x => x.DisposeAsync(), Times.Never);
+        processor1.Verify(x => x.StopProcessingAsync());
+        processor2.Verify(x => x.StopProcessingAsync());
     }
 
     #endregion

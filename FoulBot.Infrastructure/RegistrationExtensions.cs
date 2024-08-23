@@ -2,6 +2,7 @@
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
 using Serilog.Events;
 
@@ -23,6 +24,8 @@ public static class RegistrationExtensions
         return services
             .AddScoped<IAllowedChatsProvider, AllowedChatsProvider>()    // Domain
             .AddScoped<IBotDelayStrategy, BotDelayStrategy>()
+            .AddScoped<IReminderStore, NonThreadSafeFileReminderStorage>()
+            .Decorate<IReminderStore, InMemoryLockingReminderStoreDecorator>()
             .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>()
@@ -84,5 +87,37 @@ public static class RegistrationExtensions
         logger.Write(LogEventLevel.Information, "hi");
 
         return services.AddLogging(builder => builder.AddSerilog(logger, dispose: true));
+    }
+}
+
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection Decorate<TInterface, TDecorator>(this IServiceCollection services)
+      where TDecorator : TInterface
+    {
+        var wrappedDescriptor = services.LastOrDefault(
+            s => s.ServiceType == typeof(TInterface))
+            ?? throw new InvalidOperationException($"{typeof(TInterface).Name} is not registered.");
+
+        var objectFactory = ActivatorUtilities.CreateFactory(
+            typeof(TDecorator),
+            [typeof(TInterface)]);
+
+        return services.Replace(ServiceDescriptor.Describe(
+            typeof(TInterface),
+            s => (TInterface)objectFactory(s, [s.CreateInstance(wrappedDescriptor)]),
+            wrappedDescriptor.Lifetime));
+    }
+
+    private static object CreateInstance(this IServiceProvider services, ServiceDescriptor descriptor)
+    {
+        if (descriptor.ImplementationInstance != null)
+            return descriptor.ImplementationInstance;
+
+        if (descriptor.ImplementationFactory != null)
+            return descriptor.ImplementationFactory(services);
+
+        return ActivatorUtilities.GetServiceOrCreateInstance(
+            services, descriptor.ImplementationType ?? throw new InvalidOperationException("Implementation type is null, cannot decorate it."));
     }
 }

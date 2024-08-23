@@ -22,6 +22,7 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
 
     ValueTask GreetEveryoneAsync(ChatParticipant invitedBy);
     ValueTask TriggerAsync(FoulMessage message);
+    ValueTask PerformRequestAsync(ChatParticipant requester, string request);
     Task GracefulShutdownAsync();
 
     void AddCommandProcessor(IBotCommandProcessor commandProcessor);
@@ -136,7 +137,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 i++;
                 aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([ // TODO: Pass cancellation token.
-                    new FoulMessage("Directive", FoulMessageType.System, "System", _config.Directive, DateTime.MinValue, false, null),
+                    new FoulMessage("Directive", FoulMessageType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
                     .. context
                 ]);
             }
@@ -179,6 +180,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
         await _cts.CancelAsync();
         Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
+
+        foreach (var commandProcessor in _commandProcessors)
+            await commandProcessor.StopProcessingAsync();
     }
 
     /// <summary>
@@ -189,9 +193,6 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         if (!_isShuttingDown)
             await GracefulShutdownAsync();
 
-        foreach (var commandProcessor in _commandProcessors)
-            await commandProcessor.DisposeAsync();
-
         _cts.Dispose();
     }
 
@@ -200,7 +201,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _chat.AddMessage(new FoulMessage(
             Guid.NewGuid().ToString(),
             FoulMessageType.Bot,
-            _config.BotName,
+            new(_config.BotName),
             message,
             DateTime.UtcNow, // TODO: Consider using timeprovider.
             true,

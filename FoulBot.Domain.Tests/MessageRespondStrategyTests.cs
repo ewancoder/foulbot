@@ -78,7 +78,7 @@ public class MessageRespondStrategyTests : Testing<MessageRespondStrategy>
 
     private FoulMessage CreateMessage(string? senderName = null, string? replyTo = null, string? text = null)
     {
-        return new FoulMessage("id", FoulMessageType.Bot, senderName ?? _fixture.Create<string>(), text ?? _fixture.Create<string>(), DateTime.UtcNow, true, replyTo);
+        return new FoulMessage("id", FoulMessageType.Bot, senderName == null ? _fixture.Create<ChatParticipant>() : new(senderName), text ?? _fixture.Create<string>(), DateTime.UtcNow, true, replyTo);
     }
 }
 

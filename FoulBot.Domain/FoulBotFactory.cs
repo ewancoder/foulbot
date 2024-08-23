@@ -16,21 +16,24 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly IBotDelayStrategy _delayStrategy;
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
+    private readonly IReminderStore _reminderStore;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
-    private readonly ILogger<ReminderCreator> _reminderCreatorLogger;
+    private readonly ILogger<ReminderCommandProcessor> _reminderCreatorLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
         IBotDelayStrategy botDelayStrategy,
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
+        IReminderStore reminderStore,
         ILogger<ReplyImitator> typingImitatorLogger,
-        ILogger<ReminderCreator> reminderCreatorLogger)
+        ILogger<ReminderCommandProcessor> reminderCreatorLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
+        _reminderStore = reminderStore;
         _typingImitatorLogger = typingImitatorLogger;
         _reminderCreatorLogger = reminderCreatorLogger;
     }
@@ -76,10 +79,11 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         // TODO: Come up with a better VISIBLE solution to dispose of it.
 #pragma warning disable CA2000 // It is being disposed on bot Shutdown.
-        var reminderCreator = new ReminderCreator(
+        var reminderCreator = new ReminderCommandProcessor(
             _reminderCreatorLogger,
+            _reminderStore,
+            config,
             chat.ChatId,
-            config.FoulBotId,
             bot,
             cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
 
