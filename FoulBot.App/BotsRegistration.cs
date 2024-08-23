@@ -167,7 +167,7 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwStathemBotApiKey", new FoulBotConfiguration(
                 "ew_stathembot", "Jason_Stathah", stathemDirective,
-                ["stathem", "bro", "стетхем", "бро"], [])
+                ["stathem", "bro", "стетхем", "бро"], ["бро", "стетхем"])
                     .UseGpt35());
 
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
