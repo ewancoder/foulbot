@@ -36,6 +36,26 @@ public class FoulBotTests : Testing<FoulBot>
 
     public FoulChatId ChatId => _chat.Object.ChatId;
 
+    [Theory, AutoMoqData]
+    public async Task SendRawAsync_ShouldJustSendToChat(string message)
+    {
+        var sut = CreateFoulBot();
+
+        await sut.SendRawAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, message));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task SendRawAsync_ShouldNotAddMessageToContext(string message)
+    {
+        var sut = CreateFoulBot();
+
+        await sut.SendRawAsync(message);
+
+        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Never);
+    }
+
     #region GreetEveryoneAsync
 
     [Theory, AutoMoqData]

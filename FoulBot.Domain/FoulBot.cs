@@ -20,6 +20,10 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
 {
     event EventHandler? Shutdown;
 
+    /// <summary>
+    /// This method sends custom text to the chat, without adding it to the chat context.
+    /// </summary>
+    ValueTask SendRawAsync(string text);
     ValueTask GreetEveryoneAsync(ChatParticipant invitedBy);
     ValueTask TriggerAsync(FoulMessage message);
     ValueTask PerformRequestAsync(ChatParticipant requester, string request);
@@ -79,6 +83,11 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     public void AddCommandProcessor(IBotCommandProcessor commandProcessor)
     {
         _commandProcessors.Add(commandProcessor);
+    }
+
+    public async ValueTask SendRawAsync(string text)
+    {
+        await _botMessenger.SendTextMessageAsync(text);
     }
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)

@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Text;
+
+namespace FoulBot.Domain;
 
 public sealed record Reminder(
     string Id, // Unfortunately we need an identifier in our domain model, so we can properly remove reminders.
@@ -60,7 +62,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                 if (reminderForRemoval != null)
                     await _reminderStore.RemoveReminderAsync(reminderForRemoval);
 
-                // TODO: Send response to chat.
+                await _bot.SendRawAsync($"Reminder {reminderId} was removed.");
 
                 return true;
             }
@@ -72,7 +74,20 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             {
                 var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
 
-                // TODO: Send response to chat.
+                var sb = new StringBuilder();
+                sb.AppendLine(@"*Reminders*");
+                foreach (var rem in reminders)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"`{rem.Id}` - {rem.RequestedBy.Name} - {rem.AtUtc} {(rem.EveryDay ? $"- EVERY DAY " : string.Empty)}- *{rem.Request}*");
+                }
+
+                var escapedMarkdown = sb
+                    .Replace("-", @"\-")
+                    .Replace("_", @"\_")
+                    .ToString();
+
+                await _bot.SendRawAsync(escapedMarkdown);
 
                 return true;
             }
