@@ -1,5 +1,10 @@
 ﻿namespace FoulBot.Domain;
 
+public interface IBotCommandProcessor : IAsyncDisposable // HACK: So that the bot can dispose of them.
+{
+    ValueTask<bool> ProcessCommandAsync(FoulMessage message);
+}
+
 public sealed record Reminder(
     DateTime AtUtc,
     string Request,
@@ -14,15 +19,16 @@ public sealed record Reminder(
 /// token that is passed into the constructor is being cancelled when the bot is
 /// disposed.
 /// </summary>
-public sealed class ReminderCreator : IDisposable
+public sealed class ReminderCreator : IBotCommandProcessor, IAsyncDisposable
 {
     private readonly ILogger<ReminderCreator> _logger;
     private readonly FoulChatId _chatId;
     private readonly FoulBotId _botId;
     private readonly FoulBot _bot;
-    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly CancellationTokenSource _internalCts = new();
+    private readonly CancellationTokenSource _cts;
     private readonly List<Reminder> _reminders;
-    private readonly CancellationToken _cancellationToken;
     private Task? _running;
 
     public ReminderCreator(
@@ -37,6 +43,9 @@ public sealed class ReminderCreator : IDisposable
         _botId = botId;
         _bot = bot;
 
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(
+            _internalCts.Token, cancellationToken);
+
         if (!Directory.Exists("reminders"))
             Directory.CreateDirectory("reminders");
 
@@ -49,12 +58,25 @@ public sealed class ReminderCreator : IDisposable
         _reminders = JsonSerializer.Deserialize<List<Reminder>>(content)
             ?? throw new InvalidOperationException("Could not deserialize reminders.");
 
-        _cancellationToken = cancellationToken;
         if (_reminders.Count > 0)
             _running = RunRemindersAsync();
     }
 
-    public async ValueTask<bool> AddReminderAsync(FoulMessage foulMessage)
+    public ValueTask<bool> ProcessCommandAsync(FoulMessage message)
+    {
+        return AddReminderAsync(message);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _internalCts.CancelAsync();
+
+        _lock.Dispose();
+        _cts.Dispose();
+        _internalCts.Dispose();
+    }
+
+    private async ValueTask<bool> AddReminderAsync(FoulMessage foulMessage)
     {
         // TODO: Support english language and overall do better parsing.
         // This is legacy untouched code.
@@ -104,14 +126,9 @@ public sealed class ReminderCreator : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        _lock.Dispose();
-    }
-
     private async ValueTask AddReminderAsync(Reminder reminder)
     {
-        await _lock.WaitAsync(_cancellationToken);
+        await _lock.WaitAsync(_cts.Token);
         try
         {
             _reminders.Add(reminder);
@@ -137,7 +154,7 @@ public sealed class ReminderCreator : IDisposable
 
         while (_reminders.Count > 0) // As soon as we remove all reminders - this process stops.
         {
-            await Task.Delay(TimeSpan.FromSeconds(10), _cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), _cts.Token);
 
             try
             {
@@ -147,7 +164,7 @@ public sealed class ReminderCreator : IDisposable
 
                 foreach (var reminder in dueReminders)
                 {
-                    await _lock.WaitAsync(_cancellationToken);
+                    await _lock.WaitAsync(_cts.Token);
                     try
                     {
                         _logger.LogInformation("Reminding: {Reminder}", reminder);

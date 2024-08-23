@@ -23,6 +23,8 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
     ValueTask GreetEveryoneAsync(ChatParticipant invitedBy);
     ValueTask TriggerAsync(FoulMessage message);
     Task GracefulShutdownAsync();
+
+    void AddCommandProcessor(IBotCommandProcessor commandProcessor);
 }
 
 /// <summary>
@@ -41,6 +43,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
+    private readonly List<IBotCommandProcessor> _commandProcessors = new();
     private int _triggerCalls;
     private bool _isShuttingDown;
 
@@ -72,8 +75,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public event EventHandler? Shutdown;
 
-    // HACK: Very hacky way to make legacy reminders work.
-    internal Func<FoulMessage, ValueTask<bool>>? TryAddReminderAsync { get; set; }
+    public void AddCommandProcessor(IBotCommandProcessor commandProcessor)
+    {
+        _commandProcessors.Add(commandProcessor);
+    }
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
@@ -100,8 +105,11 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
-        if (TryAddReminderAsync != null && await TryAddReminderAsync(message))
-            return; // Succeeded processing the command. No need to reply.
+        foreach (var processor in _commandProcessors)
+        {
+            if (await processor.ProcessCommandAsync(message))
+                return; // Message was processed by a command processor.
+        }
 
         var value = Interlocked.Increment(ref _triggerCalls);
         try
@@ -180,6 +188,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     {
         if (!_isShuttingDown)
             await GracefulShutdownAsync();
+
+        foreach (var commandProcessor in _commandProcessors)
+            await commandProcessor.DisposeAsync();
 
         _cts.Dispose();
     }

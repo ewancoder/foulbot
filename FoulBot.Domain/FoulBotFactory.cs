@@ -81,12 +81,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
             chat.ChatId,
             config.FoulBotId,
             bot,
-            cts.Token);
+            cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
 
-        // Dispose of reminder when bot is disposed.
-        bot.Shutdown += (_, _) => reminderCreator.Dispose();
-
-        bot.TryAddReminderAsync = reminderCreator.AddReminderAsync;
+        bot.AddCommandProcessor(reminderCreator);
 
         return bot;
     }
