@@ -169,15 +169,26 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             var chatId = update.Message.Chat.Id.ToString();
+            var invitedByUsername = update.Message.From?.Username; // Who invited / kicked the bot.
 
             if (update.Message.Text == "$activate")
             {
                 await _allowedChatsProvider.AllowChatAsync(GetChatId());
+
+                // Invite the bot.
+                await _chatPool.InviteBotToChatAsync(
+                    GetChatId(), foulBotId, invitedByUsername, botFactory, cancellationToken);
+                return; // Do not add it to context.
             }
 
             if (update.Message.Text == "$deactivate")
             {
                 await _allowedChatsProvider.DisallowChatAsync(GetChatId());
+
+                // Kick the bot.
+                await _chatPool.KickBotFromChatAsync(
+                    GetChatId(), foulBotId, cancellationToken);
+                return; // Do not add it to context.
             }
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
