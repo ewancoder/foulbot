@@ -24,6 +24,13 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         _logger = logger;
     }
 
+    // HACK: Untested hack method for ChatLoader to get list of all the chats.
+    public async ValueTask<IEnumerable<string>> GetAllAllowedChatsAsync()
+    {
+        var chats = await GetAllowedChatsAsync();
+        return chats.Keys;
+    }
+
     public async ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId)
     {
         var allowedChats = await GetAllowedChatsAsync();

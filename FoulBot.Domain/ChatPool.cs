@@ -5,7 +5,6 @@ namespace FoulBot.Domain;
 public sealed class ChatPool : IAsyncDisposable
 {
     private readonly ILogger<ChatPool> _logger;
-    private readonly IChatStore _chatStore;
     private readonly IFoulChatFactory _chatFactory;
     // TODO: Consider using this factory instead of a delegate.
     //private readonly IFoulBotFactory _botFactory;
@@ -18,13 +17,11 @@ public sealed class ChatPool : IAsyncDisposable
 
     public ChatPool(
         ILogger<ChatPool> logger,
-        IChatStore chatCache,
         IFoulChatFactory foulChatFactory,
         IDuplicateMessageHandler duplicateMessageHandler,
         IAllowedChatsProvider allowedChatsProvider)
     {
         _logger = logger;
-        _chatStore = chatCache;
         _chatFactory = foulChatFactory;
         _duplicateMessageHandler = duplicateMessageHandler;
         _allowedChatsProvider = allowedChatsProvider;
@@ -182,7 +179,6 @@ public sealed class ChatPool : IAsyncDisposable
             if (chatId.IsPrivate)
                 _logger.LogInformation("Created a PRIVATE chat.");
 
-            _chatStore.AddChat(chatId);
             _logger.LogInformation("Successfully created the chat.");
 
             return chat;
