@@ -73,7 +73,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     public event EventHandler? Shutdown;
 
     // HACK: Very hacky way to make legacy reminders work.
-    internal Func<FoulMessage, bool>? TryAddReminder { get; set; }
+    internal Func<FoulMessage, ValueTask<bool>>? TryAddReminderAsync { get; set; }
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
@@ -100,7 +100,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
-        if (TryAddReminder != null && TryAddReminder(message))
+        if (TryAddReminderAsync != null && await TryAddReminderAsync(message))
             return; // Succeeded processing the command. No need to reply.
 
         var value = Interlocked.Increment(ref _triggerCalls);

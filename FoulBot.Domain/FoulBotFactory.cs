@@ -73,6 +73,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         // Legacy class to be reworked. Currently starts reminders mechanism
         // on creation, so no need to keep the reference.
+
+        // TODO: Come up with a better VISIBLE solution to dispose of it.
+#pragma warning disable CA2000 // It is being disposed on bot Shutdown.
         var reminderCreator = new ReminderCreator(
             _reminderCreatorLogger,
             chat.ChatId,
@@ -80,7 +83,10 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot,
             cts.Token);
 
-        bot.TryAddReminder = reminderCreator.AddReminder;
+        // Dispose of reminder when bot is disposed.
+        bot.Shutdown += (_, _) => reminderCreator.Dispose();
+
+        bot.TryAddReminderAsync = reminderCreator.AddReminderAsync;
 
         return bot;
     }

@@ -4,26 +4,26 @@ public sealed record Reminder(
     DateTime AtUtc,
     string Request,
     bool EveryDay,
-    string From)
-{
-    public string? Id { get; set; }
-}
+    string RequestedByName);
 
-public readonly record struct FoulBotId(string BotId, string BotName)
+// TODO: However, consider using linked CTS to make this implementation
+// Cancel on Dispose to make it Bot-agnostic.
+/// <summary>
+/// This implementation is tightly coupled with the Bot class. There is no need
+/// to cancel cancellationToken in Dispose method, because the cancellation
+/// token that is passed into the constructor is being cancelled when the bot is
+/// disposed.
+/// </summary>
+public sealed class ReminderCreator : IDisposable
 {
-    public override string ToString() => $"{BotId} {BotName}";
-}
-
-public sealed class ReminderCreator
-{
+    private readonly ILogger<ReminderCreator> _logger;
     private readonly FoulChatId _chatId;
     private readonly FoulBotId _botId;
-
-    private readonly object _lock = new();
-    private readonly Dictionary<string, Reminder> _reminders;
-    private readonly ILogger<ReminderCreator> _logger;
-    private readonly Task _running;
     private readonly FoulBot _bot;
+    private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+    private readonly List<Reminder> _reminders;
+    private readonly CancellationToken _cancellationToken;
+    private Task? _running;
 
     public ReminderCreator(
         ILogger<ReminderCreator> logger,
@@ -40,39 +40,31 @@ public sealed class ReminderCreator
         if (!Directory.Exists("reminders"))
             Directory.CreateDirectory("reminders");
 
+        // HACK: Sync read.
         if (!File.Exists($"reminders/{chatId}---{_botId.BotId}"))
             File.WriteAllText($"reminders/{chatId}---{_botId.BotId}", "[]");
 
+        // HACK: Sync read.
         var content = File.ReadAllText($"reminders/{_chatId}---{_botId.BotId}");
-        _reminders = JsonSerializer.Deserialize<IEnumerable<Reminder>>(content)!
-            .ToDictionary(x => x.Id!);
+        _reminders = JsonSerializer.Deserialize<List<Reminder>>(content)
+            ?? throw new InvalidOperationException("Could not deserialize reminders.");
 
-        _running = RunRemindersAsync(cancellationToken);
+        _cancellationToken = cancellationToken;
+        if (_reminders.Count > 0)
+            _running = RunRemindersAsync();
     }
 
-    public IEnumerable<Reminder> AllReminders => _reminders.Values;
-
-    public void AddReminder(Reminder reminder)
+    public async ValueTask<bool> AddReminderAsync(FoulMessage foulMessage)
     {
-        var id = Guid.NewGuid().ToString();
-
-        lock (_lock)
-        {
-            reminder.Id = id;
-            _reminders.Add(id, reminder);
-            SaveReminders();
-        }
-    }
-
-    public bool AddReminder(FoulMessage foulMessage)
-    {
+        // TODO: Support english language and overall do better parsing.
+        // This is legacy untouched code.
         if (foulMessage.Text.StartsWith($"@{_botId.BotId}"))
         {
             try
             {
                 var message = foulMessage.Text.Replace($"@{_botId.BotId}", string.Empty).Trim();
 
-                var from = foulMessage.SenderName;
+                var requestedByName = foulMessage.SenderName;
 
                 var everyDay = false;
                 if (message.StartsWith("каждый день"))
@@ -96,7 +88,7 @@ public sealed class ReminderCreator
                 if (units.StartsWith("де") || units.StartsWith("дн"))
                     time = DateTime.UtcNow + TimeSpan.FromDays(number);
 
-                AddReminder(new Reminder(time, request, everyDay, from));
+                await AddReminderAsync(new Reminder(time, request, everyDay, requestedByName));
 
                 return true;
             }
@@ -112,7 +104,28 @@ public sealed class ReminderCreator
         }
     }
 
-    private async Task RunRemindersAsync(CancellationToken cancellationToken)
+    public void Dispose()
+    {
+        _lock.Dispose();
+    }
+
+    private async ValueTask AddReminderAsync(Reminder reminder)
+    {
+        await _lock.WaitAsync(_cancellationToken);
+        try
+        {
+            _reminders.Add(reminder);
+            await SaveRemindersAsync();
+
+            _running ??= RunRemindersAsync();
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    private async Task RunRemindersAsync()
     {
         var captureToNotDispose = this;
         _ = captureToNotDispose;
@@ -122,23 +135,24 @@ public sealed class ReminderCreator
             .AddScoped("BotId", _botId.BotId)
             .BeginScope();
 
-        while (true)
+        while (_reminders.Count > 0) // As soon as we remove all reminders - this process stops.
         {
-            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), _cancellationToken);
 
             try
             {
-                var dueReminders = _reminders.Values
+                var dueReminders = _reminders
                     .Where(x => x.AtUtc <= DateTime.UtcNow)
-                    .ToList();
+                    .ToList(); // Make a copy so we can iterate and remove items if needed.
 
                 foreach (var reminder in dueReminders)
                 {
-                    lock (_lock)
+                    await _lock.WaitAsync(_cancellationToken);
+                    try
                     {
                         _logger.LogInformation("Reminding: {Reminder}", reminder);
 
-                        _reminders.Remove(reminder.Id!);
+                        _reminders.Remove(reminder);
                         if (reminder.EveryDay)
                         {
                             var newReminder = reminder;
@@ -150,44 +164,42 @@ public sealed class ReminderCreator
                                 };
                             }
 
-                            _reminders.Add(newReminder.Id!, newReminder);
+                            _reminders.Add(newReminder);
                         }
-                        SaveReminders();
+
+                        await SaveRemindersAsync();
+                    }
+                    finally
+                    {
+                        _lock.Release();
                     }
 
-                    TriggerReminder(reminder);
+                    await _bot.PerformRequestAsync(new(reminder.RequestedByName), reminder.Request);
                 }
             }
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Could not trigger a reminder.");
+                // Do NOT rethrow exception here, as this will fail the whole reminders background task.
             }
         }
+
+        _running = null; // After we removed all reminders - clear the process so it can start again.
     }
 
-    private void TriggerReminder(Reminder reminder)
-    {
-        // Hacky way to do it with legacy ReminderCreator.
-        _ = _bot.PerformRequestAsync(new(reminder.From), reminder.Request);
-    }
-
-    private void SaveReminders()
+    private async ValueTask SaveRemindersAsync()
     {
         try
         {
-            File.WriteAllText($"reminders/{_chatId}---{_botId.BotId}", JsonSerializer.Serialize(_reminders.Values));
+            await File.WriteAllTextAsync(
+                $"reminders/{_chatId}---{_botId.BotId}",
+                JsonSerializer.Serialize(_reminders),
+                CancellationToken.None /* Finish writing operation even when Host is stopping. */);
         }
-        catch
+        catch (Exception exception)
         {
-            // TODO: Log this.
-        }
-    }
-
-    public void CancelReminder(string reminderId)
-    {
-        lock (_lock)
-        {
-            _reminders.Remove(reminderId);
+            _logger.LogError(exception, "Could not save reminders.");
+            throw;
         }
     }
 }
