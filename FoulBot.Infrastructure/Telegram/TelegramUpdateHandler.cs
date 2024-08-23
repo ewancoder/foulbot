@@ -172,12 +172,12 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             if (update.Message.Text == "$activate")
             {
-                await _allowedChatsProvider.AllowChatAsync(new(chatId));
+                await _allowedChatsProvider.AllowChatAsync(GetChatId());
             }
 
             if (update.Message.Text == "$deactivate")
             {
-                await _allowedChatsProvider.DisallowChatAsync(new(chatId));
+                await _allowedChatsProvider.DisallowChatAsync(GetChatId());
             }
 
             var message = _foulMessageFactory.CreateFrom(update.Message);
@@ -188,13 +188,18 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             }
 
             await _chatPool.HandleMessageAsync(
-                update.Message.Chat.Type == ChatType.Private
-                    ? new(chatId) { FoulBotId = foulBotId }
-                    : new(chatId),
+                GetChatId(),
                 foulBotId,
                 message,
                 botFactory,
                 cancellationToken);
+
+            FoulChatId GetChatId()
+            {
+                return update.Message?.Chat.Type == ChatType.Private
+                    ? new(chatId) { FoulBotId = foulBotId }
+                    : new(chatId);
+            }
 
             _logger.LogInformation("Successfully handled Message update.");
             return;

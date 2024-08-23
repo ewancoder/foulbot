@@ -107,5 +107,7 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
     }
 
     private static string GetKey(FoulChatId chatId)
-        => chatId.Value;
+        => chatId.IsPrivate
+            ? $"{chatId.Value}${chatId.FoulBotId?.BotId}"
+            : chatId.Value;
 }
