@@ -50,6 +50,33 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             if (text is null)
                 return false;
 
+            var reminderId = CutKeyword(text, "отмени напоминание")
+                ?? CutKeyword(text, "cancel reminder");
+
+            if (reminderId is not null)
+            {
+                var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
+                var reminderForRemoval = reminders.FirstOrDefault(x => x.Id == reminderId);
+                if (reminderForRemoval != null)
+                    await _reminderStore.RemoveReminderAsync(reminderForRemoval);
+
+                // TODO: Send response to chat.
+
+                return true;
+            }
+
+            var remindersListCommand = CutKeyword(text, "покажи напоминания")
+                ?? CutKeyword(text, "show reminders");
+
+            if (remindersListCommand is not null)
+            {
+                var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
+
+                // TODO: Send response to chat.
+
+                return true;
+            }
+
             var everyDay = CutKeyword(text, "каждый день")
                 ?? CutKeyword(text, "every day")
                 ?? CutKeyword(text, "each day");
@@ -95,7 +122,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Could not create a reminder.");
+            _logger.LogError(exception, "Could not process reminders command.");
             return false;
         }
     }
