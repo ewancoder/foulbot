@@ -17,6 +17,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly IReminderStore _reminderStore;
+    private readonly ILogger<FoulBot> _foulBotLogger;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
     private readonly ILogger<ReminderCommandProcessor> _reminderCreatorLogger;
     private readonly ILogger<BotReplyStrategy> _botReplyStrategyLogger;
@@ -27,6 +28,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
         IReminderStore reminderStore,
+        ILogger<FoulBot> foulBotLogger,
         ILogger<ReplyImitator> typingImitatorLogger,
         ILogger<ReminderCommandProcessor> reminderCreatorLogger,
         ILogger<BotReplyStrategy> botReplyStrategyLogger)
@@ -36,6 +38,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _random = random;
         _aiClientFactory = aiClientFactory;
         _reminderStore = reminderStore;
+        _foulBotLogger = foulBotLogger;
         _typingImitatorLogger = typingImitatorLogger;
         _reminderCreatorLogger = reminderCreatorLogger;
         _botReplyStrategyLogger = botReplyStrategyLogger;
@@ -65,6 +68,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var replyModePicker = new BotReplyModePicker(config);
 
         var bot = new FoulBot(
+            _foulBotLogger,
             messenger,
             _delayStrategy,
             replyStrategy,
