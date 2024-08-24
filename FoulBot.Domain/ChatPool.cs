@@ -49,7 +49,8 @@ public sealed class ChatPool : IAsyncDisposable
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
-        _logger.LogWarning("Initializing chat and bot");
+        // Do not log this as warning! It happens every time a message is received.
+        _logger.LogTrace("Acquiring chat and bot");
 
         // TODO: Here we can alter chatId to include botId in it if we need to,
         // then the bot will have its own context separate from all the other bots.
