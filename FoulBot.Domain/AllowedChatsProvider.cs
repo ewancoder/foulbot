@@ -10,6 +10,7 @@ public interface IAllowedChatsProvider
     ValueTask DisallowChatAsync(FoulChatId chatId);
 }
 
+// TODO: Move this to Infrastructure as this is an implementation detail.
 public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 {
     private readonly ILogger<AllowedChatsProvider> _logger;
