@@ -49,6 +49,8 @@ public sealed class ChatPool : IAsyncDisposable
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
+        _logger.LogWarning("Initializing chat and bot");
+
         // TODO: Here we can alter chatId to include botId in it if we need to,
         // then the bot will have its own context separate from all the other bots.
 
@@ -61,7 +63,7 @@ public sealed class ChatPool : IAsyncDisposable
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Error when trying to add bot to chat.");
+            _logger.LogError(exception, "Error when trying to add bot to chat");
             throw;
         }
 
@@ -81,20 +83,18 @@ public sealed class ChatPool : IAsyncDisposable
             .AddScoped("InvitedBy", invitedBy)
             .BeginScope();
 
-        _logger.LogDebug("Bot has been invited to a new chat by {InvitedBy}.", invitedBy);
+        _logger.LogWarning("Bot has been invited to a new chat by {InvitedBy}", invitedBy);
 
         if (!await IsAllowedChatAsync(chatId))
             return;
 
+        // TODO: Consider throwing exception here. If bot wasn't able to join the chat - it just returns.
         var chat = await InitializeChatAndBotAsync(
             chatId,
             foulBotId,
             botFactory,
             invitedBy: invitedBy,
             cancellationToken: cancellationToken);
-
-        // TODO: Consider throwing exception above. If bot wasn't able to join the chat - it just returns.
-        _logger.LogInformation("Potentially joined the chat.");
     }
 
     public async ValueTask KickBotFromChatAsync(
@@ -117,7 +117,7 @@ public sealed class ChatPool : IAsyncDisposable
 
         await bot!.GracefulShutdownAsync();
 
-        _logger.LogDebug("Kicked bot from chat.");
+        _logger.LogWarning("Kicked bot from chat.");
     }
 
     public async ValueTask HandleMessageAsync(
@@ -130,9 +130,10 @@ public sealed class ChatPool : IAsyncDisposable
         using var _ = Logger
             .AddScoped("ChatId", chatId)
             .AddScoped("BotId", foulBotId)
+            .AddScoped("MessageId", message.Id)
             .BeginScope();
 
-        _logger.LogDebug("Received {@Message}, handling the message.", message);
+        _logger.LogDebug("Received {@Message}, handling the message", message);
 
         if (!await IsAllowedChatAsync(chatId))
             return;
@@ -146,7 +147,7 @@ public sealed class ChatPool : IAsyncDisposable
 
         await chat.HandleMessageAsync(message);
 
-        _logger.LogInformation("Successfully handled message.");
+        _logger.LogInformation("Successfully handled the message by Chat. Now it's Bots turn");
     }
 
     private async ValueTask<IFoulChat> GetOrAddFoulChatAsync(
@@ -158,32 +159,32 @@ public sealed class ChatPool : IAsyncDisposable
         if (chat != null)
             return chat;
 
-        _logger.LogInformation("Chat is not created yet. Waiting for lock to start creating.");
+        _logger.LogDebug("Chat is not created yet. Waiting for lock to start creating");
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            _logger.LogInformation("Entered lock for creating the chat.");
+            _logger.LogTrace("Entered lock for creating the chat");
             _chats.TryGetValue(key, out chat);
             if (chat != null)
             {
-                _logger.LogInformation("Some other thread has created the chat, skipping.");
+                _logger.LogTrace("Some other thread has created the chat, skipping");
                 return chat;
             }
 
-            _logger.LogInformation("Creating the chat and caching it for future.");
+            _logger.LogInformation("Creating the chat and caching it for future");
             chat = _chatFactory.Create(_duplicateMessageHandler, chatId);
             chat = _chats.GetOrAdd(key, chat);
 
             if (chatId.IsPrivate)
-                _logger.LogInformation("Created a PRIVATE chat.");
+                _logger.LogInformation("Created a PRIVATE chat");
 
-            _logger.LogInformation("Successfully created the chat.");
+            _logger.LogInformation("Successfully created the chat");
 
             return chat;
         }
         finally
         {
-            _logger.LogInformation("Releasing lock for creating chat.");
+            _logger.LogTrace("Releasing lock for creating the chat");
             _lock.Release();
         }
     }
@@ -200,22 +201,22 @@ public sealed class ChatPool : IAsyncDisposable
         if (_bots.ContainsKey(key))
             return;
 
-        _logger.LogInformation("Did not find the bot, creating and joining it to the chat. Waiting to acquire lock.");
+        _logger.LogDebug("Did not find the bot, creating and joining it to the chat. Waiting to acquire lock");
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            _logger.LogInformation("Entered lock for creating and joining the bot.");
+            _logger.LogTrace("Entered lock for creating and joining the bot");
             if (_bots.ContainsKey(key))
             {
-                _logger.LogInformation("Another thread has added this bot, skipping.");
+                _logger.LogTrace("Another thread has added this bot, skipping");
                 return;
             }
 
-            _logger.LogInformation("Creating the bot and joining it to chat.");
+            _logger.LogInformation("Creating the bot and joining it to chat");
             var bot = await botFactory(chat);
             if (bot == null)
             {
-                _logger.LogInformation("Could not add this bot to this chat.");
+                _logger.LogInformation("Could not add this bot to this chat");
                 return;
             }
 
@@ -224,45 +225,68 @@ public sealed class ChatPool : IAsyncDisposable
 
             // Consider rewriting to System.Reactive.
             chat.MessageReceived += Trigger;
+            _logger.LogDebug("Subscribed this bot to message received events from chat");
 
             // When we fail to send a message to chat, cleanup the bot (it will be recreated after more messages received).
             bot.Shutdown += async (sender, e) =>
             {
+                using var _l = Logger
+                    .AddScoped("ChatId", chat.ChatId)
+                    .AddScoped("BotId", foulBotId)
+                    .AddScoped("InvitedBy", invitedBy)
+                    .BeginScope();
+
+                _logger.LogWarning("Bot shutdown event has been received. Unsubscribing and disposing");
+
                 chat.MessageReceived -= Trigger;
 
                 _bots.Remove(key, out _);
 
                 await bot.DisposeAsync();
+
+                _logger.LogWarning("Successfully unsubscribed and disposed of bot");
             };
+            _logger.LogDebug("Subscribed to bot shutdown event, so we can dispose of bot when needed");
 
             if (invitedBy != null)
+            {
+                _logger.LogDebug("Greeting people in chat who invited the bot");
                 await bot.GreetEveryoneAsync(new(invitedBy));
+            }
 
             if (!_bots.TryAdd($"{foulBotId.BotId}{chat.ChatId.Value}", bot))
             {
+                _logger.LogError("This should never happen. Bot was not added to the dictionary");
                 await bot.GracefulShutdownAsync();
                 throw new InvalidOperationException("Could not add bot to chat.");
             }
 
-            _logger.LogInformation("Adding bot to chat operation was performed.");
+            _logger.LogInformation("Adding bot to chat operation was performed");
         }
         finally
         {
-            _logger.LogInformation("Releasing lock");
+            _logger.LogTrace("Releasing lock for adding bot to chat");
             _lock.Release();
         }
     }
 
-    public Task GracefullyCloseAsync()
+    public async Task GracefullyCloseAsync()
     {
+        _logger.LogDebug("Graceful shutdown of ChatPool has been initiated. Disposing of everything");
+
         if (_isStopping)
-            return Task.CompletedTask;
+        {
+            _logger.LogDebug("It is already stopping. Skipping performing Graceful shutdown again");
+            return;
+        }
 
         _isStopping = true;
 
-        return Task.WhenAll(
+        await Task.WhenAll(
             _chats.Values.ToList().Select(chat => chat.GracefullyCloseAsync()).Concat(
                 _bots.Values.ToList().Select(bot => bot.GracefulShutdownAsync())));
+
+        _logger.LogDebug("Graceful shutdown of ChatPool successfully finished");
     }
 
     public async ValueTask DisposeAsync()
@@ -284,7 +308,7 @@ public sealed class ChatPool : IAsyncDisposable
     {
         var isAllowed = await _allowedChatsProvider.IsAllowedChatAsync(chatId);
         if (!isAllowed)
-            _logger.LogWarning("Chat is not allowed.");
+            _logger.LogWarning("Chat is not allowed");
 
         return isAllowed;
     }
