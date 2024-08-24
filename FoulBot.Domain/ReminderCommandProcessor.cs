@@ -20,7 +20,6 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
     private readonly IFoulBot _bot;
     private readonly CancellationTokenSource _localCts = new();
     private readonly CancellationTokenSource _cts;
-    private readonly CancellationToken _cancellationToken;
     private readonly object _lock = new();
     private Task? _processing;
 
@@ -37,7 +36,6 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
         _config = config;
         _chatId = chatId;
         _bot = bot;
-        _cancellationToken = cancellationToken;
         _cts = CancellationTokenSource.CreateLinkedTokenSource(
             _localCts.Token, cancellationToken);
 
