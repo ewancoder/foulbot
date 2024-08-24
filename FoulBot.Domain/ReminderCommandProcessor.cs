@@ -85,6 +85,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                 var escapedMarkdown = sb
                     .Replace("-", @"\-")
                     .Replace("_", @"\_")
+                    .Replace("(", @"\(")
+                    .Replace(")", @"\)")
                     .ToString();
 
                 await _bot.SendRawAsync(escapedMarkdown);
