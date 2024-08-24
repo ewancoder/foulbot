@@ -4,6 +4,7 @@ namespace FoulBot.Domain;
 
 public interface IAllowedChatsProvider
 {
+    ValueTask<IEnumerable<FoulChatId>> GetAllAllowedChatsAsync();
     ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId);
     ValueTask AllowChatAsync(FoulChatId chatId);
     ValueTask DisallowChatAsync(FoulChatId chatId);
@@ -24,11 +25,11 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         _logger = logger;
     }
 
-    // HACK: Untested hack method for ChatLoader to get list of all the chats.
-    public async ValueTask<IEnumerable<string>> GetAllAllowedChatsAsync()
+    public async ValueTask<IEnumerable<FoulChatId>> GetAllAllowedChatsAsync()
     {
         var chats = await GetAllowedChatsAsync();
-        return chats.Keys;
+
+        return chats.Keys.Select(GetFoulChatId).ToList();
     }
 
     public async ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId)
@@ -117,4 +118,9 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
         => chatId.IsPrivate
             ? $"{chatId.Value}${chatId.FoulBotId?.BotId}"
             : chatId.Value;
+
+    private static FoulChatId GetFoulChatId(string key)
+        => key.Contains('$')
+            ? new(key.Split('$')[0]) { FoulBotId = new(key.Split('$')[1], "Unknown") }
+            : new(key);
 }

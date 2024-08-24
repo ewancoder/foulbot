@@ -94,6 +94,35 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
         Assert.False(await _sut.IsAllowedChatAsync(anotherBotSameChatId));
     }
 
+    [Fact]
+    public async Task ShouldGetAllAllowedChats()
+    {
+        var chats = new List<FoulChatId>
+        {
+            Fixture.Build<FoulChatId>()
+            .With(x => x.FoulBotId, () => null)
+            .Create(),
+            Fixture.Build<FoulChatId>()
+            .With(x => x.FoulBotId, () => Fixture.Create<FoulBotId>())
+            .Create()
+        };
+
+        foreach (var chat in chats)
+        {
+            await _sut.AllowChatAsync(chat);
+        }
+
+        var allowedChats = await _sut.GetAllAllowedChatsAsync();
+
+        Assert.Equal(
+            chats.Select(x => x.FoulBotId?.BotId).Order(),
+            allowedChats.Select(x => x.FoulBotId?.BotId).Order());
+
+        Assert.Equal(
+            chats.Select(x => x.Value).Order(),
+            allowedChats.Select(x => x.Value).Order());
+    }
+
     public override void Dispose()
     {
         _sut.Dispose();
