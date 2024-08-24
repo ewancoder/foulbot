@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
 
@@ -12,20 +11,15 @@ public sealed class FoulBotServer
         isDebug = true;
 #endif
 
-        var services = new ServiceCollection();
-        var configuration = services.AddConfiguration(isDebug: isDebug);
+        var builder = FoulBotServerBuilder.Create(isDebug);
 
-        services
-            .AddLogging(configuration, isDebug)
-            .AddSingleton(TimeProvider.System)
-            .AddScoped<ISharedRandomGenerator, SharedRandomGenerator>()
+        builder.Services
             .AddScoped<ChatLoader>()
             .AddScoped<ApplicationInitializer>()
-            .AddFoulBotInfrastructure()
-            .RegisterBots(configuration, isDebug);
+            .RegisterBots(builder.Configuration, isDebug);
 
         {
-            using var rootProvider = services.BuildServiceProvider();
+            using var rootProvider = builder.BuildServiceProvider();
             await using var scope = rootProvider.CreateAsyncScope(); // We need this, root container doesn't work with IAsyncDisposable.
             var provider = scope.ServiceProvider;
             using var localCts = new CancellationTokenSource();
@@ -34,7 +28,7 @@ public sealed class FoulBotServer
 
             var logger = provider.GetRequiredService<ILogger<FoulBotServer>>();
 
-            var appInitializer = provider.GetRequiredService<ApplicationInitializer>();
+            var appInitializer = rootProvider.GetRequiredService<ApplicationInitializer>();
             try
             {
                 await appInitializer.InitializeAsync(combinedCts.Token);

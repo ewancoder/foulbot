@@ -2,7 +2,6 @@
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
 using Serilog.Events;
 
@@ -17,37 +16,41 @@ public static class Constants
     }
 }
 
+public sealed record FoulBotServerBuilder(
+    IServiceCollection Services,
+    IConfiguration Configuration)
+{
+    public static FoulBotServerBuilder Create(bool isDebug)
+    {
+        var services = new ServiceCollection();
+
+        var configuration = services.AddConfiguration(isDebug: isDebug);
+
+        services
+            .AddLogging(configuration, isDebug)
+            .AddFoulBotDomain()
+            .AddFoulBotInfrastructure();
+
+        return new(services, configuration);
+    }
+
+    public ServiceProvider BuildServiceProvider()
+        => Services.BuildServiceProvider();
+}
+
 public static class RegistrationExtensions
 {
     public static IServiceCollection AddFoulBotInfrastructure(this IServiceCollection services)
     {
         return services
-            .AddScoped<IAllowedChatsProvider, AllowedChatsProvider>()    // Domain
-            .AddScoped<IBotDelayStrategy, BotDelayStrategy>()
-            .AddScoped<IReminderStore, NonThreadSafeFileReminderStorage>()
-            .Decorate<IReminderStore, InMemoryLockingReminderStoreDecorator>()
+            .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
             .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
-            .AddTransient<IFoulBotFactory, FoulBotFactory>()
-            .AddTransient<IFoulChatFactory, FoulChatFactory>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
             .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
             .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
             .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
-    }
-
-    public static IServiceCollection AddChatPool<TDuplicateMessageHandler>(
-        this IServiceCollection services, string key)
-        where TDuplicateMessageHandler : class, IDuplicateMessageHandler
-    {
-        return services
-            .AddTransient<TDuplicateMessageHandler>()
-            .AddKeyedScoped(key, (provider, _) => new ChatPool(
-                provider.GetRequiredService<ILogger<ChatPool>>(),
-                provider.GetRequiredService<IFoulChatFactory>(),
-                provider.GetRequiredService<TDuplicateMessageHandler>(),
-                provider.GetRequiredService<IAllowedChatsProvider>())); // TODO: Rewrite into ChatPool factory.
     }
 
     public static IConfiguration AddConfiguration(
@@ -90,34 +93,3 @@ public static class RegistrationExtensions
     }
 }
 
-public static class ServiceCollectionExtensions
-{
-    public static IServiceCollection Decorate<TInterface, TDecorator>(this IServiceCollection services)
-      where TDecorator : TInterface
-    {
-        var wrappedDescriptor = services.LastOrDefault(
-            s => s.ServiceType == typeof(TInterface))
-            ?? throw new InvalidOperationException($"{typeof(TInterface).Name} is not registered.");
-
-        var objectFactory = ActivatorUtilities.CreateFactory(
-            typeof(TDecorator),
-            [typeof(TInterface)]);
-
-        return services.Replace(ServiceDescriptor.Describe(
-            typeof(TInterface),
-            s => (TInterface)objectFactory(s, [s.CreateInstance(wrappedDescriptor)]),
-            wrappedDescriptor.Lifetime));
-    }
-
-    private static object CreateInstance(this IServiceProvider services, ServiceDescriptor descriptor)
-    {
-        if (descriptor.ImplementationInstance != null)
-            return descriptor.ImplementationInstance;
-
-        if (descriptor.ImplementationFactory != null)
-            return descriptor.ImplementationFactory(services);
-
-        return ActivatorUtilities.GetServiceOrCreateInstance(
-            services, descriptor.ImplementationType ?? throw new InvalidOperationException("Implementation type is null, cannot decorate it."));
-    }
-}
