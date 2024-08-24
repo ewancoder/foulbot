@@ -217,6 +217,9 @@ public sealed class ChatPool : IAsyncDisposable
             var bot = await botFactory(chat);
             if (bot == null)
             {
+                // TODO: Debounce this: when bot cannot join - short circuit all parallel requests.
+                // Make sure other tasks waiting on a lock won't go and try to create it again,
+                // for example for 5 seconds. It will prevent initial 'ddos' attack.
                 _logger.LogInformation("Could not add this bot to this chat");
                 return;
             }
