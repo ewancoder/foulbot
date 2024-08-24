@@ -191,7 +191,6 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             }
 
             // Generate voice before finishing replying.
-            // TODO: Cover this by unit tests.
             var voice = replyMode.Type == ReplyType.Voice
                 ? await _aiClient.GetAudioResponseAsync(aiGeneratedTextResponse)
                 : null;

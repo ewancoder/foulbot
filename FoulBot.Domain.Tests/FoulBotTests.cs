@@ -9,7 +9,7 @@ public class FoulBotTests : Testing<FoulBot>
     private readonly Mock<IBotReplyStrategy> _replyStrategy;
     private readonly Mock<IMessageFilter> _messageFilter;
     private readonly Mock<IBotDelayStrategy> _delayStrategy;
-    private readonly Mock<IReplyImitatorFactory> _typingImitatorFactory;
+    private readonly Mock<IReplyImitatorFactory> _replyImitatorFactory;
     private readonly Mock<IBotReplyModePicker> _replyModePicker;
 
     public FoulBotTests()
@@ -21,7 +21,7 @@ public class FoulBotTests : Testing<FoulBot>
         _replyStrategy = Freeze<IBotReplyStrategy>();
         _messageFilter = Freeze<IMessageFilter>();
         _delayStrategy = Freeze<IBotDelayStrategy>();
-        _typingImitatorFactory = Freeze<IReplyImitatorFactory>();
+        _replyImitatorFactory = Freeze<IReplyImitatorFactory>();
         _replyModePicker = Freeze<IBotReplyModePicker>();
 
         _replyModePicker.Setup(x => x.GetBotReplyMode(It.IsAny<IList<FoulMessage>>()))
@@ -457,7 +457,7 @@ public class FoulBotTests : Testing<FoulBot>
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
             .Returns(mode);
 
-        _typingImitatorFactory.Setup(x => x.ImitateReplying(ChatId, mode))
+        _replyImitatorFactory.Setup(x => x.ImitateReplying(ChatId, mode))
             .Returns(typingImitator)
             .Callback(() => startedTyping = true);
 
@@ -522,6 +522,102 @@ public class FoulBotTests : Testing<FoulBot>
 
         await resultTask;
         Assert.True(resultTask.IsCompleted);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldImitateTyping_WhileCallingAi(
+        FoulMessage message,
+        string responseMessage,
+        IList<FoulMessage> context,
+        IReplyImitator imitator)
+    {
+        var aiTask = new Task<string>(() => { return responseMessage; });
+
+        var order = 0;
+
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(context))
+            .Returns(() => new(ReplyType.Text));
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(aiTask))
+            .Callback(() => order = order == 1 ? 2 : 0);
+
+        _replyImitatorFactory.Setup(x => x.ImitateReplying(ChatId, new(ReplyType.Text)))
+            .Returns(imitator)
+            .Callback(() => order = order == 0 ? 1 : 0);
+
+        var sut = CreateFoulBot();
+
+        var task = sut.TriggerAsync(message).AsTask();
+        await WaitAsync();
+
+        _aiClient.Verify(x => x.GetTextResponseAsync(context));
+        Assert.False(task.IsCompleted);
+
+        _replyImitatorFactory.Verify(x => x.ImitateReplying(ChatId, new(ReplyType.Text)));
+        Mock.Get(imitator).Verify(x => x.FinishReplyingAsync(It.IsAny<string>()), Times.Never);
+
+        aiTask.Start();
+        await task;
+
+        Mock.Get(imitator).Verify(x => x.FinishReplyingAsync(responseMessage));
+
+        // Verify order.
+        Assert.Equal(2, order);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldImitateRecordingVoice_WhileCallingAi(
+        FoulMessage message,
+        string responseMessage,
+        IList<FoulMessage> context,
+        IReplyImitator imitator,
+        Stream voice)
+    {
+        var aiTask = new Task<Stream>(() => { return voice; });
+
+        var order = 0;
+
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(context))
+            .Returns(() => new(ReplyType.Voice));
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage))
+            .Callback(() => order = order == 1 ? 2 : 0);
+
+        _aiClient.Setup(x => x.GetAudioResponseAsync(responseMessage))
+            .Returns(() => new(aiTask))
+            .Callback(() => order = order == 2 ? 3 : 0);
+
+        _replyImitatorFactory.Setup(x => x.ImitateReplying(ChatId, new(ReplyType.Voice)))
+            .Returns(imitator)
+            .Callback(() => order = order == 0 ? 1 : 0);
+
+        var sut = CreateFoulBot();
+
+        var task = sut.TriggerAsync(message).AsTask();
+        await WaitAsync();
+
+        _aiClient.Verify(x => x.GetTextResponseAsync(context));
+        _aiClient.Verify(x => x.GetAudioResponseAsync(responseMessage));
+        Assert.False(task.IsCompleted);
+
+        _replyImitatorFactory.Verify(x => x.ImitateReplying(ChatId, new(ReplyType.Voice)));
+        Mock.Get(imitator).Verify(x => x.FinishReplyingAsync(It.IsAny<string>()), Times.Never);
+
+        aiTask.Start();
+        await task;
+
+        Mock.Get(imitator).Verify(x => x.FinishReplyingAsync(responseMessage));
+
+        // Verify order.
+        Assert.Equal(3, order);
     }
 
     #endregion
