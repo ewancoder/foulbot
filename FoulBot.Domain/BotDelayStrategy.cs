@@ -40,7 +40,7 @@ public sealed class BotDelayStrategy : IBotDelayStrategy
             delay = _random.Generate(200, 1200);
         }
 
-        _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with 'Bot's eyes'.", delay);
+        _logger.LogDebug("Initiating artificial delay of {Delay} milliseconds to read the message with \"Bot's eyes\".", delay);
         await Task.Delay(TimeSpan.FromMilliseconds(delay), _timeProvider, cancellationToken);
     }
 }

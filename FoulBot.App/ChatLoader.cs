@@ -27,18 +27,20 @@ public sealed class ChatLoader : IDisposable
         FoulBotConfiguration configuration,
         CancellationToken cancellationToken)
     {
-        var chatIds = await ((AllowedChatsProvider)_allowedChatsProvider).GetAllAllowedChatsAsync();
+        var chatIds = await _allowedChatsProvider.GetAllAllowedChatsAsync();
 
         await Task.WhenAll(chatIds.Select(chatId =>
         {
-            // If chat is private - only add the bot that belongs there.
-            if (chatId.Contains('$') && chatId.Split('$')[1] != configuration.BotId)
+            // If chat is private - only add the bot that belongs here.
+            if (chatId.IsPrivate && chatId.FoulBotId?.BotId != configuration.BotId)
                 return Task.CompletedTask;
 
             var foulBotId = new FoulBotId(configuration.BotId, configuration.BotName);
-            FoulChatId foulChatId = chatId.Contains('$')
-                ? new(chatId.Split('$')[0]) { FoulBotId = foulBotId }
-                : new(chatId);
+
+            // BotName will not be set in chatId from _allowedChatsProvider.
+            var foulChatId = chatId.IsPrivate
+                ? chatId with { FoulBotId = foulBotId } // Construct proper FoulBotId with BotName set.
+                : chatId;
 
             return chatPool.InitializeChatAndBotAsync(
                 foulChatId,

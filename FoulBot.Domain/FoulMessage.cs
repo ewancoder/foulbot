@@ -21,4 +21,9 @@ public sealed record FoulMessage(
             MessageType = FoulMessageType.User
         };
     }
+
+    public override string ToString()
+    {
+        return $"({Id}) {MessageType}.{SenderName}: {Text}";
+    }
 }

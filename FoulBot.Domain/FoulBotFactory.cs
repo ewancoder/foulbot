@@ -17,8 +17,10 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly IReminderStore _reminderStore;
+    private readonly ILogger<FoulBot> _foulBotLogger;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
     private readonly ILogger<ReminderCommandProcessor> _reminderCreatorLogger;
+    private readonly ILogger<BotReplyStrategy> _botReplyStrategyLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
@@ -26,16 +28,20 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
         IReminderStore reminderStore,
+        ILogger<FoulBot> foulBotLogger,
         ILogger<ReplyImitator> typingImitatorLogger,
-        ILogger<ReminderCommandProcessor> reminderCreatorLogger)
+        ILogger<ReminderCommandProcessor> reminderCreatorLogger,
+        ILogger<BotReplyStrategy> botReplyStrategyLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
         _random = random;
         _aiClientFactory = aiClientFactory;
         _reminderStore = reminderStore;
+        _foulBotLogger = foulBotLogger;
         _typingImitatorLogger = typingImitatorLogger;
         _reminderCreatorLogger = reminderCreatorLogger;
+        _botReplyStrategyLogger = botReplyStrategyLogger;
     }
 
     /// <summary>
@@ -52,7 +58,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         var cts = new CancellationTokenSource();
         var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
-        var replyStrategy = new BotReplyStrategy(_timeProvider, chat, config);
+        var replyStrategy = new BotReplyStrategy(_botReplyStrategyLogger, _timeProvider, chat, config);
         var typingImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
         var aiClient = _aiClientFactory.Create(config.OpenAIModel);
@@ -62,6 +68,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var replyModePicker = new BotReplyModePicker(config);
 
         var bot = new FoulBot(
+            _foulBotLogger,
             messenger,
             _delayStrategy,
             replyStrategy,
