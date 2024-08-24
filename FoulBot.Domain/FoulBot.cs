@@ -203,12 +203,16 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                 _logger.LogDebug("Sending text message to chat");
                 await _botMessenger.SendTextMessageAsync(aiGeneratedTextResponse); // TODO: Pass cancellation token.
             }
-            if (replyMode.Type == ReplyType.Voice)
+            else if (replyMode.Type == ReplyType.Voice)
             {
                 _logger.LogDebug("Sending voice message to chat");
                 await _botMessenger.SendVoiceMessageAsync(voice!);
             }
-            // TODO: Handle situation of another reply mode.
+            else
+            {
+                _logger.LogError("This should never happen. Unknown reply type.");
+                throw new NotSupportedException("Unknown reply type is not supported.");
+            }
 
             if (_messageFilter.IsGoodMessage(aiGeneratedTextResponse) || _config.IsAssistant)
             {

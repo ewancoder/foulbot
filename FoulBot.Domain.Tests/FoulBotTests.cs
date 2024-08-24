@@ -620,6 +620,31 @@ public class FoulBotTests : Testing<FoulBot>
         Assert.Equal(3, order);
     }
 
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldThrowAnException_WhenWrongReplyTypeReceived(
+        FoulMessage message,
+        string responseMessage,
+        IList<FoulMessage> context,
+        IReplyImitator imitator)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _replyModePicker.Setup(x => x.GetBotReplyMode(context))
+            .Returns(() => new((ReplyType)200));
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _replyImitatorFactory.Setup(x => x.ImitateReplying(ChatId, new(ReplyType.Text)))
+            .Returns(imitator);
+
+        var sut = CreateFoulBot();
+
+        await Assert.ThrowsAsync<NotSupportedException>(
+            async () => await sut.TriggerAsync(message));
+    }
+
     #endregion
 
     private void AssertContextNotified(string messageAddedToContext, string botName)
