@@ -32,13 +32,15 @@ public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable
 
     public ValueTask<bool> ProcessMessageAsync(FoulMessage message)
     {
-        if (message.Text == "/talkyourself disable")
+        var text = message.Text.Replace($"@{_botId}", string.Empty).Trim();
+
+        if (text == "/talkyourself disable")
         {
             _isDisabled = true;
             return new(true);
         }
 
-        if (message.Text == "/talkyourself enable")
+        if (text == "/talkyourself enable")
         {
             _isDisabled = false;
             return new(true);
