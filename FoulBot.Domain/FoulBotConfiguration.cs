@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
-public sealed record FoulBotConfiguration : IRespondStrategyConfiguration
+public sealed record FoulBotConfiguration
 {
     public FoulBotConfiguration(
         string botId,
