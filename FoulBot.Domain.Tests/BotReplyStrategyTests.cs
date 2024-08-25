@@ -1,4 +1,5 @@
-﻿using Xunit.Sdk;
+﻿using AutoFixture.Dsl;
+using Xunit.Sdk;
 
 namespace FoulBot.Domain.Tests;
 
@@ -7,7 +8,9 @@ public class NotABotMessage : ICustomization
     public void Customize(IFixture fixture)
     {
         fixture.Customize<FoulMessage>(
-            composer => composer.With(p => p.IsOriginallyBotMessage, false));
+            composer => composer
+                .With(p => p.IsOriginallyBotMessage, false)
+                .With(p => p.ForceReply, false));
     }
 }
 
@@ -24,6 +27,11 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         Fixture.Customize(new NotABotMessage());
     }
+
+    private IPostprocessComposer<FoulMessage> BuildMessage()
+        => Fixture.Build<FoulMessage>()
+            .With(x => x.IsOriginallyBotMessage, false)
+            .With(x => x.ForceReply, false);
 
     private IList<FoulMessage> ConfigureWithContext(IList<FoulMessage>? messages = null)
     {
@@ -51,7 +59,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
     private FoulMessage GenerateMessageWithPart(string part)
     {
-        return Fixture.Build<FoulMessage>()
+        return BuildMessage()
             .With(x => x.Text, $"{Fixture.Create<string>()}{part}{Fixture.Create<string>()}")
             .Create();
     }
@@ -95,13 +103,34 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         Assert.Null(result);
     }
 
+    // Always produce results - even when messages are processed - when forced.
+    [Fact]
+    public void ShouldAlwaysProduceResults_EvenWhenMessageHasAlreadyBeenHandled_WhenForced()
+    {
+        var context = ConfigureWithContext();
+
+        _chat.Setup(x => x.IsPrivateChat)
+            .Returns(true);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[0]);
+        Assert.NotNull(result);
+
+        context[^1] = context[^1] with { ForceReply = true };
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+        result = sut.GetContextForReplying(context[^1]);
+        Assert.NotNull(result);
+    }
+
     // When message is a direct reply to the bot - always process it.
     [Fact]
     public void ShouldAlwaysProduceResults_WhenItsAReplyToTheBot()
     {
         var config = ConfigureBot();
 
-        var messages = Fixture.Build<FoulMessage>()
+        var messages = BuildMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create();
 
@@ -118,7 +147,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         result = sut.GetContextForReplying(message);
         Assert.Null(result);
 
-        message = Fixture.Build<FoulMessage>()
+        message = BuildMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create();
         context.Add(message);
@@ -133,7 +162,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     {
         var config = ConfigureBot();
 
-        var messages = Fixture.Build<FoulMessage>()
+        var messages = BuildMessage()
             .With(x => x.ReplyTo, config.BotId)
             .CreateMany()
             .ToList();
@@ -388,7 +417,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+        var response = sut.GetContextForReplying(BuildMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create());
 
@@ -403,7 +432,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+        var response = sut.GetContextForReplying(BuildMessage()
             .With(x => x.Sender, () => new(config.BotName))
             .With(x => x.IsOriginallyBotMessage, true)
             .Create());
@@ -419,7 +448,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(Fixture.Build<FoulMessage>()
+        var response = sut.GetContextForReplying(BuildMessage()
             .With(x => x.Sender, () => new(config.BotName))
             .With(x => x.IsOriginallyBotMessage, false)
             .With(x => x.ReplyTo, config.BotId) // To make the message trigger a reply.
@@ -431,7 +460,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     [Fact]
     public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
     {
-        var messages = Fixture.Build<FoulMessage>()
+        var messages = BuildMessage()
             .With(x => x.MessageType, FoulMessageType.Bot)
             .With(x => x.Text, "trigger")
             .CreateMany()
@@ -457,8 +486,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenKeywords_WorksAnyCase(
         string trigger)
     {
-        var context = Fixture
-            .Build<FoulMessage>()
+        var context = BuildMessage()
             .With(x => x.Text, "some_trigger_some")
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -466,7 +494,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         void AddMessages(string keyword)
         {
-            context.Add(Fixture.Build<FoulMessage>()
+            context.Add(BuildMessage()
                 .With(x => x.Text, $"{Fixture.Create<string>()}{keyword}{Fixture.Create<string>()}")
                 .Create());
         }
@@ -506,8 +534,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_EvenWhenNotEnoughTimePassedBetweenTriggers_IfMandatoryTrigger(
         string trigger, bool shouldReply)
     {
-        var context = Fixture
-            .Build<FoulMessage>()
+        var context = BuildMessage()
             .With(x => x.Text, $"something {trigger} something")
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -515,7 +542,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         void AddMessages(string trigger)
         {
-            context.Add(Fixture.Build<FoulMessage>()
+            context.Add(BuildMessage()
                 .With(x => x.Text, $"{Fixture.Create<string>()} {trigger} {Fixture.Create<string>()}")
                 .Create());
         }
@@ -561,8 +588,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_WhenMandatoryTriggerIsFound_WorksAnyCase_ButWithSpaces(
         string trigger, bool returns)
     {
-        var context = Fixture
-            .Build<FoulMessage>()
+        var context = BuildMessage()
             .With(x => x.Text, trigger)
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -709,12 +735,14 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             .With(x => x.Text, GenerateTriggeredText())
             .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.IsOriginallyBotMessage, false)
+            .With(x => x.ForceReply, false)
             .CreateMany(20)
             .Concat(_fixture
                 .Build<FoulMessage>()
                 .With(x => x.Text, _fixture.Create<string>())
                 .With(x => x.MessageType, FoulMessageType.User)
                 .With(x => x.IsOriginallyBotMessage, false)
+                .With(x => x.ForceReply, false)
                 .CreateMany(40))
             .ToList();
     }
@@ -726,6 +754,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.Sender, () => new(senderName))
             .With(x => x.IsOriginallyBotMessage, isOriginallyBotMessage)
+            .With(x => x.ForceReply, false)
             .Create();
     }
 
@@ -736,6 +765,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
             .With(x => x.MessageType, FoulMessageType.User)
             .With(x => x.Text, isTriggered ? "trigger": _fixture.Create<string>())
             .With(x => x.IsOriginallyBotMessage, false)
+            .With(x => x.ForceReply, false)
             .Create();
     }
 

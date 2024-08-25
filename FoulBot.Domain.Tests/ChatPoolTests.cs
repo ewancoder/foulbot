@@ -36,7 +36,7 @@ public class ChatPoolTests : Testing<ChatPool>
         _allowedChatsProvider = Freeze<IAllowedChatsProvider>();
         _chat = Fixture.Create<Mock<IFoulChat>>(); // Do not freeze IFoulChat as we need different instances for tests.
         _chat.Setup(x => x.ChatId).Returns(_chatId);
-        Fixture.Register(() => new ChatScopedBotMessenger(_botMessenger.Object, _chatId, Cts.Token));
+        Fixture.Register(() => new ChatScopedBotMessenger(_botMessenger.Object, _chatId));
 
         _allowedChatsProvider.Setup(x => x.IsAllowedChatAsync(It.IsAny<FoulChatId>()))
             .Returns(() => new(true));

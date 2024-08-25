@@ -11,21 +11,26 @@ public sealed record Reminder(
     bool EveryDay,
     ChatParticipant RequestedBy);
 
-public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDisposable
+public sealed class ReminderFeature : IBotFeature, IAsyncDisposable
 {
-    private readonly ILogger<ReminderCommandProcessor> _logger;
+    // TODO: Consider moving out "markdown" logic to telegram-specific dependencies.
+    public const string EscapedCharacters = "-_()";
+    public static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(10);
+    private readonly ILogger<ReminderFeature> _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly IReminderStore _reminderStore;
     private readonly FoulBotConfiguration _config;
     private readonly FoulChatId _chatId;
     private readonly IFoulBot _bot;
     private readonly CancellationTokenSource _localCts = new();
     private readonly CancellationTokenSource _cts;
-    private readonly CancellationToken _cancellationToken;
     private readonly object _lock = new();
     private Task? _processing;
+    private bool _isStopping;
 
-    public ReminderCommandProcessor(
-        ILogger<ReminderCommandProcessor> logger,
+    public ReminderFeature(
+        ILogger<ReminderFeature> logger,
+        TimeProvider timeProvider,
         IReminderStore reminderStore,
         FoulBotConfiguration config,
         FoulChatId chatId,
@@ -33,18 +38,22 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
         CancellationToken cancellationToken)
     {
         _logger = logger;
+        _timeProvider = timeProvider;
         _reminderStore = reminderStore;
         _config = config;
         _chatId = chatId;
         _bot = bot;
-        _cancellationToken = cancellationToken;
         _cts = CancellationTokenSource.CreateLinkedTokenSource(
             _localCts.Token, cancellationToken);
 
         _processing = ProcessRemindersAsync();
+
+        // Make sure if the task is synchronously completed - reset the task.
+        if (_processing.IsCompleted)
+            _processing = null;
     }
 
-    public async ValueTask<bool> ProcessCommandAsync(FoulMessage message)
+    public async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
     {
         try
         {
@@ -57,6 +66,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
             if (reminderId is not null)
             {
+                _logger.LogDebug("Processing cancel reminder command.");
+
                 var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
                 var reminderForRemoval = reminders.FirstOrDefault(x => x.Id == reminderId);
                 if (reminderForRemoval != null)
@@ -72,6 +83,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
             if (remindersListCommand is not null)
             {
+                _logger.LogDebug("Processing show reminders command.");
+
                 var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
 
                 var sb = new StringBuilder();
@@ -82,12 +95,13 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                     sb.AppendLine($"`{rem.Id}` - {rem.RequestedBy.Name} - {rem.AtUtc} {(rem.EveryDay ? $"- EVERY DAY " : string.Empty)}- *{rem.Request}*");
                 }
 
-                var escapedMarkdown = sb
-                    .Replace("-", @"\-")
-                    .Replace("_", @"\_")
-                    .Replace("(", @"\(")
-                    .Replace(")", @"\)")
-                    .ToString();
+                foreach (var esc in EscapedCharacters)
+                {
+                    sb = sb
+                        .Replace($"{esc}", $@"\{esc}");
+                }
+
+                var escapedMarkdown = sb.ToString();
 
                 await _bot.SendRawAsync(escapedMarkdown);
 
@@ -108,27 +122,34 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             if (text == null)
                 return false;
 
+            _logger.LogDebug("Processing add new reminder command.");
+
             var requestedBy = message.Sender;
 
-            var number = Convert.ToInt32(text.Split(' ')[0]);
-            var units = text.Split(' ')[1];
-            var request = string.Join(' ', text.Split(' ').Skip(2));
+            text = text.Trim();
+            var parts = text.Split(' ').Where(x => x.Length > 0).ToList();
+            var number = Convert.ToInt32(parts[0]);
+            var units = parts[1];
+            var request = string.Join(' ', parts.Skip(2));
 
-            var time = DateTime.UtcNow;
-            if (units.StartsWith("сек"))
-                time = DateTime.UtcNow + TimeSpan.FromSeconds(number);
-            if (units.StartsWith("мин"))
-                time = DateTime.UtcNow + TimeSpan.FromMinutes(number);
-            if (units.StartsWith("час"))
-                time = DateTime.UtcNow + TimeSpan.FromHours(number);
-            if (units.StartsWith("де") || units.StartsWith("дн"))
-                time = DateTime.UtcNow + TimeSpan.FromDays(number);
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+            var time = now;
+            if (units.StartsWith('с') || units.StartsWith('s'))
+                time = now + TimeSpan.FromSeconds(number);
+            if (units.StartsWith('м') || units.StartsWith('m'))
+                time = now + TimeSpan.FromMinutes(number);
+            if (units.StartsWith('ч') || units.StartsWith('h'))
+                time = now + TimeSpan.FromHours(number);
+            if (units.StartsWith('д') || units.StartsWith('d'))
+                time = now + TimeSpan.FromDays(number);
 
             var reminder = new Reminder(
                 Guid.NewGuid().ToString(),
                 _chatId, _config.FoulBotId,
                 time, request, isEveryDay, requestedBy);
             await _reminderStore.AddReminderAsync(reminder);
+            _logger.LogInformation("Successfully added a new reminder: {@Reminder}", reminder);
 
             lock (_lock)
             {
@@ -144,47 +165,54 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
         }
     }
 
-    public async ValueTask StopProcessingAsync()
+    public async ValueTask StopFeatureAsync()
     {
-        await DisposeAsync();
+        _isStopping = true;
+
+        await _localCts.CancelAsync();
+        await DisposeAsync(); // HACK: Dispose will be called twice when disposed.
     }
 
     private static string? CutKeyword(string text, string keyword)
     {
-        if (!text.StartsWith(keyword))
+        // TODO: Make it work with 'каждый    день' so there can be many spaces within keywords.
+        if (!text.Trim().StartsWith(keyword))
             return null;
 
-        return text[(0 + keyword.Length)..].Trim();
+        return text.Trim()[(0 + keyword.Length)..].Trim();
     }
 
     private async Task ProcessRemindersAsync()
     {
+        _logger.LogDebug("Starting processing reminders mechanism");
+
         while (true)
         {
             // This call should be cached in-memory.
             var reminders = await _reminderStore.GetRemindersForAsync(_chatId, new(_config.BotId, _config.BotName));
             if (!reminders.Any())
             {
+                _logger.LogDebug("No reminders found for this bot in this chat. Exiting processing reminders");
                 _processing = null;
                 break; // As soon as we remove all reminders - this process stops.
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(10), _cts.Token);
+            await Task.Delay(CheckInterval, _timeProvider, _cts.Token);
 
             var dueReminders = reminders
-                .Where(x => x.AtUtc <= DateTime.UtcNow);
+                .Where(x => x.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime);
 
             foreach (var reminder in dueReminders)
             {
                 try
                 {
-                    _logger.LogInformation("Reminding: {Reminder}", reminder);
+                    _logger.LogInformation("Reminding: {@Reminder}", reminder);
 
                     await _reminderStore.RemoveReminderAsync(reminder);
                     if (reminder.EveryDay)
                     {
                         var newReminder = reminder;
-                        while (newReminder.AtUtc <= DateTime.UtcNow)
+                        while (newReminder.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
                         {
                             newReminder = newReminder with
                             {
@@ -192,6 +220,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                             };
                         }
 
+                        _logger.LogDebug("It's an every-day reminder. Resetting it for the next day");
                         await _reminderStore.AddReminderAsync(newReminder);
                     }
 
@@ -199,7 +228,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogError(exception, "Could not trigger a reminder.");
+                    // TODO: Unit test this. So far untested.
+                    _logger.LogError(exception, "Could not trigger a reminder");
                     // Do NOT rethrow exception here, as this will fail the whole reminders background task.
                 }
             }
@@ -208,7 +238,9 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
     public async ValueTask DisposeAsync()
     {
-        await _localCts.CancelAsync();
+        if (!_isStopping)
+            await StopFeatureAsync();
+
         _localCts.Dispose();
         _cts.Dispose();
     }
