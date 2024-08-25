@@ -1,5 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
+// TODO: Unit test this class.
 public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable
 {
     public const int MinDelayTimeMinutes = 6 * 60;
