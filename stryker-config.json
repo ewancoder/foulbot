@@ -1,0 +1,7 @@
+{
+  "stryker-config": {
+    "ignore-methods": [
+      "*_logger.Log*" // Ignores all methods ending with Log
+    ]
+  }
+}
