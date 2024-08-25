@@ -620,8 +620,11 @@ public class FoulBotTests : Testing<FoulBot>
         Assert.Equal(3, order);
     }
 
-    [Theory, AutoMoqData]
+    [Theory]
+    [InlineAutoMoqData(0)]
+    [InlineAutoMoqData(200)]
     public async Task TriggerAsync_ShouldThrowAnException_WhenWrongReplyTypeReceived(
+        ReplyType replyType,
         FoulMessage message,
         string responseMessage,
         IList<FoulMessage> context,
@@ -631,7 +634,7 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(context);
 
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
-            .Returns(() => new((ReplyType)200));
+            .Returns(() => new(replyType));
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
             .Returns(() => new(responseMessage));

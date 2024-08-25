@@ -5,6 +5,7 @@ public readonly record struct BotReplyMode(
 
 public enum ReplyType
 {
+    Unspecified =  0,
     Text = 1,
     Voice
 }
