@@ -88,6 +88,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
 #pragma warning disable CA2000 // It is being disposed on bot Shutdown.
         var reminderCreator = new ReminderCommandProcessor(
             _reminderCreatorLogger,
+            _timeProvider,
             _reminderStore,
             config,
             chat.ChatId,
