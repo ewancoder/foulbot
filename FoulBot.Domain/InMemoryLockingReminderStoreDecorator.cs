@@ -2,6 +2,7 @@
 
 namespace FoulBot.Domain;
 
+// TODO: Consider moving to infrastructure (or helper project). It's not FoulBot domain.
 public sealed class InMemoryLockingReminderStoreDecorator : IReminderStore, IDisposable
 {
     private readonly IReminderStore _store;
