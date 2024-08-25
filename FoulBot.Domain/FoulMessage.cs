@@ -22,6 +22,12 @@ public sealed record FoulMessage(
         };
     }
 
+    /// <summary>
+    /// A special HACK flag to force always getting a valid context from BotReplyStrategy.
+    /// So, any bot will ALWAYS reply to this message.
+    /// </summary>
+    public bool ForceReply { get; init; }
+
     public override string ToString()
     {
         return $"({Id}) {MessageType}.{SenderName}: {Text}";

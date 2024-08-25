@@ -36,7 +36,7 @@ public sealed record FoulBotConfiguration
     public bool NotAnAssistant { get; init; } = true;
     public IList<string> Stickers { get; init; } = [];
     public bool OnlyReadAddressedToBotMessages { get; init; }
-    public bool WriteOnYourOwn { get; init; } = true;
+    public bool TalkOnYourOwn { get; init; } = true;
 
     public bool IsAssistant => !NotAnAssistant;
 
@@ -54,7 +54,7 @@ public sealed record FoulBotConfiguration
     {
         return this with
         {
-            WriteOnYourOwn = false
+            TalkOnYourOwn = false
         };
     }
 

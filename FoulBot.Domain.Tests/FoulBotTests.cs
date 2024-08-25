@@ -209,12 +209,12 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
             .Returns(true);
 
-        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
-        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor1 = Fixture.Create<Mock<IBotFeature>>();
+        var processor2 = Fixture.Create<Mock<IBotFeature>>();
 
-        processor1.Setup(x => x.ProcessCommandAsync(message))
+        processor1.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(false));
-        processor2.Setup(x => x.ProcessCommandAsync(message))
+        processor2.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
@@ -241,12 +241,12 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
             .Returns(true);
 
-        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
-        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor1 = Fixture.Create<Mock<IBotFeature>>();
+        var processor2 = Fixture.Create<Mock<IBotFeature>>();
 
-        processor1.Setup(x => x.ProcessCommandAsync(message))
+        processor1.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(false));
-        processor2.Setup(x => x.ProcessCommandAsync(message))
+        processor2.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(false));
 
         var sut = CreateFoulBot();
@@ -273,12 +273,12 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
             .Returns(true);
 
-        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
-        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor1 = Fixture.Create<Mock<IBotFeature>>();
+        var processor2 = Fixture.Create<Mock<IBotFeature>>();
 
-        processor1.Setup(x => x.ProcessCommandAsync(message))
+        processor1.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
-        processor2.Setup(x => x.ProcessCommandAsync(message))
+        processor2.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
@@ -287,8 +287,8 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.TriggerAsync(message);
 
-        processor1.Verify(x => x.ProcessCommandAsync(message));
-        processor2.Verify(x => x.ProcessCommandAsync(message), Times.Never);
+        processor1.Verify(x => x.ProcessMessageAsync(message));
+        processor2.Verify(x => x.ProcessMessageAsync(message), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -306,12 +306,12 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
             .Returns(true);
 
-        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
-        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor1 = Fixture.Create<Mock<IBotFeature>>();
+        var processor2 = Fixture.Create<Mock<IBotFeature>>();
 
-        processor1.Setup(x => x.ProcessCommandAsync(message))
+        processor1.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
-        processor2.Setup(x => x.ProcessCommandAsync(message))
+        processor2.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
@@ -320,8 +320,8 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.DisposeAsync();
 
-        processor1.Verify(x => x.StopProcessingAsync());
-        processor2.Verify(x => x.StopProcessingAsync());
+        processor1.Verify(x => x.StopFeatureAsync());
+        processor2.Verify(x => x.StopFeatureAsync());
     }
 
     [Theory, AutoMoqData]
@@ -339,12 +339,12 @@ public class FoulBotTests : Testing<FoulBot>
         _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
             .Returns(true);
 
-        var processor1 = Fixture.Create<Mock<IBotCommandProcessor>>();
-        var processor2 = Fixture.Create<Mock<IBotCommandProcessor>>();
+        var processor1 = Fixture.Create<Mock<IBotFeature>>();
+        var processor2 = Fixture.Create<Mock<IBotFeature>>();
 
-        processor1.Setup(x => x.ProcessCommandAsync(message))
+        processor1.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
-        processor2.Setup(x => x.ProcessCommandAsync(message))
+        processor2.Setup(x => x.ProcessMessageAsync(message))
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
@@ -353,8 +353,8 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.GracefulShutdownAsync();
 
-        processor1.Verify(x => x.StopProcessingAsync());
-        processor2.Verify(x => x.StopProcessingAsync());
+        processor1.Verify(x => x.StopFeatureAsync());
+        processor2.Verify(x => x.StopFeatureAsync());
     }
 
     #endregion

@@ -30,9 +30,18 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
     public IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage)
     {
-        _logger.LogDebug("Getting context for replying to message.");
+        _logger.LogDebug("Getting context for replying to message");
 
         var context = _chat.GetContextSnapshot();
+
+        // Forcing a reply even when all messages have already been processed
+        // or the last message is a bot message etc. We ALWAYS reply.
+        if (currentMessage.ForceReply)
+        {
+            _logger.LogDebug("Forcing a reply from the bot");
+            return Reduce(context);
+        }
+
         var unprocessedMessages = context
             .SkipWhile(message => _lastProcessedMessageId != null && message.Id != _lastProcessedMessageId)
             .Skip(_lastProcessedMessageId != null ? 1 : 0)

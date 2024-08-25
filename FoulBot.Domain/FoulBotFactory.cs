@@ -19,8 +19,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly IReminderStore _reminderStore;
     private readonly ILogger<FoulBot> _foulBotLogger;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
-    private readonly ILogger<ReminderCommandProcessor> _reminderCreatorLogger;
+    private readonly ILogger<ReminderFeature> _remindersFeatureLogger;
     private readonly ILogger<BotReplyStrategy> _botReplyStrategyLogger;
+    private readonly ILogger<TalkYourselfFeature> _talkYourselfFeatureLogger;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
@@ -30,8 +31,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         IReminderStore reminderStore,
         ILogger<FoulBot> foulBotLogger,
         ILogger<ReplyImitator> typingImitatorLogger,
-        ILogger<ReminderCommandProcessor> reminderCreatorLogger,
-        ILogger<BotReplyStrategy> botReplyStrategyLogger)
+        ILogger<ReminderFeature> reminderCreatorLogger,
+        ILogger<BotReplyStrategy> botReplyStrategyLogger,
+        ILogger<TalkYourselfFeature> talkYourselfFeatureLogger)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
@@ -40,8 +42,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _reminderStore = reminderStore;
         _foulBotLogger = foulBotLogger;
         _typingImitatorLogger = typingImitatorLogger;
-        _reminderCreatorLogger = reminderCreatorLogger;
+        _remindersFeatureLogger = reminderCreatorLogger;
         _botReplyStrategyLogger = botReplyStrategyLogger;
+        _talkYourselfFeatureLogger = talkYourselfFeatureLogger;
     }
 
     /// <summary>
@@ -86,8 +89,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         // TODO: Come up with a better VISIBLE solution to dispose of it.
 #pragma warning disable CA2000 // It is being disposed on bot Shutdown.
-        var reminderCreator = new ReminderCommandProcessor(
-            _reminderCreatorLogger,
+        var remindersFeature = new ReminderFeature(
+            _remindersFeatureLogger,
             _timeProvider,
             _reminderStore,
             config,
@@ -95,7 +98,19 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot,
             cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
 
-        bot.AddCommandProcessor(reminderCreator);
+        bot.AddCommandProcessor(remindersFeature);
+
+        if (config.TalkOnYourOwn && !chat.IsPrivateChat)
+        {
+            var talkYourselfFeature = new TalkYourselfFeature(
+                _talkYourselfFeatureLogger,
+                _timeProvider,
+                _random,
+                bot,
+                config);
+
+            bot.AddCommandProcessor(talkYourselfFeature);
+        }
 
         return bot;
     }

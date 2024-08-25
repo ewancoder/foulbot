@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain.Tests;
 
-public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
+public class ReminderCommandProcessorTests : Testing<ReminderFeature>
 {
     private const string BotIdValue = "bot";
     private readonly Mock<IReminderStore> _reminderStore;
@@ -55,7 +55,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -66,7 +66,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()), Times.Never);
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(2));
 
-        TimeProvider.Advance(TimeSpan.FromSeconds(1) + ReminderCommandProcessor.CheckInterval);
+        TimeProvider.Advance(TimeSpan.FromSeconds(1) + ReminderFeature.CheckInterval);
         await WaitAsync();
 
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()));
@@ -98,7 +98,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -109,7 +109,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()), Times.Never);
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(2));
 
-        TimeProvider.Advance(TimeSpan.FromSeconds(1) + ReminderCommandProcessor.CheckInterval);
+        TimeProvider.Advance(TimeSpan.FromSeconds(1) + ReminderFeature.CheckInterval);
         await WaitAsync();
 
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()));
@@ -143,10 +143,10 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
 
-        TimeProvider.Advance(ReminderCommandProcessor.CheckInterval);
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
 
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()));
@@ -179,7 +179,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -210,7 +210,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
         SetupReminders(reminders);
 
         {
-            await using var sut = Fixture.Create<ReminderCommandProcessor>();
+            await using var sut = Fixture.Create<ReminderFeature>();
             await WaitAsync();
             _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
         } // Disposing of sut.
@@ -241,11 +241,11 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
-        await sut.StopProcessingAsync();
+        await sut.StopFeatureAsync();
         await AssertProcessStops(1);
     }
 
@@ -266,14 +266,14 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
     {
         var request = "request";
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
 
         var message = Fixture
             .Build<FoulMessage>()
             .With(x => x.Text, messageText)
             .Create();
 
-        await sut.ProcessCommandAsync(message);
+        await sut.ProcessMessageAsync(message);
 
         _reminderStore.Verify(x => x.AddReminderAsync(It.Is<Reminder>(
             r => r.Request == request
@@ -292,7 +292,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
         var request = "request";
 
         SetupReminders([]);
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
         await AssertProcessStopsWhenNoReminders(1);
 
         var message = Fixture
@@ -302,7 +302,7 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders([]); // Processing exits straightaway.
 
-        await sut.ProcessCommandAsync(message);
+        await sut.ProcessMessageAsync(message);
 
         _reminderStore.Verify(x => x.AddReminderAsync(It.Is<Reminder>(
             r => r.Request == request
@@ -329,9 +329,9 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
         SetupReminders([reminder]);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
 
-        await sut.ProcessCommandAsync(Fixture.Create<FoulMessage>() with
+        await sut.ProcessMessageAsync(Fixture.Create<FoulMessage>() with
         {
             Text = command
         });
@@ -352,9 +352,9 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
         };
         SetupReminders(reminders);
 
-        await using var sut = Fixture.Create<ReminderCommandProcessor>();
+        await using var sut = Fixture.Create<ReminderFeature>();
 
-        await sut.ProcessCommandAsync(Fixture.Create<FoulMessage>() with
+        await sut.ProcessMessageAsync(Fixture.Create<FoulMessage>() with
         {
             Text = command
         });
@@ -376,14 +376,14 @@ public class ReminderCommandProcessorTests : Testing<ReminderCommandProcessor>
 
     private async Task AssertProcessStops(int times)
     {
-        TimeProvider.Advance(ReminderCommandProcessor.CheckInterval);
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
 
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(times));
 
         // No more calls even after we set up reminders again.
         SetupReminders(Fixture.Create<IEnumerable<Reminder>>());
-        TimeProvider.Advance(TimeSpan.FromHours(100) + ReminderCommandProcessor.CheckInterval);
+        TimeProvider.Advance(TimeSpan.FromHours(100) + ReminderFeature.CheckInterval);
         await WaitAsync();
 
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(times));

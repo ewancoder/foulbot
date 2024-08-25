@@ -11,12 +11,12 @@ public sealed record Reminder(
     bool EveryDay,
     ChatParticipant RequestedBy);
 
-public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDisposable
+public sealed class ReminderFeature : IBotFeature, IAsyncDisposable
 {
     // TODO: Consider moving out "markdown" logic to telegram-specific dependencies.
     public const string EscapedCharacters = "-_()";
     public static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(10);
-    private readonly ILogger<ReminderCommandProcessor> _logger;
+    private readonly ILogger<ReminderFeature> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly IReminderStore _reminderStore;
     private readonly FoulBotConfiguration _config;
@@ -28,8 +28,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
     private Task? _processing;
     private bool _isStopping;
 
-    public ReminderCommandProcessor(
-        ILogger<ReminderCommandProcessor> logger,
+    public ReminderFeature(
+        ILogger<ReminderFeature> logger,
         TimeProvider timeProvider,
         IReminderStore reminderStore,
         FoulBotConfiguration config,
@@ -53,7 +53,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             _processing = null;
     }
 
-    public async ValueTask<bool> ProcessCommandAsync(FoulMessage message)
+    public async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
     {
         try
         {
@@ -165,7 +165,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
         }
     }
 
-    public async ValueTask StopProcessingAsync()
+    public async ValueTask StopFeatureAsync()
     {
         _isStopping = true;
 
@@ -239,7 +239,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
     public async ValueTask DisposeAsync()
     {
         if (!_isStopping)
-            await StopProcessingAsync();
+            await StopFeatureAsync();
 
         _localCts.Dispose();
         _cts.Dispose();

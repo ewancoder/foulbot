@@ -28,7 +28,7 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
     ValueTask PerformRequestAsync(ChatParticipant requester, string request);
     Task GracefulShutdownAsync();
 
-    void AddCommandProcessor(IBotCommandProcessor commandProcessor);
+    void AddCommandProcessor(IBotFeature commandProcessor);
 }
 
 /// <summary>
@@ -48,7 +48,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
-    private readonly List<IBotCommandProcessor> _commandProcessors = [];
+    private readonly List<IBotFeature> _commandProcessors = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
 
@@ -86,7 +86,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         .AddScoped("ChatId", _chat.ChatId)
         .AddScoped("BotId", _config.FoulBotId);
 
-    public void AddCommandProcessor(IBotCommandProcessor commandProcessor)
+    public void AddCommandProcessor(IBotFeature commandProcessor)
     {
         using var _ = Logger.BeginScope();
 
@@ -143,7 +143,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
         foreach (var processor in _commandProcessors)
         {
-            if (await processor.ProcessCommandAsync(message))
+            if (await processor.ProcessMessageAsync(message))
             {
                 _logger.LogWarning("Message was processed by a command processor: {Processor}", processor.GetType());
                 return; // Message was processed by a command processor.
@@ -255,7 +255,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
 
         foreach (var commandProcessor in _commandProcessors)
-            await commandProcessor.StopProcessingAsync();
+            await commandProcessor.StopFeatureAsync();
 
         _logger.LogTrace("Finished graceful shutdown process");
     }
