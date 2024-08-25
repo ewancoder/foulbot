@@ -137,7 +137,11 @@ public sealed class ChatPool : IAsyncDisposable
         _logger.LogDebug("Received {@Message}, handling the message", message);
 
         if (!await IsAllowedChatAsync(chatId))
+        {
+            // Just for convenience of reading logs from not allowed chats.
+            _logger.LogTrace("Received {Message} from not allowed chat {Chat} by bot {Bot}", message, chatId, foulBotId);
             return;
+        }
 
         var chat = await InitializeChatAndBotAsync(
             chatId,
