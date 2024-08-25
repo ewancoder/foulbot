@@ -218,8 +218,8 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
-        sut.AddCommandProcessor(processor1.Object);
-        sut.AddCommandProcessor(processor2.Object);
+        sut.AddFeature(processor1.Object);
+        sut.AddFeature(processor2.Object);
 
         await sut.TriggerAsync(message);
 
@@ -250,8 +250,8 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(() => new(false));
 
         var sut = CreateFoulBot();
-        sut.AddCommandProcessor(processor1.Object);
-        sut.AddCommandProcessor(processor2.Object);
+        sut.AddFeature(processor1.Object);
+        sut.AddFeature(processor2.Object);
 
         await sut.TriggerAsync(message);
 
@@ -282,13 +282,42 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
-        sut.AddCommandProcessor(processor1.Object);
-        sut.AddCommandProcessor(processor2.Object);
+        sut.AddFeature(processor1.Object);
+        sut.AddFeature(processor2.Object);
 
         await sut.TriggerAsync(message);
 
         processor1.Verify(x => x.ProcessMessageAsync(message));
         processor2.Verify(x => x.ProcessMessageAsync(message), Times.Never);
+    }
+
+    [Theory, AutoMoqData]
+    public async Task TriggerAsync_ShouldNotifyUsers_WhenTheirPromptHasBeenHandledByAFeature(
+        FoulMessage message,
+        IList<FoulMessage> context,
+        string responseMessage)
+    {
+        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+            .Returns(context);
+
+        _aiClient.Setup(x => x.GetTextResponseAsync(context))
+            .Returns(() => new(responseMessage));
+
+        _messageFilter.Setup(x => x.IsGoodMessage(responseMessage))
+            .Returns(true);
+
+        var processor = Fixture.Create<Mock<IBotFeature>>();
+
+        processor.Setup(x => x.ProcessMessageAsync(message))
+            .Returns(() => new(true));
+
+        var config = CreateDefaultConfig();
+        var sut = CreateFoulBot(config);
+        sut.AddFeature(processor.Object);
+
+        await sut.TriggerAsync(message);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, $"Command processed by @{config.BotId} {processor.Object.GetType().Name}"));
     }
 
     [Theory, AutoMoqData]
@@ -315,8 +344,8 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
-        sut.AddCommandProcessor(processor1.Object);
-        sut.AddCommandProcessor(processor2.Object);
+        sut.AddFeature(processor1.Object);
+        sut.AddFeature(processor2.Object);
 
         await sut.DisposeAsync();
 
@@ -348,8 +377,8 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(() => new(true));
 
         var sut = CreateFoulBot();
-        sut.AddCommandProcessor(processor1.Object);
-        sut.AddCommandProcessor(processor2.Object);
+        sut.AddFeature(processor1.Object);
+        sut.AddFeature(processor2.Object);
 
         await sut.GracefulShutdownAsync();
 

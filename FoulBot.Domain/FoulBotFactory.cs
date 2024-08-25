@@ -98,7 +98,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot,
             cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
 
-        bot.AddCommandProcessor(remindersFeature);
+        bot.AddFeature(remindersFeature);
 
         if (config.TalkOnYourOwn && !chat.IsPrivateChat)
         {
@@ -109,7 +109,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
                 bot,
                 config);
 
-            bot.AddCommandProcessor(talkYourselfFeature);
+            bot.AddFeature(talkYourselfFeature);
         }
 
         return bot;

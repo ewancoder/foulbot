@@ -28,7 +28,7 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
     ValueTask PerformRequestAsync(ChatParticipant requester, string request);
     Task GracefulShutdownAsync();
 
-    void AddCommandProcessor(IBotFeature commandProcessor);
+    void AddFeature(IBotFeature commandProcessor);
 }
 
 /// <summary>
@@ -86,7 +86,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         .AddScoped("ChatId", _chat.ChatId)
         .AddScoped("BotId", _config.FoulBotId);
 
-    public void AddCommandProcessor(IBotFeature commandProcessor)
+    public void AddFeature(IBotFeature commandProcessor)
     {
         using var _ = Logger.BeginScope();
 
@@ -146,6 +146,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             if (await processor.ProcessMessageAsync(message))
             {
                 _logger.LogWarning("Message was processed by a command processor: {Processor}", processor.GetType());
+
+                await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
                 return; // Message was processed by a command processor.
             }
         }
