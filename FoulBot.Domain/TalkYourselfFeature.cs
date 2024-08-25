@@ -68,7 +68,7 @@ public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable
 
     private async Task TalkAsync()
     {
-        while (true)
+        while (!_isStopping)
         {
             var delayMinutes = _random.Generate(MinDelayTimeMinutes, MaxDelayTimeMinutes);
 
