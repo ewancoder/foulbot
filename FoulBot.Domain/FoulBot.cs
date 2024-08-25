@@ -3,8 +3,7 @@
 // Tested through FoulBot. Convenience class.
 public sealed class ChatScopedBotMessenger(
     IBotMessenger messenger,
-    FoulChatId chatId,
-    CancellationToken cancellationToken) // TODO: Pass CancellationToken to messenger.
+    FoulChatId chatId) // TODO: Consider passing cancellation token everywhere.
 {
     public ValueTask SendTextMessageAsync(string message)
         => messenger.SendTextMessageAsync(chatId, message);

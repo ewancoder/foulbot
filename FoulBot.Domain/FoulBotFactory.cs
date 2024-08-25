@@ -57,7 +57,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             return null;
 
         var cts = new CancellationTokenSource();
-        var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId, cts.Token);
+        var messenger = new ChatScopedBotMessenger(botMessenger, chat.ChatId);
         var replyStrategy = new BotReplyStrategy(_botReplyStrategyLogger, _timeProvider, chat, config);
         var typingImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);

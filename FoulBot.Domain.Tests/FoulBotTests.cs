@@ -31,7 +31,7 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(true);
 
         Fixture.Register(() => new ChatScopedBotMessenger(
-            _botMessenger.Object, _chat.Object.ChatId, Cts.Token));
+            _botMessenger.Object, _chat.Object.ChatId));
     }
 
     public FoulChatId ChatId => _chat.Object.ChatId;
