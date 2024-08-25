@@ -66,6 +66,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
             if (reminderId is not null)
             {
+                _logger.LogDebug("Processing cancel reminder command.");
+
                 var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
                 var reminderForRemoval = reminders.FirstOrDefault(x => x.Id == reminderId);
                 if (reminderForRemoval != null)
@@ -81,6 +83,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
             if (remindersListCommand is not null)
             {
+                _logger.LogDebug("Processing show reminders command.");
+
                 var reminders = await _reminderStore.GetRemindersForAsync(_chatId, _config.FoulBotId);
 
                 var sb = new StringBuilder();
@@ -118,6 +122,8 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             if (text == null)
                 return false;
 
+            _logger.LogDebug("Processing add new reminder command.");
+
             var requestedBy = message.Sender;
 
             text = text.Trim();
@@ -143,6 +149,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                 _chatId, _config.FoulBotId,
                 time, request, isEveryDay, requestedBy);
             await _reminderStore.AddReminderAsync(reminder);
+            _logger.LogInformation("Successfully added a new reminder: {@Reminder}", reminder);
 
             lock (_lock)
             {
@@ -177,12 +184,15 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
 
     private async Task ProcessRemindersAsync()
     {
+        _logger.LogDebug("Starting processing reminders mechanism");
+
         while (true)
         {
             // This call should be cached in-memory.
             var reminders = await _reminderStore.GetRemindersForAsync(_chatId, new(_config.BotId, _config.BotName));
             if (!reminders.Any())
             {
+                _logger.LogDebug("No reminders found for this bot in this chat. Exiting processing reminders");
                 _processing = null;
                 break; // As soon as we remove all reminders - this process stops.
             }
@@ -196,7 +206,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
             {
                 try
                 {
-                    _logger.LogInformation("Reminding: {Reminder}", reminder);
+                    _logger.LogInformation("Reminding: {@Reminder}", reminder);
 
                     await _reminderStore.RemoveReminderAsync(reminder);
                     if (reminder.EveryDay)
@@ -210,6 +220,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                             };
                         }
 
+                        _logger.LogDebug("It's an every-day reminder. Resetting it for the next day");
                         await _reminderStore.AddReminderAsync(newReminder);
                     }
 
@@ -218,7 +229,7 @@ public sealed class ReminderCommandProcessor : IBotCommandProcessor, IAsyncDispo
                 catch (Exception exception)
                 {
                     // TODO: Unit test this. So far untested.
-                    _logger.LogError(exception, "Could not trigger a reminder.");
+                    _logger.LogError(exception, "Could not trigger a reminder");
                     // Do NOT rethrow exception here, as this will fail the whole reminders background task.
                 }
             }
