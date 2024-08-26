@@ -43,8 +43,9 @@ public interface IReplyImitator : IAsyncDisposable
 /// </summary>
 public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
 {
-    private const int MinRandomWaitMs = 1500;
-    private const int MaxRandomWaitMs = 10000;
+    public const int MinRandomWaitMs = 1500;
+    public const int MaxRandomWaitMs = 10000;
+    private readonly CancellationTokenSource _shutdownCts = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly ILogger<ReplyImitator> _logger;
     private readonly IBotMessenger _messenger;
@@ -75,6 +76,7 @@ public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
         _typing = ImitateReplyingAsync();
     }
 
+    // TODO: Unit test not covered parts, and less than 1 second check.
     private async Task ImitateReplyingAsync()
     {
         while (_text == null)
@@ -111,12 +113,14 @@ public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
             catch (TaskCanceledException)
             {
                 _logger.LogDebug("Imitator has been canceled. Stopping imitation.");
-                return;
+                break;
             }
         }
 
-        var requiredTimeToTypeText = TimeSpan.FromSeconds(Convert.ToInt32(Math.Floor(
-            60m * (_text.Length / 1000m))));
+        _text ??= string.Empty;
+
+        var requiredTimeToTypeText = TimeSpan.FromMilliseconds(Convert.ToInt32(Math.Floor(
+            30m * _text.Length)));
 
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
@@ -125,6 +129,7 @@ public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
         {
             _logger.LogDebug("We still need to imitate typing the rest of the text. Remaining milliseconds is {RemainingMilliseconds}.", remainingMilliseconds);
 
+            now = _timeProvider.GetUtcNow().UtcDateTime;
             remainingMilliseconds = (requiredTimeToTypeText - (now - _startedAt)).TotalMilliseconds;
             if (remainingMilliseconds <= 0)
             {
@@ -146,7 +151,7 @@ public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
             var randomValue = _random.Generate(MinRandomWaitMs, MaxRandomWaitMs);
             _logger.LogDebug("Waiting random amount {Amount} milliseconds, or {RemainingMilliseconds} milliseconds, whichever is smaller.", randomValue, remainingMilliseconds);
             var waitMilliseconds = Convert.ToInt32(Math.Floor(Math.Min(randomValue, remainingMilliseconds)));
-            await Task.Delay(waitMilliseconds);
+            await Task.Delay(TimeSpan.FromMilliseconds(waitMilliseconds), _timeProvider, _shutdownCts.Token); // TODO: Add a different cancellation token here that will work on app shutdown.
         }
 
         _logger.LogDebug("Stopped typing imitation.");
@@ -159,12 +164,15 @@ public sealed class ReplyImitator : IReplyImitator, IAsyncDisposable
         await _typing;
     }
 
+    // TODO: Unit test that Dispose doesn't wait to finish typing, it stops straightaway.
     public async ValueTask DisposeAsync()
     {
         try
         {
+            await _shutdownCts.CancelAsync();
             await FinishReplyingAsync(string.Empty);
             _cts.Dispose();
+            _shutdownCts.Dispose();
         }
         catch (TaskCanceledException exception)
         {
