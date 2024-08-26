@@ -11,9 +11,3 @@ public interface IFoulAIClient
     ValueTask<string> GetCustomResponseAsync(string directive);
     ValueTask<Stream> GetAudioResponseAsync(string text);
 }
-
-// TODO: Refactor to be implementation agnostic.
-public interface IGoogleTtsService
-{
-    Task<Stream> GetAudioAsync(string text);
-}
