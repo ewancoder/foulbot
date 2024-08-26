@@ -158,7 +158,7 @@ public static class BotsRegistration
             services.RegisterBot(configuration, "EwGirlBotApiKey", new FoulBotConfiguration(
                 "ew_girlbot", "Girl_Bot", girlDirective,
                 ["girl", "мот"], [])
-                    .SetContextSize(40));
+                    .SetContextSize(40).Private());
 
             services.RegisterBot(configuration, "EwYakuzaBotApiKey", new FoulBotConfiguration(
                 "ew_yakuzabot", "Yakuza_Boss", yakuzaDirective,
@@ -173,12 +173,12 @@ public static class BotsRegistration
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
                 "ew_realtorbot", "Realtor", realtorDirective,
                 ["realtor", "риелтор", "дом", "house"], [])
-                    .SetContextSize(35));
+                    .SetContextSize(35).Private());
 
             services.RegisterBot(configuration, "EwGggBotApiKey", new FoulBotConfiguration(
                 "ew_gggbot", "Assistant", assistantDirective,
                 ["ggg"], [])
-                    .SetContextSize(40).NeverReplyOutOfTurn().DoNotWriteOnYourOwn());
+                    .SetContextSize(40).NeverReplyOutOfTurn().DoNotWriteOnYourOwn().Private());
 
             services.RegisterBot(configuration, "EwSmartAssBotApiKey", new FoulBotConfiguration(
                 "ew_smartassbot", "Assistant", newtonDirective,

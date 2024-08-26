@@ -18,6 +18,7 @@ public sealed record FoulBotConfiguration
         Triggers = triggers;
     }
 
+    public bool IsPublic { get; init; } = true;
     public FoulBotId FoulBotId { get; init; }
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
@@ -39,6 +40,14 @@ public sealed record FoulBotConfiguration
     public bool TalkOnYourOwn { get; init; } = true;
 
     public bool IsAssistant => !NotAnAssistant;
+
+    public FoulBotConfiguration Private()
+    {
+        return this with
+        {
+            IsPublic = false
+        };
+    }
 
     public FoulBotConfiguration UseGpt35()
     {
