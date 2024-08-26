@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using FoulBot.Domain.Storage;
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,12 +46,21 @@ public static class RegistrationExtensions
         return services
             .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
             .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
+            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
             .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
             .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
             .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
+    }
+
+    public static IServiceCollection AddCachedReminderStore<TReminderStore>(
+        this IServiceCollection services)
+        where TReminderStore : class, IReminderStore
+    {
+        return services.AddTransient<IReminderStore, TReminderStore>()
+            .Decorate<IReminderStore, InMemoryLockingReminderStoreDecorator>();
     }
 
     public static IConfiguration AddConfiguration(

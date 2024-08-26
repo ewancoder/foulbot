@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using FoulBot.Domain.Storage;
 
-namespace FoulBot.Domain;
+namespace FoulBot.Infrastructure;
 
 // TODO: Consider moving to infrastructure (or helper project). It's not FoulBot domain.
 public sealed class InMemoryLockingReminderStoreDecorator : IReminderStore, IDisposable

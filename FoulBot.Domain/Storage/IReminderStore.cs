@@ -1,4 +1,4 @@
-﻿namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain.Storage;
 
 /// <summary>
 /// Should be in-memory cached, it is queryed very often.

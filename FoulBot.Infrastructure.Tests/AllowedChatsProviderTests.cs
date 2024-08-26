@@ -1,4 +1,7 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain;
+using FoulBot.Domain.Tests;
+
+namespace FoulBot.Infrastructure.Tests;
 
 public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
 {
