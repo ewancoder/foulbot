@@ -115,14 +115,15 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         if (config.TalkOnYourOwn && !chat.IsPrivateChat)
         {
-            var talkYourselfFeature = new TalkYourselfFeature(
+            // For some reason it starts talking in private chats. Disable for now.
+            /*var talkYourselfFeature = new TalkYourselfFeature(
                 _talkYourselfFeatureLogger,
                 _timeProvider,
                 _random,
                 bot,
                 config);
 
-            bot.AddFeature(talkYourselfFeature);
+            bot.AddFeature(talkYourselfFeature);*/
         }
 
         return bot;
