@@ -1,4 +1,6 @@
-﻿namespace FoulBot.App;
+﻿using FoulBot.Domain.Storage;
+
+namespace FoulBot.App;
 
 /// <summary>
 /// This class is responsible for initially loading all the bots to chats.

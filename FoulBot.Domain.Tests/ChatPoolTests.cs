@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Storage;
+
+namespace FoulBot.Domain.Tests;
 
 public class ChatPoolTests : Testing<ChatPool>
 {

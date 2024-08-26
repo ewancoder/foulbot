@@ -1,4 +1,7 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Features;
+using FoulBot.Domain.Storage;
+
+namespace FoulBot.Domain.Tests;
 
 public class ReminderCommandProcessorTests : Testing<ReminderFeature>
 {

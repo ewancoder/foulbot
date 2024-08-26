@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FoulBot.Domain.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Polling;
 
 namespace FoulBot.Infrastructure.Telegram;

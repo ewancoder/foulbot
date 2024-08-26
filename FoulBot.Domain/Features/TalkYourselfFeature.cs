@@ -1,4 +1,4 @@
-﻿namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain.Features;
 
 // TODO: Unit test this class.
 public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FoulBot.Domain.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FoulBot.Domain;
@@ -14,18 +15,9 @@ public static class RegistrationExtensions
         return services
             .AddSingleton(TimeProvider.System)
             .AddSingleton<ISharedRandomGenerator, SharedRandomGenerator>()
-            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
             .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>();
-    }
-
-    public static IServiceCollection AddCachedReminderStore<TReminderStore>(
-        this IServiceCollection services)
-        where TReminderStore : class, IReminderStore
-    {
-        return services.AddTransient<IReminderStore, TReminderStore>()
-            .Decorate<IReminderStore, InMemoryLockingReminderStoreDecorator>();
     }
 
     public static IServiceCollection AddChatPool<TDuplicateMessageHandler>(

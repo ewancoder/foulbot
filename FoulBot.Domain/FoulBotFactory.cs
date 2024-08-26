@@ -1,4 +1,7 @@
-﻿namespace FoulBot.Domain;
+﻿using FoulBot.Domain.Features;
+using FoulBot.Domain.Storage;
+
+namespace FoulBot.Domain;
 
 public delegate ValueTask<IFoulBot?> JoinBotToChatAsync(IFoulChat chat);
 

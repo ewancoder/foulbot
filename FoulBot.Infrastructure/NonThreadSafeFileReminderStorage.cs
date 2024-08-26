@@ -1,4 +1,7 @@
-﻿namespace FoulBot.Infrastructure;
+﻿using FoulBot.Domain.Features;
+using FoulBot.Domain.Storage;
+
+namespace FoulBot.Infrastructure;
 
 public sealed record FileSavedReminder(
     string Id,

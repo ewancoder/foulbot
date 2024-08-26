@@ -1,14 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using FoulBot.Domain.Storage;
 
-namespace FoulBot.Domain;
-
-public interface IAllowedChatsProvider
-{
-    ValueTask<IEnumerable<FoulChatId>> GetAllAllowedChatsAsync();
-    ValueTask<bool> IsAllowedChatAsync(FoulChatId chatId);
-    ValueTask AllowChatAsync(FoulChatId chatId);
-    ValueTask DisallowChatAsync(FoulChatId chatId);
-}
+namespace FoulBot.Infrastructure;
 
 // TODO: Move this to Infrastructure as this is an implementation detail.
 public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable

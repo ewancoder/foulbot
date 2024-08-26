@@ -2,6 +2,12 @@
 
 namespace FoulBot.Infrastructure;
 
+// TODO: Refactor to be implementation agnostic.
+public interface IGoogleTtsService
+{
+    Task<Stream> GetAudioAsync(string text);
+}
+
 public sealed class GoogleTtsService : IGoogleTtsService
 {
     private readonly ILogger<GoogleTtsService> _logger;

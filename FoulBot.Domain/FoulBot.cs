@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using FoulBot.Domain.Features;
+
+namespace FoulBot.Domain;
 
 // Tested through FoulBot. Convenience class.
 public sealed class ChatScopedBotMessenger(

@@ -1,4 +1,4 @@
-﻿namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain.Features;
 
 public interface IBotFeature
 {

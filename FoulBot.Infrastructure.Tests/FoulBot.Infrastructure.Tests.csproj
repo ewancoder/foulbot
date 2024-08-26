@@ -1,5 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="..\FoulBot.Domain.Tests\FoulBot.Domain.Tests.csproj" />
+    <ProjectReference Include="..\FoulBot.Domain\FoulBot.Domain.csproj" />
     <ProjectReference Include="..\FoulBot.Infrastructure\FoulBot.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
