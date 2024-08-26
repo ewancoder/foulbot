@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using FoulBot.Domain.Storage;
 
-namespace FoulBot.Domain;
+namespace FoulBot.Domain.Features;
 
 public sealed record Reminder(
     string Id, // Unfortunately we need an identifier in our domain model, so we can properly remove reminders.

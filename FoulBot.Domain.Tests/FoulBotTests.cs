@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Features;
+
+namespace FoulBot.Domain.Tests;
 
 public class FoulBotTests : Testing<FoulBot>
 {

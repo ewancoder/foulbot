@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Storage;
+﻿using FoulBot.Domain.Features;
+using FoulBot.Domain.Storage;
 
 namespace FoulBot.Domain;
 
