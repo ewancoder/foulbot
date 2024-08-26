@@ -30,7 +30,7 @@ public interface IFoulBot : IAsyncDisposable // HACK: so that ChatPool can dispo
     ValueTask PerformRequestAsync(ChatParticipant requester, string request);
     Task GracefulShutdownAsync();
 
-    void AddFeature(IBotFeature commandProcessor);
+    void AddFeature(IBotFeature feature);
 }
 
 /// <summary>
@@ -50,7 +50,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly IFoulChat _chat;
     private readonly CancellationTokenSource _cts;
     private readonly FoulBotConfiguration _config;
-    private readonly List<IBotFeature> _commandProcessors = [];
+    private readonly List<IBotFeature> _features = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
 
@@ -88,13 +88,13 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         .AddScoped("ChatId", _chat.ChatId)
         .AddScoped("BotId", _config.FoulBotId);
 
-    public void AddFeature(IBotFeature commandProcessor)
+    public void AddFeature(IBotFeature feature)
     {
         using var _ = Logger.BeginScope();
 
-        _commandProcessors.Add(commandProcessor);
+        _features.Add(feature);
 
-        _logger.LogTrace("Command processor added: {CommandProcessor}", commandProcessor.GetType());
+        _logger.LogTrace("Command processor added: {CommandProcessor}", feature.GetType());
     }
 
     public async ValueTask SendRawAsync(string text)
@@ -143,7 +143,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Received message by the bot: {Message}", message);
 
-        foreach (var processor in _commandProcessors)
+        foreach (var processor in _features)
         {
             if (await processor.ProcessMessageAsync(message))
             {
@@ -256,10 +256,11 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         _isShuttingDown = true;
 
         await _cts.CancelAsync();
-        Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
 
-        foreach (var commandProcessor in _commandProcessors)
-            await commandProcessor.StopFeatureAsync();
+        foreach (var feature in _features)
+            await feature.StopFeatureAsync();
+
+        Shutdown?.Invoke(this, EventArgs.Empty); // Class that subscribes to this event should dispose of this FoulBot instance.
 
         _logger.LogTrace("Finished graceful shutdown process");
     }
