@@ -12,7 +12,7 @@ public sealed record Reminder(
     bool EveryDay,
     ChatParticipant RequestedBy);
 
-public sealed class ReminderFeature : IBotFeature, IAsyncDisposable
+public sealed class ReminderFeature : BotFeature, IAsyncDisposable
 {
     // TODO: Consider moving out "markdown" logic to telegram-specific dependencies.
     public const string EscapedCharacters = "-_()";
@@ -54,7 +54,7 @@ public sealed class ReminderFeature : IBotFeature, IAsyncDisposable
             _processing = null;
     }
 
-    public async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
+    public override async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
     {
         try
         {
@@ -166,21 +166,12 @@ public sealed class ReminderFeature : IBotFeature, IAsyncDisposable
         }
     }
 
-    public async ValueTask StopFeatureAsync()
+    public override async ValueTask StopFeatureAsync()
     {
         _isStopping = true;
 
         await _localCts.CancelAsync();
         await DisposeAsync(); // HACK: Dispose will be called twice when disposed.
-    }
-
-    private static string? CutKeyword(string text, string keyword)
-    {
-        // TODO: Make it work with 'каждый    день' so there can be many spaces within keywords.
-        if (!text.Trim().StartsWith(keyword))
-            return null;
-
-        return text.Trim()[(0 + keyword.Length)..].Trim();
     }
 
     private async Task ProcessRemindersAsync()

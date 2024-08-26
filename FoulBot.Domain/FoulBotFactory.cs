@@ -20,6 +20,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ISharedRandomGenerator _random;
     private readonly IFoulAIClientFactory _aiClientFactory;
     private readonly IReminderStore _reminderStore;
+    private readonly IEnumerable<BotConnectionConfiguration> _allBots;
     private readonly ILogger<FoulBot> _foulBotLogger;
     private readonly ILogger<ReplyImitator> _typingImitatorLogger;
     private readonly ILogger<ReminderFeature> _remindersFeatureLogger;
@@ -32,6 +33,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ISharedRandomGenerator random,
         IFoulAIClientFactory aiClientFactory,
         IReminderStore reminderStore,
+        IEnumerable<BotConnectionConfiguration> allBots,
         ILogger<FoulBot> foulBotLogger,
         ILogger<ReplyImitator> typingImitatorLogger,
         ILogger<ReminderFeature> reminderCreatorLogger,
@@ -43,6 +45,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _random = random;
         _aiClientFactory = aiClientFactory;
         _reminderStore = reminderStore;
+        _allBots = allBots;
         _foulBotLogger = foulBotLogger;
         _typingImitatorLogger = typingImitatorLogger;
         _remindersFeatureLogger = reminderCreatorLogger;
@@ -101,7 +104,14 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot,
             cts.Token); // Bot graceful shutdown will not straightaway call cancellation. We want to make sure it happens.
 
+        var advertisementFeature = new AdvertisementFeature(
+            bot,
+            config.BotId,
+            _allBots,
+            aiClient);
+
         bot.AddFeature(remindersFeature);
+        bot.AddFeature(advertisementFeature);
 
         if (config.TalkOnYourOwn && !chat.IsPrivateChat)
         {
