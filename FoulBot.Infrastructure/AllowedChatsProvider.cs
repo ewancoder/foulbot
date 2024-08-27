@@ -107,8 +107,11 @@ public sealed class AllowedChatsProvider : IAllowedChatsProvider, IDisposable
 
             _logger.LogDebug("Finished reading allowed chats from file");
             _allowedChats = new ConcurrentDictionary<string, bool>(
-                chats.Select(chat => new KeyValuePair<string, bool>(GetKey(new(chat)), false)));
+                chats.Select(stringChatId => new KeyValuePair<string, bool>(stringChatId, false)));
 
+            // TODO: Consider normalizing allowed chats: if ANY private chat ends up as a record of public chat,
+            // users will have non-deterministic behaviour (non-working bots until they are re-activated,
+            // and they will write to you personally from time to time.
             return _allowedChats;
         }
         finally
