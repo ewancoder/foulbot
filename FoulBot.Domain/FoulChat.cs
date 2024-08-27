@@ -34,11 +34,8 @@ public sealed class FoulChat : IFoulChat
     private readonly object _lock = new();
     private bool _isStopping;
 
-    // HACK: Leaving this constructor public for tests.
-    // TODO: In future - make customization for tests to use static factory
-    // and make the constructor private.
     // TODO: Unit test non-empty context on startup (when using factory).
-    public FoulChat(
+    private FoulChat(
         TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
         IContextStore contextStore,
@@ -58,7 +55,7 @@ public sealed class FoulChat : IFoulChat
     }
 
     // TODO: Unit test this.
-    public static async ValueTask<IFoulChat> CreateFoulChatAsync(
+    public static async ValueTask<FoulChat> CreateFoulChatAsync(
         TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
         IContextStore contextStore,

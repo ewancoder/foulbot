@@ -25,11 +25,11 @@ public sealed class FoulChatFactory : IFoulChatFactory
         _contextStore = contextStore;
     }
 
-    public ValueTask<IFoulChat> CreateAsync(
+    public async ValueTask<IFoulChat> CreateAsync(
         IDuplicateMessageHandler duplicateMessageHandler,
         FoulChatId chatId)
     {
-        return FoulChat.CreateFoulChatAsync(
+        return await FoulChat.CreateFoulChatAsync(
             _timeProvider,
             duplicateMessageHandler,
             _contextStore,
