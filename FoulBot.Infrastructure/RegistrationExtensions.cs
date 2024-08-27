@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using FoulBot.Domain.Storage;
+using FoulBot.Infrastructure.Storage;
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,7 @@ public sealed record FoulBotServerBuilder(
         services
             .AddLogging(configuration, isDebug)
             .AddFoulBotDomain()
-            .AddFoulBotInfrastructure();
+            .AddFoulBotInfrastructure(configuration, isDebug);
 
         return new(services, configuration);
     }
@@ -41,8 +42,20 @@ public sealed record FoulBotServerBuilder(
 
 public static class RegistrationExtensions
 {
-    public static IServiceCollection AddFoulBotInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddFoulBotInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool isDebug)
     {
+        if (!isDebug)
+        {
+            var redisConnectionString = configuration["RedisConnectionString"]
+                ?? throw new InvalidOperationException("Could not get Redis connection string.");
+
+            // Register as factory so that the DI dispose of it.
+            services.AddSingleton<IContextStore>(_ => new RedisContextStore(redisConnectionString));
+        }
+
         return services
             .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
             .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
