@@ -131,9 +131,11 @@ public sealed class FoulBotFactory : IFoulBotFactory
             var feature = new DocumentSearchFeature(
                 documentSearch,
                 botMessenger,
+                aiClient,
                 chat.ChatId,
                 config.DocumentSearchStoreName!,
-                config.BotId);
+                config.BotId,
+                config.Directive);
 
             bot.AddFeature(feature);
         }

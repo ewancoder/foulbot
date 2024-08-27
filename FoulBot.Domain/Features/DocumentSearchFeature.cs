@@ -26,22 +26,28 @@ public sealed class DocumentSearchFeature : BotFeature
 {
     private readonly IDocumentSearch _documentSearch;
     private readonly IBotMessenger _botMessenger;
+    private readonly IFoulAIClient _aiClient;
     private readonly FoulChatId _chatId;
     private readonly string _storeName;
     private readonly string _botId;
+    private readonly string _botDirective;
 
     public DocumentSearchFeature(
         IDocumentSearch documentSearch,
         IBotMessenger botMessenger,
+        IFoulAIClient aiClient,
         FoulChatId chatId,
         string storeName,
-        string botId)
+        string botId,
+        string botDirective)
     {
         _documentSearch = documentSearch;
         _botMessenger = botMessenger;
+        _aiClient = aiClient;
         _chatId = chatId;
         _storeName = storeName;
         _botId = botId;
+        _botDirective = botDirective;
     }
 
     public override async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
@@ -61,11 +67,20 @@ public sealed class DocumentSearchFeature : BotFeature
                 return true;
             }
 
-            await foreach (var result in _documentSearch.GetSearchResultsAsync(_storeName, text))
+            var rawText = CutKeyword(text, "raw");
+
+            await foreach (var result in _documentSearch.GetSearchResultsAsync(_storeName, rawText ?? text))
             {
                 if (result.Image == null && result.Text != null)
                 {
-                    await _botMessenger.SendTextMessageAsync(_chatId, result.Text);
+                    if (rawText is not null)
+                        await _botMessenger.SendTextMessageAsync(_chatId, result.Text);
+                    else
+                    {
+                        var funText = await _aiClient.GetCustomResponseAsync($"{_botDirective}. Imagine you have produced the following text, update it based on your character but keep the relevant facts intact: \"{result.Text}\"");
+
+                        await _botMessenger.SendTextMessageAsync(_chatId, funText);
+                    }
                 }
 
                 if (result.Image != null)

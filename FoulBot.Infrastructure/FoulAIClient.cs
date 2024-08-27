@@ -311,7 +311,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
                     yield return new(contentItem.Text, null);
 
                     // Include annotations, if any.
-                    foreach (var annotation in contentItem.TextAnnotations)
+                    // TODO: Commented out for now.
+                    /*foreach (var annotation in contentItem.TextAnnotations)
                     {
                         if (!string.IsNullOrEmpty(annotation.InputFileId))
                         {
@@ -321,7 +322,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
                         {
                             yield return new($"* File output, new file ID: {annotation.OutputFileId}", null);
                         }
-                    }
+                    }*/
                 }
 
                 if (!string.IsNullOrEmpty(contentItem.ImageFileId))
