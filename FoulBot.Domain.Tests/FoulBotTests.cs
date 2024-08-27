@@ -684,7 +684,7 @@ public class FoulBotTests : Testing<FoulBot>
     private void AssertContextNotified(string messageAddedToContext, string botName)
     {
         _chat.Verify(x => x.AddMessage(It.Is<FoulMessage>(
-            message => message.MessageType == FoulMessageType.Bot
+            message => message.SenderType == FoulMessageSenderType.Bot
                 && message.IsOriginallyBotMessage == true
                 && message.Text == messageAddedToContext
                 && message.SenderName == botName)));

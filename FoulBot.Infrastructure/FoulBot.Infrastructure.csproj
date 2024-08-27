@@ -13,6 +13,7 @@
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="Telegram.Bot" />
     <PackageReference Include="UnidecodeSharpCore" />
   </ItemGroup>

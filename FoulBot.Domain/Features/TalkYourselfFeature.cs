@@ -83,14 +83,14 @@ public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable
 
             _logger.LogDebug("Triggering a reply from bot by TalkYourself feature");
 
-            await _bot.TriggerAsync(new FoulMessage(
+            await _bot.TriggerAsync(FoulMessage.CreateText(
                 Guid.NewGuid().ToString(),
-                FoulMessageType.User,
+                FoulMessageSenderType.User,
                 new("TalkYourself"),
                 string.Empty,
                 _timeProvider.GetUtcNow().UtcDateTime,
                 false,
-                _botId)
+                _botId) with
             {
                 ForceReply = true
             });

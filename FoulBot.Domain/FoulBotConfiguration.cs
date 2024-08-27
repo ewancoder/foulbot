@@ -39,7 +39,18 @@ public sealed record FoulBotConfiguration
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool TalkOnYourOwn { get; init; } = true;
 
+    public string? DocumentSearchStoreName { get; init; }
+    public bool HasDocumentSearch => DocumentSearchStoreName != null;
+
     public bool IsAssistant => !NotAnAssistant;
+
+    public FoulBotConfiguration WithDocumentSearch(string storeName)
+    {
+        return this with
+        {
+            DocumentSearchStoreName = $"{BotId}__{storeName}"
+        };
+    }
 
     public FoulBotConfiguration Private()
     {

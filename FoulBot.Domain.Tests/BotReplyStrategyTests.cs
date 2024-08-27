@@ -461,7 +461,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
     {
         var messages = BuildMessage()
-            .With(x => x.MessageType, FoulMessageType.Bot)
+            .With(x => x.SenderType, FoulMessageSenderType.Bot)
             .With(x => x.Text, "trigger")
             .CreateMany()
             .ToList();
@@ -473,7 +473,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var response = sut.GetContextForReplying(messages[^1]);
         // Skipping system directive.
-        Assert.True(response!.Skip(1).All(message => message.MessageType == FoulMessageType.User));
+        Assert.True(response!.Skip(1).All(message => message.SenderType == FoulMessageSenderType.User));
     }
 
     [Theory]
@@ -647,7 +647,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         // Assert first message is directive.
         var directive = contextForReplying.First();
-        Assert.Equal(FoulMessageType.System, directive.MessageType);
+        Assert.Equal(FoulMessageSenderType.System, directive.SenderType);
         Assert.Equal("System", directive.SenderName);
         Assert.Equal(config.Directive, directive.Text);
         Assert.False(directive.IsOriginallyBotMessage);
@@ -733,14 +733,14 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         return _fixture
             .Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
-            .With(x => x.MessageType, FoulMessageType.User)
+            .With(x => x.SenderType, FoulMessageSenderType.User)
             .With(x => x.IsOriginallyBotMessage, false)
             .With(x => x.ForceReply, false)
             .CreateMany(20)
             .Concat(_fixture
                 .Build<FoulMessage>()
                 .With(x => x.Text, _fixture.Create<string>())
-                .With(x => x.MessageType, FoulMessageType.User)
+                .With(x => x.SenderType, FoulMessageSenderType.User)
                 .With(x => x.IsOriginallyBotMessage, false)
                 .With(x => x.ForceReply, false)
                 .CreateMany(40))
@@ -751,7 +751,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
     {
         return _fixture.Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
-            .With(x => x.MessageType, FoulMessageType.User)
+            .With(x => x.SenderType, FoulMessageSenderType.User)
             .With(x => x.Sender, () => new(senderName))
             .With(x => x.IsOriginallyBotMessage, isOriginallyBotMessage)
             .With(x => x.ForceReply, false)
@@ -762,7 +762,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
     {
         return _fixture.Build<FoulMessage>()
             .With(x => x.Date, DateTime.MinValue + TimeSpan.FromHours(hours))
-            .With(x => x.MessageType, FoulMessageType.User)
+            .With(x => x.SenderType, FoulMessageSenderType.User)
             .With(x => x.Text, isTriggered ? "trigger": _fixture.Create<string>())
             .With(x => x.IsOriginallyBotMessage, false)
             .With(x => x.ForceReply, false)

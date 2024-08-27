@@ -71,6 +71,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var typingImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
         var aiClient = _aiClientFactory.Create(config.OpenAIModel);
+        var documentSearch = (IDocumentSearch)aiClient;
         IMessageFilter messageFilter = config.IsAssistant
             ? new AssistantMessageFilter()
             : new FoulMessageFilter();
@@ -123,6 +124,18 @@ public sealed class FoulBotFactory : IFoulBotFactory
                 config);
 
             bot.AddFeature(talkYourselfFeature);
+        }
+
+        if (config.HasDocumentSearch)
+        {
+            var feature = new DocumentSearchFeature(
+                documentSearch,
+                botMessenger,
+                chat.ChatId,
+                config.DocumentSearchStoreName!,
+                config.BotId);
+
+            bot.AddFeature(feature);
         }
 
         return bot;

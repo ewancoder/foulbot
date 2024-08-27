@@ -1,16 +1,27 @@
 ﻿namespace FoulBot.Domain;
 
+public sealed record Attachment(
+    string? Name, Stream Data);
+
+public enum FoulMessageType
+{
+    Text = 1,
+    Document = 2
+}
+
 /// <summary>
 /// Id should be implementation-agnostic UNIQUE value between messages.
 /// </summary>
 public sealed record FoulMessage(
     string Id,
-    FoulMessageType MessageType,
+    FoulMessageType Type,
+    FoulMessageSenderType SenderType,
     ChatParticipant Sender,
     string Text,
     DateTime Date,
     bool IsOriginallyBotMessage,
-    string? ReplyTo)
+    string? ReplyTo,
+    IEnumerable<Attachment> Attachments)
 {
     public string SenderName => Sender.Name;
 
@@ -18,7 +29,7 @@ public sealed record FoulMessage(
     {
         return this with
         {
-            MessageType = FoulMessageType.User
+            SenderType = FoulMessageSenderType.User
         };
     }
 
@@ -30,6 +41,26 @@ public sealed record FoulMessage(
 
     public override string ToString()
     {
-        return $"({Id}) {MessageType}.{SenderName}: {Text}";
+        return $"({Id}) {SenderType}.{SenderName}: {Text}";
     }
+
+    public static FoulMessage CreateText(
+        string id,
+        FoulMessageSenderType senderType,
+        ChatParticipant sender,
+        string text,
+        DateTime date,
+        bool isOriginallyBotMessage,
+        string? replyTo) => new(
+            id, FoulMessageType.Text, senderType, sender, text, date, isOriginallyBotMessage, replyTo, Enumerable.Empty<Attachment>());
+
+    public static FoulMessage CreateDocument(
+        string id,
+        FoulMessageSenderType senderType,
+        ChatParticipant sender,
+        DateTime date,
+        bool isOriginallyBotMessage,
+        string? replyTo,
+        IEnumerable<Attachment> attachments) => new(
+            id, FoulMessageType.Document, senderType, sender, "*sent document*", date, isOriginallyBotMessage, replyTo, attachments);
 }

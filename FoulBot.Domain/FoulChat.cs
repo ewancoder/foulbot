@@ -235,6 +235,13 @@ public sealed class FoulChat : IFoulChat
     /// </summary>
     private void RemoveMessageFromContext(FoulMessage message)
     {
+        // TODO: Unit test disposing of streams.
+        if (message.Type == FoulMessageType.Document)
+        {
+            foreach (var attachment in message.Attachments)
+                attachment.Data.Dispose(); // Consider doing it async, although it doesn't make sense for in-memory streams.
+        }
+
         _context.Remove(message);
     }
 }

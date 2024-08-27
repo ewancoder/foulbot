@@ -8,4 +8,5 @@ public interface IBotMessenger
     ValueTask SendVoiceMessageAsync(FoulChatId chatId, Stream message);
     ValueTask NotifyRecordingVoiceAsync(FoulChatId chatId);
     ValueTask NotifyTyping(FoulChatId chatId);
+    ValueTask SendImageAsync(FoulChatId chatId, Stream image);
 }

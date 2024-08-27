@@ -10,8 +10,9 @@ public sealed class FoulBotServer
 #if DEBUG
         isDebug = true;
 #endif
+        var isInMemory = false; // Enable this to debug without Redis etc.
 
-        var builder = FoulBotServerBuilder.Create(isDebug);
+        var builder = FoulBotServerBuilder.Create(isDebug, isInMemory);
 
         builder.Services
             .AddScoped<ChatLoader>()

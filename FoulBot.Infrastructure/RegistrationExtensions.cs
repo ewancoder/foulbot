@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
+using StackExchange.Redis;
 
 namespace FoulBot.Infrastructure;
 
@@ -22,7 +23,7 @@ public sealed record FoulBotServerBuilder(
     IServiceCollection Services,
     IConfiguration Configuration)
 {
-    public static FoulBotServerBuilder Create(bool isDebug)
+    public static FoulBotServerBuilder Create(bool isDebug, bool isInMemory)
     {
         var services = new ServiceCollection();
 
@@ -31,7 +32,7 @@ public sealed record FoulBotServerBuilder(
         services
             .AddLogging(configuration, isDebug)
             .AddFoulBotDomain()
-            .AddFoulBotInfrastructure(configuration, isDebug);
+            .AddFoulBotInfrastructure(configuration, isDebug, isInMemory);
 
         return new(services, configuration);
     }
@@ -45,29 +46,34 @@ public static class RegistrationExtensions
     public static IServiceCollection AddFoulBotInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        bool isDebug)
+        bool isDebug, bool isInMemory)
     {
-        if (!isDebug)
+        _ = isDebug;
+        services
+            .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
+            .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
+            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
+            .AddSingleton<IVectorStoreMapping, InMemoryVectorStoreMapping>()
+            .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()                 // OpenAI
+            .AddTransient<IGoogleTtsService, GoogleTtsService>()                       // Google
+            .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
+            .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
+            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
+            .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
+
+        if (!isInMemory)
         {
             var redisConnectionString = configuration["RedisConnectionString"]
                 ?? throw new InvalidOperationException("Could not get Redis connection string.");
 
             // Register as factory so that the DI dispose of it.
-            services.AddSingleton<IContextStore>(provider => new RedisContextStore(
-                provider.GetRequiredService<ILogger<RedisContextStore>>(),
-                redisConnectionString));
+            services
+                .AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString)) // Necessary evil: Sync connect on startup.
+                .AddSingleton<IContextStore, RedisContextStore>()
+                .AddSingleton<IVectorStoreMapping, RedisVectorStoreMapping>();
         }
 
-        return services
-            .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
-            .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
-            .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
-            .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()    // OpenAI
-            .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
-            .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
-            .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
-            .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
-            .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
+        return services;
     }
 
     public static IServiceCollection AddCachedReminderStore<TReminderStore>(
@@ -110,6 +116,7 @@ public static class RegistrationExtensions
 
         var logger = loggerBuilder
             .Enrich.WithThreadId()
+            .Destructure.ByTransforming<Attachment>(a => new { a.Name })
             .CreateLogger();
 
         logger.Write(LogEventLevel.Information, "hi");

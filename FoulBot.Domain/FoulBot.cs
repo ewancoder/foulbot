@@ -188,7 +188,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
                 i++;
                 aiGeneratedTextResponse = await _aiClient.GetTextResponseAsync([ // TODO: Pass cancellation token.
-                    new FoulMessage("Directive", FoulMessageType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
+                    FoulMessage.CreateText("Directive", FoulMessageSenderType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
                     .. context
                 ]);
             }
@@ -278,9 +278,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     private void NotifyContext(string message)
     {
-        _chat.AddMessage(new FoulMessage(
+        _chat.AddMessage(FoulMessage.CreateText(
             Guid.NewGuid().ToString(),
-            FoulMessageType.Bot,
+            FoulMessageSenderType.Bot,
             new(_config.BotName),
             message,
             DateTime.UtcNow, // TODO: Consider using timeprovider.

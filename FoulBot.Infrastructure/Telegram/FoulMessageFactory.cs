@@ -1,10 +1,12 @@
-﻿using Telegram.Bot.Types;
+﻿using Telegram.Bot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace FoulBot.Infrastructure.Telegram;
 
 public interface IFoulMessageFactory
 {
-    FoulMessage? CreateFrom(Message telegramMessage);
+    ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client);
 }
 
 public sealed class FoulMessageFactory : IFoulMessageFactory
@@ -16,20 +18,49 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
         _logger = logger;
     }
 
-    public FoulMessage? CreateFrom(Message telegramMessage)
+    public async ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client)
     {
         var senderName = GetSenderName(telegramMessage);
-        if (telegramMessage.Text == null || senderName == null)
+        if (senderName == null)
         {
-            _logger.LogWarning("Message text or sender name are null, skipping the message.");
+            _logger.LogWarning("Message sender name is null, skipping the message.");
             return null;
         }
 
         var messageId = GetUniqueMessageId(telegramMessage);
 
-        return new FoulMessage(
+        List<Attachment> attachments = [];
+        if (telegramMessage.Type == MessageType.Document)
+        {
+            var document = telegramMessage.Document!;
+            var fileId = document.FileId;
+
+            var stream = new MemoryStream();
+            await client.GetInfoAndDownloadFileAsync(fileId, stream); // TODO: Pass cancellation token.
+
+            attachments.Add(new(document.FileName, stream));
+
+            stream.Position = 0;
+
+            return FoulMessage.CreateDocument(
+                messageId,
+                FoulMessageSenderType.User,
+                new(senderName),
+                telegramMessage.Date,
+                false,
+                telegramMessage.ReplyToMessage?.From?.Username,
+                attachments);
+        }
+
+        if (telegramMessage.Text == null)
+        {
+            _logger.LogWarning("Message text is null, skipping the message.");
+            return null;
+        }
+
+        return FoulMessage.CreateText(
             messageId,
-            FoulMessageType.User,
+            FoulMessageSenderType.User,
             new(senderName),
             telegramMessage.Text,
             telegramMessage.Date,

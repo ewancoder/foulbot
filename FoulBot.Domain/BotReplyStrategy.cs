@@ -126,7 +126,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
                 && onlyAddressedToMeCharactersCount < _config.MaxContextSizeInCharacters / 2
                 && (ShouldTrigger(message) || IsMyOwnMessage(message)))
             {
-                if (!IsMyOwnMessage(message) && message.MessageType == FoulMessageType.Bot)
+                if (!IsMyOwnMessage(message) && message.SenderType == FoulMessageSenderType.Bot)
                     onlyAddressedToMe.Add(message.AsUser());
                 else
                     onlyAddressedToMe.Add(message);
@@ -138,7 +138,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
                 && allMessagesCharactersCount < _config.MaxContextSizeInCharacters / 2
                 && !ShouldTrigger(message) && !IsMyOwnMessage(message))
             {
-                if (message.MessageType == FoulMessageType.Bot)
+                if (message.SenderType == FoulMessageSenderType.Bot)
                     allMessages.Add(message.AsUser());
                 else
                     allMessages.Add(message);
@@ -149,7 +149,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
         return
         [
-            new FoulMessage("Directive", FoulMessageType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
+            FoulMessage.CreateText("Directive", FoulMessageSenderType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
             .. onlyAddressedToMe.Concat(allMessages)
             .DistinctBy(x => x.Id)
             .OrderBy(x => x.Date)
@@ -174,7 +174,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
     private bool IsMyOwnMessage(FoulMessage message)
     {
-        return message.MessageType == FoulMessageType.Bot
+        return message.SenderType == FoulMessageSenderType.Bot
             && message.SenderName == _config.BotName;
     }
 }
