@@ -28,7 +28,6 @@ public sealed class FoulChat : IFoulChat
     private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
     private readonly List<FoulMessage> _context = new(1000);
-    private readonly Dictionary<string, FoulMessage> _contextMessages = [];
     private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
     private readonly object _lock = new();
     private bool _isStopping;
@@ -198,7 +197,6 @@ public sealed class FoulChat : IFoulChat
     private void AddMessageToContext(FoulMessage message)
     {
         _context.Add(message);
-        _contextMessages.Add(message.Id, message);
 
         CleanupContextIfNeeded();
     }
@@ -209,6 +207,5 @@ public sealed class FoulChat : IFoulChat
     private void RemoveMessageFromContext(FoulMessage message)
     {
         _context.Remove(message);
-        _contextMessages.Remove(message.Id);
     }
 }
