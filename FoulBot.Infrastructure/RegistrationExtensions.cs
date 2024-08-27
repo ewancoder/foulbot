@@ -62,7 +62,7 @@ public static class RegistrationExtensions
             .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
             .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
             .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
-            .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()      // OpenAI
+            .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()    // OpenAI
             .AddTransient<IGoogleTtsService, GoogleTtsService>()            // Google
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
