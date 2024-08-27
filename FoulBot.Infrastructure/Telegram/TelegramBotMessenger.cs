@@ -82,4 +82,10 @@ public sealed class TelegramBotMessenger : IBotMessenger
     {
         await _client.SendChatActionAsync(chatId.ToTelegramChatId(), ChatAction.Typing);
     }
+
+    public async ValueTask SendImageAsync(FoulChatId chatId, Stream image)
+    {
+        var file = InputFile.FromStream(image);
+        await _client.SendPhotoAsync(chatId.Value, file);
+    }
 }

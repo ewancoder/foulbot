@@ -1,12 +1,13 @@
 ﻿using FoulBot.Domain.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot;
 using Telegram.Bot.Polling;
 
 namespace FoulBot.Infrastructure.Telegram;
 
 public interface ITelegramUpdateHandlerFactory
 {
-    IUpdateHandler Create(FoulBotConfiguration configuration);
+    IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client);
 }
 
 public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
@@ -34,9 +35,9 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
         _allowedChatsProvider = allowedChatsProvider;
     }
 
-    public IUpdateHandler Create(FoulBotConfiguration configuration)
+    public IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client)
     {
         return new TelegramUpdateHandler(
-            _bmLogger, _logger, _chatPool, _botFactory, _foulMessageFactory, configuration, _allowedChatsProvider);
+            _bmLogger, _logger, _chatPool, _botFactory, _foulMessageFactory, configuration, _allowedChatsProvider, client);
     }
 }

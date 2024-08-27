@@ -21,7 +21,7 @@ public class ChatParticipantConverter : JsonConverter<ChatParticipant?>
     }
 }
 
-public sealed class RedisContextStore : IContextStore, IAsyncDisposable
+public sealed class RedisContextStore : IContextStore
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -32,26 +32,21 @@ public sealed class RedisContextStore : IContextStore, IAsyncDisposable
     };
 
     private readonly ILogger<RedisContextStore> _logger;
-    private readonly string _connectionString;
-    private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly CancellationTokenSource _cts = new();
-    private ConnectionMultiplexer? _redis;
-    private bool _isDisposing;
+    private readonly IConnectionMultiplexer _redis;
 
     public RedisContextStore(
         ILogger<RedisContextStore> logger,
-        string connectionString)
+        IConnectionMultiplexer redis)
     {
         _logger = logger;
-        _connectionString = connectionString;
+        _redis = redis;
     }
 
     public async ValueTask<IEnumerable<FoulMessage>> GetLastAsync(FoulChatId chatId, int amount)
     {
         try
         {
-            var redis = await GetMultiplexerAsync();
-            var db = redis.GetDatabase();
+            var db = _redis.GetDatabase();
 
             var context = await db.ListRangeAsync(GetKey(chatId), -amount, -1);
 
@@ -75,8 +70,7 @@ public sealed class RedisContextStore : IContextStore, IAsyncDisposable
     {
         try
         {
-            var redis = await GetMultiplexerAsync();
-            var db = redis.GetDatabase();
+            var db = _redis.GetDatabase();
 
             var serialized = JsonSerializer.Serialize(message, _jsonOptions);
 
@@ -86,37 +80,6 @@ public sealed class RedisContextStore : IContextStore, IAsyncDisposable
         {
             // Do not fail all bots if persistence is unsuccessful.
             _logger.LogError(exception, "Could not save a message from context to Redis.");
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (!_isDisposing)
-        {
-            _isDisposing = true;
-            await _cts.CancelAsync();
-        }
-
-        _cts.Dispose();
-        if (_redis != null)
-            await _redis.DisposeAsync();
-        _lock.Dispose();
-    }
-
-    private async ValueTask<ConnectionMultiplexer> GetMultiplexerAsync()
-    {
-        if (_redis != null)
-            return _redis;
-
-        await _lock.WaitAsync();
-        try
-        {
-            _redis = await ConnectionMultiplexer.ConnectAsync(_connectionString);
-            return _redis;
-        }
-        finally
-        {
-            _lock.Release();
         }
     }
 

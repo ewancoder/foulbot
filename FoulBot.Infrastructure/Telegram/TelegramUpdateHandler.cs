@@ -17,6 +17,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly FoulBotConfiguration _botConfiguration;
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
     private readonly IAllowedChatsProvider _allowedChatsProvider;
+    private readonly TelegramBotClient _client;
 
     public TelegramUpdateHandler(
         ILogger<TelegramBotMessenger> botMessengerLogger, // TODO: Move to another factory.
@@ -25,7 +26,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         FoulBotConfiguration botConfiguration,
-        IAllowedChatsProvider allowedChatsProvider)
+        IAllowedChatsProvider allowedChatsProvider,
+        TelegramBotClient client)
     {
         _botMessengerLogger = botMessengerLogger;
         _logger = logger;
@@ -34,6 +36,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _foulMessageFactory = foulMessageFactory;
         _botConfiguration = botConfiguration;
         _allowedChatsProvider = allowedChatsProvider;
+        _client = client;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Initialized TelegramUpdateHandler with configuration {@Configuration}.", _botConfiguration);
@@ -159,7 +162,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             return;
         }
 
-        if (update.Type == UpdateType.Message && update.Message?.Type == MessageType.Text)
+        if (update.Type == UpdateType.Message
+            && (update.Message?.Type == MessageType.Text || update.Message?.Type == MessageType.Document))
         {
             _logger.LogDebug("Received Message update, handling the message.");
 
@@ -192,7 +196,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 return; // Do not add it to context.
             }
 
-            var message = _foulMessageFactory.CreateFrom(update.Message);
+            var message = await _foulMessageFactory.CreateFromAsync(update.Message, _client);
             if (message == null)
             {
                 _logger.LogDebug("FoulMessage factory returned null, skipping sending message to the chat.");

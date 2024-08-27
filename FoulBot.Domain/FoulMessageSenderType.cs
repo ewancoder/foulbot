@@ -1,6 +1,6 @@
 ﻿namespace FoulBot.Domain;
 
-public enum FoulMessageType
+public enum FoulMessageSenderType
 {
     System = 1,
     Bot = 2,
