@@ -240,7 +240,11 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
     {
         var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
         var vectorStore = vectorStoreId is null
-            ? await _vectorClient.CreateVectorStoreAsync()
+            ? await _vectorClient.CreateVectorStoreAsync(new VectorStoreCreationOptions
+            {
+                Name = $"foulbot_{storeName}",
+                ExpirationPolicy = new VectorStoreExpirationPolicy(VectorStoreExpirationAnchor.LastActiveAt, 30)
+            })
             : await _vectorClient.GetVectorStoreAsync(vectorStoreId);
         await _vectorStoreMapping.CreateMappingAsync(storeName, vectorStore.Value.Id);
 
