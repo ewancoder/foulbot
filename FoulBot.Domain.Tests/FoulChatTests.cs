@@ -115,7 +115,7 @@ public class FoulChatTests : Testing<FoulChat>
 
         var messages = Fixture.Build<FoulMessage>()
             .With(x => x.Date, () => DateTime.UtcNow + Fixture.Create<TimeSpan>())
-            .CreateMany(/*amountOfMessagesInSnapshot*/ 10)
+            .CreateMany(amountOfMessagesInSnapshot)
             .OrderBy(x => x.Date)
             .ToList();
 
@@ -124,9 +124,14 @@ public class FoulChatTests : Testing<FoulChat>
 
         var sut = CreateFoulChat();
 
-        var t1 = Parallel.ForEachAsync(
-            messages,
-            async (message, _) => await sut.HandleMessageAsync(message).AsTask());
+        var t1 = Parallel.ForEachAsync(messages, async (message, _) =>
+        {
+            var task = sut.HandleMessageAsync(message).AsTask();
+
+            await WaitAsync();
+            TimeProvider.Advance(TimeSpan.FromSeconds(2));
+            await task;
+        });
 
         var t2 = Task.Run(() =>
         {
@@ -223,6 +228,8 @@ public class FoulChatTests : Testing<FoulChat>
             tasks.Add(sut.HandleMessageAsync(message).AsTask());
         }
 
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
         await Task.WhenAll(tasks);
 
         // Called only once.
@@ -249,7 +256,11 @@ public class FoulChatTests : Testing<FoulChat>
         await sut.HandleMessageAsync(oldMessage);
         Assert.Empty(sut.GetContextSnapshot());
 
-        await sut.HandleMessageAsync(newMessage);
+        var task = sut.HandleMessageAsync(newMessage);
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
+
+        await task;
         Assert.NotEmpty(sut.GetContextSnapshot());
     }
 

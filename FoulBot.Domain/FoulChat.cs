@@ -22,6 +22,7 @@ public sealed class FoulChat : IFoulChat
     public const int MaxContextSizeLimit = 500;
     public const int CleanupContextSizeLimit = 200;
 
+    private readonly TimeProvider _timeProvider;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
     private readonly ILogger<FoulChat> _logger;
     private readonly Guid _chatInstanceId = Guid.NewGuid();
@@ -33,10 +34,12 @@ public sealed class FoulChat : IFoulChat
     private bool _isStopping;
 
     public FoulChat(
+        TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
         ILogger<FoulChat> logger,
         FoulChatId chatId)
     {
+        _timeProvider = timeProvider;
         _duplicateMessageHandler = duplicateMessageHandler;
         _logger = logger;
         ChatId = chatId;
@@ -154,7 +157,7 @@ public sealed class FoulChat : IFoulChat
         // HACK: Waiting for messages from other bots to come.
         // This can be improved in future if Chat knew how many bots are in it.
         // TODO: Consider passing TimeProvider here to improve test execution time.
-        await Task.Delay(2000);
+        await Task.Delay(TimeSpan.FromSeconds(2), _timeProvider);
 
         var consolidatedMessage = _duplicateMessageHandler.Merge(list);
 
