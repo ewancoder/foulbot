@@ -178,7 +178,7 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             _logger.LogInformation("Creating the chat and caching it for future");
-            chat = _chatFactory.Create(_duplicateMessageHandler, chatId);
+            chat = await _chatFactory.CreateAsync(_duplicateMessageHandler, chatId);
             chat = _chats.GetOrAdd(key, chat);
 
             if (chatId.IsPrivate)

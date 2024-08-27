@@ -14,6 +14,9 @@ public class FoulChatTests : Testing<FoulChat>
         _contextStore = Freeze<IContextStore>();
         _chatId = Fixture.Create<FoulChatId>();
         Fixture.Register(() => _chatId);
+
+        // Empty context by default.
+        Customize<IList<FoulMessage>>("context", []);
     }
 
     #region AddMessage and GetContext
@@ -47,14 +50,14 @@ public class FoulChatTests : Testing<FoulChat>
         // We clean up to 200, when we reach 501.
         // So: (+200, +301) 501 -> 200, (+301) 501 -> 200, (+198) = 398 at the end
 
-        var amountOfMessagesInSnapshot = FoulChat.CleanupContextSizeLimit;
-        var processed = FoulChat.CleanupContextSizeLimit;
+        var amountOfMessagesInSnapshot = FoulChat.MinContextSize;
+        var processed = FoulChat.MinContextSize;
         while (processed < 1000)
         {
             processed++;
             amountOfMessagesInSnapshot++;
             if (amountOfMessagesInSnapshot > FoulChat.MaxContextSizeLimit)
-                amountOfMessagesInSnapshot = FoulChat.CleanupContextSizeLimit;
+                amountOfMessagesInSnapshot = FoulChat.MinContextSize;
         }
         var messages = Fixture.CreateMany<FoulMessage>(1000)
             .OrderBy(x => x.Date).ToList();
@@ -203,7 +206,7 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.Equal(messages.Take(FoulChat.MaxContextSizeLimit), sut.GetContextSnapshot());
 
         sut.AddMessage(messages[^1]);
-        Assert.Equal(messages.TakeLast(FoulChat.CleanupContextSizeLimit), sut.GetContextSnapshot());
+        Assert.Equal(messages.TakeLast(FoulChat.MinContextSize), sut.GetContextSnapshot());
     }
 
     [Fact]

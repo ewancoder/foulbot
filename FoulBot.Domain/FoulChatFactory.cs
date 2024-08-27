@@ -4,7 +4,7 @@ namespace FoulBot.Domain;
 
 public interface IFoulChatFactory
 {
-    IFoulChat Create(
+    ValueTask<IFoulChat> CreateAsync(
         IDuplicateMessageHandler duplicateMessageHandler,
         FoulChatId chatId);
 }
@@ -25,11 +25,11 @@ public sealed class FoulChatFactory : IFoulChatFactory
         _contextStore = contextStore;
     }
 
-    public IFoulChat Create(
+    public ValueTask<IFoulChat> CreateAsync(
         IDuplicateMessageHandler duplicateMessageHandler,
         FoulChatId chatId)
     {
-        return new FoulChat(
+        return FoulChat.CreateFoulChatAsync(
             _timeProvider,
             duplicateMessageHandler,
             _contextStore,

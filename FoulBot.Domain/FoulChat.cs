@@ -21,7 +21,7 @@ public sealed class FoulChat : IFoulChat
 {
     // Consider making these numbers configurable.
     public const int MaxContextSizeLimit = 500;
-    public const int CleanupContextSizeLimit = 200;
+    public const int MinContextSize = 200;
 
     private readonly TimeProvider _timeProvider;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
@@ -29,26 +29,51 @@ public sealed class FoulChat : IFoulChat
     private readonly ILogger<FoulChat> _logger;
     private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
-    private readonly List<FoulMessage> _context = new(1000);
+    private readonly IList<FoulMessage> _context;
     private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
     private readonly object _lock = new();
     private bool _isStopping;
 
+    // HACK: Leaving this constructor public for tests.
+    // TODO: In future - make customization for tests to use static factory
+    // and make the constructor private.
+    // TODO: Unit test non-empty context on startup (when using factory).
     public FoulChat(
         TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
         IContextStore contextStore,
         ILogger<FoulChat> logger,
-        FoulChatId chatId)
+        FoulChatId chatId,
+        IList<FoulMessage> context)
     {
         _timeProvider = timeProvider;
         _duplicateMessageHandler = duplicateMessageHandler;
         _contextStore = contextStore;
         _logger = logger;
         ChatId = chatId;
+        _context = context;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Created instance of FoulChat with start time {StartTime}", _chatCreatedAt);
+    }
+
+    // TODO: Unit test this.
+    public static async ValueTask<IFoulChat> CreateFoulChatAsync(
+        TimeProvider timeProvider,
+        IDuplicateMessageHandler duplicateMessageHandler,
+        IContextStore contextStore,
+        ILogger<FoulChat> logger,
+        FoulChatId chatId)
+    {
+        var context = await contextStore.GetLastAsync(chatId, MinContextSize);
+
+        return new FoulChat(
+            timeProvider,
+            duplicateMessageHandler,
+            contextStore,
+            logger,
+            chatId,
+            context.ToList());
     }
 
     public event EventHandler<FoulMessage>? MessageReceived;
@@ -181,13 +206,13 @@ public sealed class FoulChat : IFoulChat
     {
         if (_context.Count > MaxContextSizeLimit)
         {
-            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, CleanupContextSizeLimit);
+            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, MinContextSize);
             var orderedByDate = _context.OrderBy(x => x.Date);
             foreach (var message in orderedByDate)
             {
                 RemoveMessageFromContext(message);
 
-                if (_context.Count <= CleanupContextSizeLimit)
+                if (_context.Count <= MinContextSize)
                     break;
             }
 
