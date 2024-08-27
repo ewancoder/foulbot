@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using FoulBot.Domain.Storage;
 
 namespace FoulBot.Domain;
 
@@ -20,29 +21,59 @@ public sealed class FoulChat : IFoulChat
 {
     // Consider making these numbers configurable.
     public const int MaxContextSizeLimit = 500;
-    public const int CleanupContextSizeLimit = 200;
+    public const int MinContextSize = 200;
 
+    private readonly TimeProvider _timeProvider;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
+    private readonly IContextStore _contextStore;
     private readonly ILogger<FoulChat> _logger;
     private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
-    private readonly List<FoulMessage> _context = new(1000);
-    private readonly Dictionary<string, FoulMessage> _contextMessages = [];
+    private readonly IList<FoulMessage> _context;
     private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
     private readonly object _lock = new();
     private bool _isStopping;
 
+    // HACK: Leaving this constructor public for tests.
+    // TODO: In future - make customization for tests to use static factory
+    // and make the constructor private.
+    // TODO: Unit test non-empty context on startup (when using factory).
     public FoulChat(
+        TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
+        IContextStore contextStore,
         ILogger<FoulChat> logger,
-        FoulChatId chatId)
+        FoulChatId chatId,
+        IList<FoulMessage> context)
     {
+        _timeProvider = timeProvider;
         _duplicateMessageHandler = duplicateMessageHandler;
+        _contextStore = contextStore;
         _logger = logger;
         ChatId = chatId;
+        _context = context;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Created instance of FoulChat with start time {StartTime}", _chatCreatedAt);
+    }
+
+    // TODO: Unit test this.
+    public static async ValueTask<IFoulChat> CreateFoulChatAsync(
+        TimeProvider timeProvider,
+        IDuplicateMessageHandler duplicateMessageHandler,
+        IContextStore contextStore,
+        ILogger<FoulChat> logger,
+        FoulChatId chatId)
+    {
+        var context = await contextStore.GetLastAsync(chatId, MinContextSize);
+
+        return new FoulChat(
+            timeProvider,
+            duplicateMessageHandler,
+            contextStore,
+            logger,
+            chatId,
+            context.ToList());
     }
 
     public event EventHandler<FoulMessage>? MessageReceived;
@@ -154,7 +185,7 @@ public sealed class FoulChat : IFoulChat
         // HACK: Waiting for messages from other bots to come.
         // This can be improved in future if Chat knew how many bots are in it.
         // TODO: Consider passing TimeProvider here to improve test execution time.
-        await Task.Delay(2000);
+        await Task.Delay(TimeSpan.FromSeconds(2), _timeProvider);
 
         var consolidatedMessage = _duplicateMessageHandler.Merge(list);
 
@@ -175,13 +206,13 @@ public sealed class FoulChat : IFoulChat
     {
         if (_context.Count > MaxContextSizeLimit)
         {
-            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, CleanupContextSizeLimit);
+            _logger.LogDebug("Context has more than {MaxContextMessages} messages. Cleaning it up to {MinContextMessages}", MaxContextSizeLimit, MinContextSize);
             var orderedByDate = _context.OrderBy(x => x.Date);
             foreach (var message in orderedByDate)
             {
                 RemoveMessageFromContext(message);
 
-                if (_context.Count <= CleanupContextSizeLimit)
+                if (_context.Count <= MinContextSize)
                     break;
             }
 
@@ -195,7 +226,9 @@ public sealed class FoulChat : IFoulChat
     private void AddMessageToContext(FoulMessage message)
     {
         _context.Add(message);
-        _contextMessages.Add(message.Id, message);
+
+        // TODO: Await this. For now hacky implementation to just save and forget.
+        _ = _contextStore.SaveMessageAsync(ChatId, message).AsTask();
 
         CleanupContextIfNeeded();
     }
@@ -206,6 +239,5 @@ public sealed class FoulChat : IFoulChat
     private void RemoveMessageFromContext(FoulMessage message)
     {
         _context.Remove(message);
-        _contextMessages.Remove(message.Id);
     }
 }

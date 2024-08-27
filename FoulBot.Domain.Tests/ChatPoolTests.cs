@@ -46,10 +46,10 @@ public class ChatPoolTests : Testing<ChatPool>
 
     private void SetupChatPool()
     {
-        _foulChatFactory.Setup(x => x.Create(
+        _foulChatFactory.Setup(x => x.CreateAsync(
             _duplicateMessageHandler.Object,
             _chatId))
-            .Returns(_chat.Object);
+            .Returns(() => new(_chat.Object));
 
         _chat.Setup(x => x.HandleMessageAsync(It.IsAny<FoulMessage>()))
             .Callback<FoulMessage>(message => _chat.Raise(x => x.MessageReceived += null, null, message));
@@ -96,7 +96,7 @@ public class ChatPoolTests : Testing<ChatPool>
             _chatId, botId, message, factory, Cts.Token);
 
         _chat.Verify(x => x.HandleMessageAsync(It.IsAny<FoulMessage>()), Times.Never);
-        _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+        _foulChatFactory.Verify(x => x.CreateAsync(_duplicateMessageHandler.Object, _chatId), Times.Never);
     }
 
     [Theory, AutoMoqData]
@@ -111,7 +111,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.KickBotFromChatAsync(_chatId, botId, Cts.Token);
 
-        _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+        _foulChatFactory.Verify(x => x.CreateAsync(_duplicateMessageHandler.Object, _chatId), Times.Never);
     }
 
     /// <summary>
@@ -158,7 +158,7 @@ public class ChatPoolTests : Testing<ChatPool>
         if (!isAllowedChat)
         {
             // Should not create chat when not allowed.
-            _foulChatFactory.Verify(x => x.Create(_duplicateMessageHandler.Object, _chatId), Times.Never);
+            _foulChatFactory.Verify(x => x.CreateAsync(_duplicateMessageHandler.Object, _chatId), Times.Never);
         }
     }
 
@@ -314,7 +314,7 @@ public class ChatPoolTests : Testing<ChatPool>
         await method();
         await method();
 
-        _foulChatFactory.Verify(x => x.Create(
+        _foulChatFactory.Verify(x => x.CreateAsync(
             _duplicateMessageHandler.Object, _chatId), Times.Once);
     }
 
@@ -408,14 +408,14 @@ public class ChatPoolTests : Testing<ChatPool>
         var chat1 = Fixture.Create<IFoulChat>();
         var chat2 = Fixture.Create<IFoulChat>();
 
-        _foulChatFactory.Setup(x => x.Create(
+        _foulChatFactory.Setup(x => x.CreateAsync(
             _duplicateMessageHandler.Object,
             chatId1))
-            .Returns(chat1);
-        _foulChatFactory.Setup(x => x.Create(
+            .Returns(() => new(chat1));
+        _foulChatFactory.Setup(x => x.CreateAsync(
             _duplicateMessageHandler.Object,
             chatId2))
-            .Returns(chat2);
+            .Returns(() => new(chat2));
 
         Mock.Get(chat1).Setup(x => x.HandleMessageAsync(It.IsAny<FoulMessage>()))
             .Callback<FoulMessage>(message => Mock.Get(chat1).Raise(x => x.MessageReceived += null, null, message));
@@ -475,7 +475,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.KickBotFromChatAsync(_chatId, foulBotId, Cts.Token);
 
-        _foulChatFactory.Verify(x => x.Create(
+        _foulChatFactory.Verify(x => x.CreateAsync(
             _duplicateMessageHandler.Object, It.IsAny<FoulChatId>()), Times.Never);
     }
 
@@ -503,9 +503,9 @@ public class ChatPoolTests : Testing<ChatPool>
             var chatId = chatIds[i];
             var botId = botIds[i];
 
-            _foulChatFactory.Setup(x => x.Create(
+            _foulChatFactory.Setup(x => x.CreateAsync(
                 _duplicateMessageHandler.Object, chatId))
-                .Returns(foulChats[i]);
+                .Returns(() => new(foulChats[i]));
 
             await sut.HandleMessageAsync(
                 chatId, botId, message, Factory, Cts.Token);

@@ -1,12 +1,22 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Storage;
+
+namespace FoulBot.Domain.Tests;
 
 public class FoulChatTests : Testing<FoulChat>
 {
     private readonly Mock<IDuplicateMessageHandler> _duplicateMessageHandler;
+    private readonly Mock<IContextStore> _contextStore;
+    private readonly FoulChatId _chatId;
 
     public FoulChatTests()
     {
         _duplicateMessageHandler = Freeze<IDuplicateMessageHandler>();
+        _contextStore = Freeze<IContextStore>();
+        _chatId = Fixture.Create<FoulChatId>();
+        Fixture.Register(() => _chatId);
+
+        // Empty context by default.
+        Customize<IList<FoulMessage>>("context", []);
     }
 
     #region AddMessage and GetContext
@@ -40,14 +50,14 @@ public class FoulChatTests : Testing<FoulChat>
         // We clean up to 200, when we reach 501.
         // So: (+200, +301) 501 -> 200, (+301) 501 -> 200, (+198) = 398 at the end
 
-        var amountOfMessagesInSnapshot = FoulChat.CleanupContextSizeLimit;
-        var processed = FoulChat.CleanupContextSizeLimit;
+        var amountOfMessagesInSnapshot = FoulChat.MinContextSize;
+        var processed = FoulChat.MinContextSize;
         while (processed < 1000)
         {
             processed++;
             amountOfMessagesInSnapshot++;
             if (amountOfMessagesInSnapshot > FoulChat.MaxContextSizeLimit)
-                amountOfMessagesInSnapshot = FoulChat.CleanupContextSizeLimit;
+                amountOfMessagesInSnapshot = FoulChat.MinContextSize;
         }
         var messages = Fixture.CreateMany<FoulMessage>(1000)
             .OrderBy(x => x.Date).ToList();
@@ -115,7 +125,7 @@ public class FoulChatTests : Testing<FoulChat>
 
         var messages = Fixture.Build<FoulMessage>()
             .With(x => x.Date, () => DateTime.UtcNow + Fixture.Create<TimeSpan>())
-            .CreateMany(/*amountOfMessagesInSnapshot*/ 10)
+            .CreateMany(amountOfMessagesInSnapshot)
             .OrderBy(x => x.Date)
             .ToList();
 
@@ -124,9 +134,14 @@ public class FoulChatTests : Testing<FoulChat>
 
         var sut = CreateFoulChat();
 
-        var t1 = Parallel.ForEachAsync(
-            messages,
-            async (message, _) => await sut.HandleMessageAsync(message).AsTask());
+        var t1 = Parallel.ForEachAsync(messages, async (message, _) =>
+        {
+            var task = sut.HandleMessageAsync(message).AsTask();
+
+            await WaitAsync();
+            TimeProvider.Advance(TimeSpan.FromSeconds(2));
+            await task;
+        });
 
         var t2 = Task.Run(() =>
         {
@@ -149,6 +164,15 @@ public class FoulChatTests : Testing<FoulChat>
 
         sut.AddMessage(Fixture.Create<FoulMessage>());
         Assert.Equal(2, sut.GetContextSnapshot().Count);
+    }
+
+    [Theory, AutoMoqData]
+    public void AddMessage_ShouldPersistMessage(FoulMessage message)
+    {
+        var sut = CreateFoulChat();
+
+        sut.AddMessage(message);
+        _contextStore.Verify(x => x.SaveMessageAsync(_chatId, message));
     }
 
     [Theory, AutoMoqData]
@@ -182,7 +206,7 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.Equal(messages.Take(FoulChat.MaxContextSizeLimit), sut.GetContextSnapshot());
 
         sut.AddMessage(messages[^1]);
-        Assert.Equal(messages.TakeLast(FoulChat.CleanupContextSizeLimit), sut.GetContextSnapshot());
+        Assert.Equal(messages.TakeLast(FoulChat.MinContextSize), sut.GetContextSnapshot());
     }
 
     [Fact]
@@ -223,6 +247,8 @@ public class FoulChatTests : Testing<FoulChat>
             tasks.Add(sut.HandleMessageAsync(message).AsTask());
         }
 
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
         await Task.WhenAll(tasks);
 
         // Called only once.
@@ -231,6 +257,37 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.Single(received);
         Assert.Equal(consolidatedMessage, received.Single());
         Assert.Equal(consolidatedMessage, sut.GetContextSnapshot().Single());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldPersistConsolidatedMessage(
+        FoulMessage consolidatedMessage)
+    {
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.Id, Fixture.Create<string>())
+            .With(x => x.Date, DateTime.MaxValue)
+            .CreateMany()
+            .ToList();
+
+        _duplicateMessageHandler.Setup(x => x.Merge(messages))
+            .Returns(() => consolidatedMessage);
+
+        var sut = CreateFoulChat();
+
+        var received = new List<FoulMessage>();
+
+        var tasks = new List<Task>();
+        foreach (var message in messages)
+        {
+            tasks.Add(sut.HandleMessageAsync(message).AsTask());
+        }
+
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
+        await Task.WhenAll(tasks);
+
+        // Called only once.
+        _contextStore.Verify(x => x.SaveMessageAsync(_chatId, consolidatedMessage));
     }
 
     [Fact]
@@ -249,7 +306,11 @@ public class FoulChatTests : Testing<FoulChat>
         await sut.HandleMessageAsync(oldMessage);
         Assert.Empty(sut.GetContextSnapshot());
 
-        await sut.HandleMessageAsync(newMessage);
+        var task = sut.HandleMessageAsync(newMessage);
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
+
+        await task;
         Assert.NotEmpty(sut.GetContextSnapshot());
     }
 
