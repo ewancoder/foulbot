@@ -54,6 +54,7 @@ public sealed class RedisContextStore : IContextStore
             // Including properly implementing converter for ChatParticipant.
             var deserialized = context
                 .Select(value => JsonSerializer.Deserialize<FoulMessage>(value.ToString(), _jsonOptions)!)
+                .Where(IsValid)
                 .ToList();
 
             return deserialized;
@@ -81,6 +82,16 @@ public sealed class RedisContextStore : IContextStore
             // Do not fail all bots if persistence is unsuccessful.
             _logger.LogError(exception, "Could not save a message from context to Redis.");
         }
+    }
+
+    private bool IsValid(FoulMessage message)
+    {
+        // TODO: Use separate model for Redis storage, do not just blindly serialize.
+        // We need this method to get rid of bad messages after we upgrade FoulBot schema.
+
+        return message.Type > 0
+            && message.Text is not null
+            && message.SenderType > 0;
     }
 
     private static string GetKey(FoulChatId chatId) => chatId.IsPrivate
