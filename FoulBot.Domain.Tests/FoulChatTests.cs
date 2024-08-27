@@ -1,12 +1,19 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Storage;
+
+namespace FoulBot.Domain.Tests;
 
 public class FoulChatTests : Testing<FoulChat>
 {
     private readonly Mock<IDuplicateMessageHandler> _duplicateMessageHandler;
+    private readonly Mock<IContextStore> _contextStore;
+    private readonly FoulChatId _chatId;
 
     public FoulChatTests()
     {
         _duplicateMessageHandler = Freeze<IDuplicateMessageHandler>();
+        _contextStore = Freeze<IContextStore>();
+        _chatId = Fixture.Create<FoulChatId>();
+        Fixture.Register(() => _chatId);
     }
 
     #region AddMessage and GetContext
@@ -157,6 +164,15 @@ public class FoulChatTests : Testing<FoulChat>
     }
 
     [Theory, AutoMoqData]
+    public void AddMessage_ShouldPersistMessage(FoulMessage message)
+    {
+        var sut = CreateFoulChat();
+
+        sut.AddMessage(message);
+        _contextStore.Verify(x => x.SaveMessageAsync(_chatId, message));
+    }
+
+    [Theory, AutoMoqData]
     public void AddMessage_ShouldNofityAboutMessages(
         List<FoulMessage> messages)
     {
@@ -238,6 +254,37 @@ public class FoulChatTests : Testing<FoulChat>
         Assert.Single(received);
         Assert.Equal(consolidatedMessage, received.Single());
         Assert.Equal(consolidatedMessage, sut.GetContextSnapshot().Single());
+    }
+
+    [Theory, AutoMoqData]
+    public async Task HandleMessageAsync_ShouldPersistConsolidatedMessage(
+        FoulMessage consolidatedMessage)
+    {
+        var messages = Fixture.Build<FoulMessage>()
+            .With(x => x.Id, Fixture.Create<string>())
+            .With(x => x.Date, DateTime.MaxValue)
+            .CreateMany()
+            .ToList();
+
+        _duplicateMessageHandler.Setup(x => x.Merge(messages))
+            .Returns(() => consolidatedMessage);
+
+        var sut = CreateFoulChat();
+
+        var received = new List<FoulMessage>();
+
+        var tasks = new List<Task>();
+        foreach (var message in messages)
+        {
+            tasks.Add(sut.HandleMessageAsync(message).AsTask());
+        }
+
+        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromSeconds(2));
+        await Task.WhenAll(tasks);
+
+        // Called only once.
+        _contextStore.Verify(x => x.SaveMessageAsync(_chatId, consolidatedMessage));
     }
 
     [Fact]

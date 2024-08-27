@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using FoulBot.Domain.Storage;
 
 namespace FoulBot.Domain;
 
@@ -24,6 +25,7 @@ public sealed class FoulChat : IFoulChat
 
     private readonly TimeProvider _timeProvider;
     private readonly IDuplicateMessageHandler _duplicateMessageHandler;
+    private readonly IContextStore _contextStore;
     private readonly ILogger<FoulChat> _logger;
     private readonly Guid _chatInstanceId = Guid.NewGuid();
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
@@ -35,11 +37,13 @@ public sealed class FoulChat : IFoulChat
     public FoulChat(
         TimeProvider timeProvider,
         IDuplicateMessageHandler duplicateMessageHandler,
+        IContextStore contextStore,
         ILogger<FoulChat> logger,
         FoulChatId chatId)
     {
         _timeProvider = timeProvider;
         _duplicateMessageHandler = duplicateMessageHandler;
+        _contextStore = contextStore;
         _logger = logger;
         ChatId = chatId;
 
@@ -197,6 +201,9 @@ public sealed class FoulChat : IFoulChat
     private void AddMessageToContext(FoulMessage message)
     {
         _context.Add(message);
+
+        // TODO: Await this. For now hacky implementation to just save and forget.
+        _ = _contextStore.SaveMessageAsync(ChatId, message).AsTask();
 
         CleanupContextIfNeeded();
     }

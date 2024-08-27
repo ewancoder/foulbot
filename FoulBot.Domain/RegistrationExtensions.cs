@@ -16,6 +16,7 @@ public static class RegistrationExtensions
             .AddSingleton(TimeProvider.System)
             .AddSingleton<ISharedRandomGenerator, SharedRandomGenerator>()
             .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
+            .AddSingleton<IContextStore, NoContextStore>()
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
             .AddTransient<IFoulChatFactory, FoulChatFactory>();
     }
