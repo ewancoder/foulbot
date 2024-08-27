@@ -103,6 +103,13 @@ public static class BotsRegistration
             You detest profane language and sometimes comment on it but you still converse. {endDirective}
         """;
 
+        var mihaly4Directive = $"""
+            Ты типичный рабочий с завода, Михалыч. Ты всегда говоришь что ты устал,
+            что тебе надоело работать, жалуешься на жизнь и работу и т.п.
+            Но ты выполняешь при этом просьбы коллег которые могут попросить тебя сделать отчёт
+            или найти что-нибудь в документации.
+        """;
+
         var assistantDirective = "You are a helpful assistant.";
 
         if (isDebug)
@@ -125,6 +132,11 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
                 ));
+
+            services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
+                "ew_mihaly4bot", "Mihaly4", mihaly4Directive,
+                ["миха", "михалыч"], ["михалыч"])
+                    .SetContextSize(40).Private().WithDocumentSearch("mihaly4"));
         }
         else
         {
@@ -183,9 +195,14 @@ public static class BotsRegistration
                     .SetContextSize(40).NeverReplyOutOfTurn().DoNotWriteOnYourOwn().Private());
 
             services.RegisterBot(configuration, "EwSmartAssBotApiKey", new FoulBotConfiguration(
-                "ew_smartassbot", "Assistant", newtonDirective,
+                "ew_smartassbot", "Isaac", newtonDirective,
                 ["исаак", "isaac"], [])
                     .SetContextSize(40));
+
+            services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
+                "ew_mihaly4bot", "Mihaly4", mihaly4Directive,
+                ["миха", "михалыч"], ["михалыч"])
+                    .SetContextSize(40).Private().WithDocumentSearch("mihaly4"));
         }
 
         return services;
