@@ -18,12 +18,15 @@
 
 ## What it's about
 
-This is a highly configurable Telegram bot framework that uses OpenAI to generate responses. Default configuration has the Foul bot - bot that curses a lot.
+This is a highly configurable Telegram bot framework that uses OpenAI to generate responses.
 
-The following technologies were used here:
+Initially the idea was to create a bot that curses a lot, now it's a full-fledged framework for creating all kinds of bots.
+
+The following technologies were used:
 
 - Telegram Bot API
 - OpenAI API for Text generation
 - OpenAI API for TTS generation (voice messages)
 - Google API for TTS generation (voice messages)
 - Serilog for logging (to Seq)
+- Redis for persistence
