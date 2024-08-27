@@ -133,7 +133,8 @@ public static class BotsRegistration
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                .UseGpt35());
+                .UseGpt35()
+                .WithDocumentSearch("pidorstore"));
 
             // Commented out configuration for the Boston Dynamics bot.
             services.RegisterBot(configuration, "EwMeatBagsBotApiKey", new FoulBotConfiguration(
