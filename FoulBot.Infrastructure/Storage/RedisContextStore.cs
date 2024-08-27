@@ -31,41 +31,62 @@ public sealed class RedisContextStore : IContextStore, IAsyncDisposable
         }
     };
 
+    private readonly ILogger<RedisContextStore> _logger;
     private readonly string _connectionString;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly CancellationTokenSource _cts = new();
     private ConnectionMultiplexer? _redis;
     private bool _isDisposing;
 
-    public RedisContextStore(string connectionString)
+    public RedisContextStore(
+        ILogger<RedisContextStore> logger,
+        string connectionString)
     {
+        _logger = logger;
         _connectionString = connectionString;
     }
 
     public async ValueTask<IEnumerable<FoulMessage>> GetLastAsync(FoulChatId chatId, int amount)
     {
-        var redis = await GetMultiplexerAsync();
-        var db = redis.GetDatabase();
+        try
+        {
+            var redis = await GetMultiplexerAsync();
+            var db = redis.GetDatabase();
 
-        var context = await db.ListRangeAsync(GetKey(chatId), -amount, -1);
+            var context = await db.ListRangeAsync(GetKey(chatId), -amount, -1);
 
-        // TODO: Properly implement nullable reference types handling here.
-        // Including properly implementing converter for ChatParticipant.
-        var deserialized = context
-            .Select(value => JsonSerializer.Deserialize<FoulMessage>(value.ToString(), _jsonOptions)!)
-            .ToList();
+            // TODO: Properly implement nullable reference types handling here.
+            // Including properly implementing converter for ChatParticipant.
+            var deserialized = context
+                .Select(value => JsonSerializer.Deserialize<FoulMessage>(value.ToString(), _jsonOptions)!)
+                .ToList();
 
-        return deserialized;
+            return deserialized;
+        }
+        catch (Exception exception)
+        {
+            // Do not fail all bots if persistence is unsuccessful.
+            _logger.LogError(exception, "Could not load context to chat from Redis.");
+            return Enumerable.Empty<FoulMessage>();
+        }
     }
 
     public async ValueTask SaveMessageAsync(FoulChatId chatId, FoulMessage message)
     {
-        var redis = await GetMultiplexerAsync();
-        var db = redis.GetDatabase();
+        try
+        {
+            var redis = await GetMultiplexerAsync();
+            var db = redis.GetDatabase();
 
-        var serialized = JsonSerializer.Serialize(message, _jsonOptions);
+            var serialized = JsonSerializer.Serialize(message, _jsonOptions);
 
-        await db.ListRightPushAsync(GetKey(chatId), [serialized]);
+            await db.ListRightPushAsync(GetKey(chatId), [serialized]);
+        }
+        catch (Exception exception)
+        {
+            // Do not fail all bots if persistence is unsuccessful.
+            _logger.LogError(exception, "Could not save a message from context to Redis.");
+        }
     }
 
     public async ValueTask DisposeAsync()

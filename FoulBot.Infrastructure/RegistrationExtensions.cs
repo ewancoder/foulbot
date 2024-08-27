@@ -53,7 +53,9 @@ public static class RegistrationExtensions
                 ?? throw new InvalidOperationException("Could not get Redis connection string.");
 
             // Register as factory so that the DI dispose of it.
-            services.AddSingleton<IContextStore>(_ => new RedisContextStore(redisConnectionString));
+            services.AddSingleton<IContextStore>(provider => new RedisContextStore(
+                provider.GetRequiredService<ILogger<RedisContextStore>>(),
+                redisConnectionString));
         }
 
         return services
