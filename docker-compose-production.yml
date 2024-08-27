@@ -6,34 +6,27 @@ networks:
 
 services:
   foulbot:
-    image: ${DOCKER_REGISTRY-}foulbot
+    image: ghcr.io/ewancoder/foulbot:main
     container_name: foulbot
-    build:
-      context: .
-      dockerfile: FoulBot.Api/Dockerfile
     restart: unless-stopped
     mem_limit: 400m
     mem_reservation: 300m
     ports:
       - "30880:8080"
     env_file:
-      - secrets.env
+      - /data/foulbot/secrets.env
     volumes:
-      - ./key.json:/app/key.json
-      - ./chats:/app/chats
-      - ./allowed_chats:/app/allowed_chats
-      - /data/foulbot-logs:/app/logs
-      - /data/foulbot-reminders:/app/reminders
+      - /data/foulbot/key.json:/app/key.json
+      - /data/foulbot/chats:/app/chats
+      - /data/foulbot/allowed_chats:/app/allowed_chats
+      - /data/foulbot/logs:/app/logs
+      - /data/foulbot/reminders:/app/reminders
 
-  #seq:
-  #  image: datalust/seq:latest
-  #  container_name: foulbot-seq
-  #  restart: unless-stopped
-  #  mem_limit: 800m
-  #  mem_reservation: 400m
-  #  environment:
-  #    - ACCEPT_EULA=Y
-  #  ports:
-  #    - 8081:80
-  #  volumes:
-  #    - /data/foulbot-seq:/data
+  foulbot-redis:
+    image: redis
+    command: redis-server --save 60 1
+    container_name: foulbot-redis
+    restart: unless-stopped
+    mem_limit: 500m
+    volumes:
+      - /data/foulbot/redis:/data
