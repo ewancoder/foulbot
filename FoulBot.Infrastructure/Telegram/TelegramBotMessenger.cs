@@ -65,7 +65,7 @@ public sealed class TelegramBotMessenger : IBotMessenger
         }
         catch (ApiRequestException exception)
         {
-            _logger.LogDebug(exception, "Error when sending markdown to telegram. Sending regular text now.");
+            _logger.LogError(exception, "Error when sending markdown to telegram. Sending regular text now.");
             await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message);
         }
     }
@@ -93,7 +93,7 @@ public sealed class TelegramBotMessenger : IBotMessenger
 
     private static string EscapeMarkdown(string text)
     {
-        var escapedCharacters = "-_()!.";
+        char[] escapedCharacters = ['#', '[', ']', '(', ')', '>', '+', '-', '=', '|', '{', '}', '.', '!'];
 
         var sb = new StringBuilder(text);
         foreach (var esc in escapedCharacters)
