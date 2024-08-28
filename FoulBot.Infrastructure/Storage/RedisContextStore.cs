@@ -54,6 +54,7 @@ public sealed class RedisContextStore : IContextStore
             // Including properly implementing converter for ChatParticipant.
             var deserialized = context
                 .Select(value => JsonSerializer.Deserialize<FoulMessage>(value.ToString(), _jsonOptions)!)
+                .Select(x => x with { Attachments = Enumerable.Empty<Attachment>() }) // Prevent null.
                 .Where(x => x.Type == FoulMessageType.Text) // Do not serialize attachments.
                 .Where(IsValid)
                 .ToList();

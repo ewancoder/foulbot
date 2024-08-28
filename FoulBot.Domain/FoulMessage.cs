@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using System.Text.Json.Serialization;
+
+namespace FoulBot.Domain;
 
 public sealed record Attachment : IDisposable
 {
@@ -52,7 +54,7 @@ public sealed record FoulMessage(
     DateTime Date,
     bool IsOriginallyBotMessage,
     string? ReplyTo,
-    IEnumerable<Attachment> Attachments)
+    [property: JsonIgnore] IEnumerable<Attachment> Attachments)
 {
     public string SenderName => Sender.Name;
 
