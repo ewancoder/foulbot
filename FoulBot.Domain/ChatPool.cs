@@ -230,7 +230,24 @@ public sealed class ChatPool : IAsyncDisposable
             }
 
             void Trigger(object? s, FoulMessage message)
-                => _ = bot.TriggerAsync(message).AsTask();
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await bot.TriggerAsync(message);
+                    }
+                    catch (Exception exception)
+                    {
+                        using var _l = Logger
+                            .AddScoped("ChatId", chat.ChatId)
+                            .AddScoped("BotId", foulBotId)
+                            .AddScoped("Message", message)
+                            .BeginScope();
+                        _logger.LogError(exception, "Error when processing a bot trigger.");
+                    }
+                }, cancellationToken);
+            }
 
             // Consider rewriting to System.Reactive.
             chat.MessageReceived += Trigger;
