@@ -21,29 +21,13 @@ public class ChatParticipantConverter : JsonConverter<ChatParticipant?>
     }
 }
 
-public class AttachmentsConverter : JsonConverter<IEnumerable<Attachment>>
-{
-    public override IEnumerable<Attachment> Read(
-        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        return Enumerable.Empty<Attachment>();
-    }
-
-    public override void Write(
-        Utf8JsonWriter writer, IEnumerable<Attachment> value, JsonSerializerOptions options)
-    {
-        writer.WriteStringValue("[]");
-    }
-}
-
 public sealed class RedisContextStore : IContextStore
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         Converters =
         {
-            new ChatParticipantConverter(),
-            new AttachmentsConverter() // Temporary measure cause we might've saved some of them already.
+            new ChatParticipantConverter()
         }
     };
 

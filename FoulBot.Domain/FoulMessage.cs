@@ -11,7 +11,7 @@ public sealed record Attachment : IDisposable
         _stream = stream;
     }
 
-    public string? Name { get; }
+    public string? Name { get; init; }
 
     public void Dispose()
     {
