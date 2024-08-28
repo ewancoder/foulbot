@@ -132,11 +132,6 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
                 ));
-
-            services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
-                "ew_mihaly4bot", "Mihaly4", mihaly4Directive,
-                ["миха", "михалыч"], ["михалыч"])
-                    .SetContextSize(40).Private().WithDocumentSearch("mihaly4"));
         }
         else
         {
