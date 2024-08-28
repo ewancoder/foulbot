@@ -268,12 +268,20 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
     public async ValueTask ClearStoreAsync(string storeName)
     {
-        var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
-        if (vectorStoreId is null)
-            return;
+        try
+        {
+            var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
+            if (vectorStoreId is null)
+                return;
 
-        await _vectorClient.DeleteVectorStoreAsync(vectorStoreId);
-        await _vectorStoreMapping.ClearAsync(storeName);
+            await _vectorClient.DeleteVectorStoreAsync(vectorStoreId);
+            await _vectorStoreMapping.ClearAsync(storeName);
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
+            throw;
+        }
     }
 
     public async IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, string prompt)
