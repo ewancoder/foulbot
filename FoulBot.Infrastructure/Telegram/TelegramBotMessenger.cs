@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using System.Text;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -59,11 +60,12 @@ public sealed class TelegramBotMessenger : IBotMessenger
     {
         try
         {
-            await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message, parseMode: ParseMode.MarkdownV2);
+            var escapedMessage = EscapeMarkdown(message);
+            await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), escapedMessage, parseMode: ParseMode.MarkdownV2);
         }
         catch (ApiRequestException exception)
         {
-            _logger.LogDebug(exception, "Error when sending markdown in telegram. Sending regular text now.");
+            _logger.LogDebug(exception, "Error when sending markdown to telegram. Sending regular text now.");
             await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message);
         }
     }
@@ -87,5 +89,18 @@ public sealed class TelegramBotMessenger : IBotMessenger
     {
         var file = InputFile.FromStream(image);
         await _client.SendPhotoAsync(chatId.Value, file);
+    }
+
+    private static string EscapeMarkdown(string text)
+    {
+        var escapedCharacters = "-_()!.";
+
+        var sb = new StringBuilder(text);
+        foreach (var esc in escapedCharacters)
+        {
+            sb = sb.Replace($"{esc}", $@"\{esc}");
+        }
+
+        return sb.ToString();
     }
 }
