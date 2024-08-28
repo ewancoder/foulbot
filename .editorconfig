@@ -289,8 +289,7 @@ dotnet_diagnostic.IDE0290.severity = silent
 
 
 # === Tests ===
-[
-  **Tests/**]
+[**Tests/**]
 
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
@@ -310,8 +309,8 @@ dotnet_diagnostic.CA1040.severity = none
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
 
-# Temporarily disable.
-[FoulBot.Domain/**]
+# Disable for this project because it is a console application with no Synchronization Context.
+[FoulBot.**]
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
 
@@ -320,4 +319,3 @@ dotnet_diagnostic.CA2007.severity = none
 
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
-
