@@ -21,13 +21,29 @@ public class ChatParticipantConverter : JsonConverter<ChatParticipant?>
     }
 }
 
+public class AttachmentsConverter : JsonConverter<IEnumerable<Attachment>>
+{
+    public override IEnumerable<Attachment> Read(
+        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return Enumerable.Empty<Attachment>();
+    }
+
+    public override void Write(
+        Utf8JsonWriter writer, IEnumerable<Attachment> value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue("[]");
+    }
+}
+
 public sealed class RedisContextStore : IContextStore
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         Converters =
         {
-            new ChatParticipantConverter()
+            new ChatParticipantConverter(),
+            new AttachmentsConverter() // Temporary measure cause we might've saved some of them already.
         }
     };
 
@@ -54,6 +70,7 @@ public sealed class RedisContextStore : IContextStore
             // Including properly implementing converter for ChatParticipant.
             var deserialized = context
                 .Select(value => JsonSerializer.Deserialize<FoulMessage>(value.ToString(), _jsonOptions)!)
+                .Where(x => x.Type == FoulMessageType.Text) // Do not serialize attachments.
                 .Where(IsValid)
                 .ToList();
 
@@ -69,6 +86,9 @@ public sealed class RedisContextStore : IContextStore
 
     public async ValueTask SaveMessageAsync(FoulChatId chatId, FoulMessage message)
     {
+        if (message.Type != FoulMessageType.Text)
+            return; // Do not serialize attachments.
+
         try
         {
             var db = _redis.GetDatabase();
