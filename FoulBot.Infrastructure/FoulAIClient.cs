@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.ClientModel;
+using System.Text.RegularExpressions;
 using FoulBot.Domain.Features;
 using Microsoft.Extensions.Configuration;
 using OpenAI;
@@ -253,14 +254,27 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
     public async ValueTask UploadDocumentAsync(string storeName, string documentName, Stream document)
     {
         var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
-        var vectorStore = vectorStoreId is null
-            ? await _vectorClient.CreateVectorStoreAsync(new VectorStoreCreationOptions
+        VectorStore? vectorStore = null;
+        if (vectorStoreId is not null)
+        {
+            try
             {
-                Name = $"foulbot_{storeName}",
-                ExpirationPolicy = new VectorStoreExpirationPolicy(VectorStoreExpirationAnchor.LastActiveAt, 30)
-            })
-            : await _vectorClient.GetVectorStoreAsync(vectorStoreId);
-        await _vectorStoreMapping.CreateMappingAsync(storeName, vectorStore.Value.Id);
+                vectorStore = await _vectorClient.GetVectorStoreAsync(vectorStoreId);
+            }
+            catch (ClientResultException exception) when (exception.Status == 404)
+            {
+                // Vector store has been deleted on OpenAI side.
+                await _vectorStoreMapping.ClearAsync(storeName);
+            }
+        }
+
+        vectorStore ??= await _vectorClient.CreateVectorStoreAsync(new VectorStoreCreationOptions
+        {
+            Name = $"foulbot_{storeName}",
+            ExpirationPolicy = new VectorStoreExpirationPolicy(VectorStoreExpirationAnchor.LastActiveAt, 30)
+        });
+
+        await _vectorStoreMapping.CreateMappingAsync(storeName, vectorStore.Id);
 
         var file = await _fileClient.UploadFileAsync(document, documentName, FileUploadPurpose.Assistants);
         await _vectorClient.AddFileToVectorStoreAsync(vectorStore, file);
@@ -277,10 +291,11 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             await _vectorClient.DeleteVectorStoreAsync(vectorStoreId);
             await _vectorStoreMapping.ClearAsync(storeName);
         }
-        catch (Exception exception)
+        catch (ClientResultException exception) when (exception.Status == 404)
         {
-            Console.WriteLine(exception);
-            throw;
+            // Vector store has been deleted on OpenAI side.
+            await _vectorStoreMapping.ClearAsync(storeName);
+            return;
         }
     }
 
@@ -289,6 +304,17 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
         if (vectorStoreId == null)
             yield break;
+
+        try
+        {
+            await _vectorClient.GetVectorStoreAsync(vectorStoreId);
+        }
+        catch (ClientResultException exception) when (exception.Status == 404)
+        {
+            // Vector store has been deleted on OpenAI side.
+            await _vectorStoreMapping.ClearAsync(storeName);
+            yield break;
+        }
 
         var instructions = "You are an assistant that helps searching data in the documents. When asked to generate some visualization, use the code interpreter tool to do so.";
 
