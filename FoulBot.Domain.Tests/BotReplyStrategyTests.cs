@@ -1,5 +1,4 @@
 ﻿using AutoFixture.Dsl;
-using Xunit.Sdk;
 
 namespace FoulBot.Domain.Tests;
 
