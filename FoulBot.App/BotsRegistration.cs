@@ -131,7 +131,8 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAAPPZkjBhJM9ujwTp1gJOFAXgAzq3acAAhcDAALPu9QOfWnbEIRIz601BA",
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
-                ));
+                )
+                .WithDocumentSearch("test2"));
         }
         else
         {

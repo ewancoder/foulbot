@@ -96,8 +96,10 @@ public sealed class DocumentSearchFeature : BotFeature
         {
             var fileName = attachment.Name ?? Guid.NewGuid().ToString();
 
+            using var stream = attachment.GetStreamCopy();
+
             await _documentSearch.UploadDocumentAsync(
-                _storeName, fileName, attachment.Data);
+                _storeName, fileName, stream);
 
             await _botMessenger.SendTextMessageAsync(_chat.ChatId, $"Uploaded file to document search: {fileName}");
         }

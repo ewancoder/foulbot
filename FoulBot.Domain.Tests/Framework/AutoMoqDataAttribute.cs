@@ -18,6 +18,7 @@ public sealed class AutoMoqDataAttribute : AutoDataAttribute
             .Customize(new AutoMoqCustomization { ConfigureMembers = true });
 
         fixture.Register<Stream>(() => new MemoryStream());
+        fixture.Register(() => new MemoryStream());
 
         return fixture;
     }

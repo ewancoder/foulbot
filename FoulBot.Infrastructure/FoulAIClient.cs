@@ -294,8 +294,16 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
         await _vectorStoreMapping.CreateMappingAsync(storeName, vectorStore.Id);
 
-        var file = await _fileClient.UploadFileAsync(document, documentName, FileUploadPurpose.Assistants);
-        await _vectorClient.AddFileToVectorStoreAsync(vectorStore, file);
+        try
+        {
+            var file = await _fileClient.UploadFileAsync(document, documentName, FileUploadPurpose.Assistants);
+            await _vectorClient.AddFileToVectorStoreAsync(vectorStore, file);
+        }
+        catch (Exception exc)
+        {
+            _ = exc;
+            throw;
+        }
     }
 
     public async ValueTask ClearStoreAsync(string storeName)

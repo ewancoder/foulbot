@@ -239,7 +239,7 @@ public sealed class FoulChat : IFoulChat
         if (message.Type == FoulMessageType.Document)
         {
             foreach (var attachment in message.Attachments)
-                attachment.Data.Dispose(); // Consider doing it async, although it doesn't make sense for in-memory streams.
+                attachment.Dispose(); // Consider doing it async, although it doesn't make sense for in-memory streams.
         }
 
         _context.Remove(message);

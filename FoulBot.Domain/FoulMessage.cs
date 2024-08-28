@@ -1,7 +1,38 @@
 ﻿namespace FoulBot.Domain;
 
-public sealed record Attachment(
-    string? Name, Stream Data);
+public sealed record Attachment : IDisposable
+{
+    private readonly object _lock = new();
+    private readonly MemoryStream _stream;
+
+    public Attachment(string? name, MemoryStream stream)
+    {
+        Name = name;
+        _stream = stream;
+    }
+
+    public string? Name { get; }
+
+    public void Dispose()
+    {
+        _stream.Dispose();
+    }
+
+    public MemoryStream GetStreamCopy()
+    {
+        lock (_lock)
+        {
+            _stream.Position = 0;
+
+            var stream = new MemoryStream();
+            _stream.CopyTo(stream);
+            _stream.Position = 0;
+            stream.Position = 0;
+
+            return stream;
+        }
+    }
+}
 
 public enum FoulMessageType
 {
