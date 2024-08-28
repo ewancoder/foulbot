@@ -120,7 +120,7 @@ public static class BotsRegistration
                 .WithVoiceBetween(2)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35()
-                .WithDocumentSearch("test"));
+                .WithDocumentSearch());
 
             services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
                 "ew_test2bot", "Second_TestBot", grumpyDirective, ["xxx"], ["xxx"])
@@ -132,7 +132,7 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
                 )
-                .WithDocumentSearch("test2"));
+                .WithDocumentSearch());
         }
         else
         {
@@ -142,7 +142,7 @@ public static class BotsRegistration
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35()
-                .WithDocumentSearch("pidorstore"));
+                .WithDocumentSearch());
 
             // Commented out configuration for the Boston Dynamics bot.
             services.RegisterBot(configuration, "EwMeatBagsBotApiKey", new FoulBotConfiguration(
@@ -198,7 +198,7 @@ public static class BotsRegistration
             services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
                 "ew_mihaly4bot", "Mihaly4", mihaly4Directive,
                 ["миха", "михалыч"], ["михалыч"])
-                    .SetContextSize(40).Private().WithDocumentSearch("mihaly4"));
+                    .SetContextSize(40).Private().WithDocumentSearch());
         }
 
         return services;

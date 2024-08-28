@@ -42,7 +42,7 @@ public sealed class DocumentSearchFeature : BotFeature
         _botMessenger = botMessenger;
         _aiClient = aiClient;
         _chat = chat;
-        _storeName = config.DocumentSearchStoreName!;
+        _storeName = $"{config.DocumentSearchStoreName!}__{chat.ChatId}";
         _config = config;
     }
 
@@ -65,8 +65,10 @@ public sealed class DocumentSearchFeature : BotFeature
 
             var rawText = CutKeyword(text, "raw");
 
+            var hasResults = false;
             await foreach (var result in _documentSearch.GetSearchResultsAsync(_storeName, rawText ?? text))
             {
+                hasResults = true;
                 if (result.Image == null && result.Text != null)
                 {
                     if (rawText is not null)
@@ -88,6 +90,9 @@ public sealed class DocumentSearchFeature : BotFeature
                     await _botMessenger.SendImageAsync(_chat.ChatId, result.Image);
                 }
             }
+
+            if (!hasResults)
+                await _botMessenger.SendTextMessageAsync(_chat.ChatId, "No results. Possibly your document store is empty.");
 
             return true; // TODO: Actually process requests for document search.
         }

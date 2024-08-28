@@ -44,11 +44,11 @@ public sealed record FoulBotConfiguration
 
     public bool IsAssistant => !NotAnAssistant;
 
-    public FoulBotConfiguration WithDocumentSearch(string storeName)
+    public FoulBotConfiguration WithDocumentSearch(string? storeName = null)
     {
         return this with
         {
-            DocumentSearchStoreName = $"{BotId}__{storeName}"
+            DocumentSearchStoreName = $"{BotId}__{storeName ?? "default"}"
         };
     }
 
