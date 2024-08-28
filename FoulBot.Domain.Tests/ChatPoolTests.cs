@@ -75,6 +75,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, botId, message, factory, Cts.Token);
+        await WaitAsync();
 
         _chat.Verify(x => x.HandleMessageAsync(message));
     }
@@ -94,6 +95,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, botId, message, factory, Cts.Token);
+        await WaitAsync();
 
         _chat.Verify(x => x.HandleMessageAsync(It.IsAny<FoulMessage>()), Times.Never);
         _foulChatFactory.Verify(x => x.CreateAsync(_duplicateMessageHandler.Object, _chatId), Times.Never);
@@ -143,8 +145,11 @@ public class ChatPoolTests : Testing<ChatPool>
         }
 
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
+        {
             await sut.HandleMessageAsync(
                 _chatId, botId, message, factory, Cts.Token);
+            await WaitAsync();
+        }
 
         if (chatMethodType == ChatMethodType.InviteBotToChatAsync)
             await sut.InviteBotToChatAsync(
@@ -179,8 +184,11 @@ public class ChatPoolTests : Testing<ChatPool>
         await using var sut = Fixture.Create<ChatPool>();
 
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
+        {
             await sut.HandleMessageAsync(
                 _chatId, botId, message, factory, Cts.Token);
+            await WaitAsync();
+        }
 
         if (chatMethodType == ChatMethodType.InviteBotToChatAsync)
             await sut.InviteBotToChatAsync(
@@ -206,8 +214,11 @@ public class ChatPoolTests : Testing<ChatPool>
         await WaitAsync();
 
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
+        {
             await sut.HandleMessageAsync(
                 _chatId, botId, message, brokenFactory, Cts.Token);
+            await WaitAsync();
+        }
 
         if (chatMethodType == ChatMethodType.InviteBotToChatAsync)
             await sut.InviteBotToChatAsync(
@@ -235,8 +246,11 @@ public class ChatPoolTests : Testing<ChatPool>
         await using var sut = Fixture.Create<ChatPool>();
 
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
+        {
             await sut.HandleMessageAsync(
                 _chatId, botId, message, factory, Cts.Token);
+            await WaitAsync();
+        }
 
         if (chatMethodType == ChatMethodType.InviteBotToChatAsync)
             await sut.InviteBotToChatAsync(
@@ -260,6 +274,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, botId, message, brokenFactory, Cts.Token);
+        await WaitAsync();
 
         botMock.Verify(x => x.TriggerAsync(message), Times.Never);
         botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)), Times.Never);
@@ -268,8 +283,11 @@ public class ChatPoolTests : Testing<ChatPool>
         // More checks for creation of another bot.
 
         if (chatMethodType == ChatMethodType.HandleMessageAsync)
+        {
             await sut.HandleMessageAsync(
                 _chatId, botId, message, factory, Cts.Token);
+            await WaitAsync();
+        }
 
         if (chatMethodType == ChatMethodType.InviteBotToChatAsync)
             await sut.InviteBotToChatAsync(
@@ -298,8 +316,11 @@ public class ChatPoolTests : Testing<ChatPool>
         var method = async () =>
         {
             if (methodType == ChatMethodType.HandleMessageAsync)
+            {
                 await sut.HandleMessageAsync(
                     _chatId, botId, message, factory, Cts.Token);
+                await WaitAsync();
+            }
 
             if (methodType == ChatMethodType.InviteBotToChatAsync)
                 await sut.InviteBotToChatAsync(
@@ -342,8 +363,11 @@ public class ChatPoolTests : Testing<ChatPool>
         var method = async () =>
         {
             if (methodType == ChatMethodType.HandleMessageAsync)
+            {
                 await sut.HandleMessageAsync(
                     _chatId, botId, message, Factory, Cts.Token);
+                await WaitAsync();
+            }
 
             if (methodType == ChatMethodType.InviteBotToChatAsync)
                 await sut.InviteBotToChatAsync(
@@ -378,12 +402,14 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, botId1, message, Factory1, Cts.Token);
+        await WaitAsync();
 
         Mock.Get(bot1).Verify(x => x.TriggerAsync(message), Times.Once);
         Mock.Get(bot1).ResetCalls();
 
         await sut.HandleMessageAsync(
             _chatId, botId2, message, Factory2, Cts.Token);
+        await WaitAsync();
 
         Mock.Get(bot2).Verify(x => x.TriggerAsync(message), Times.Once);
         Mock.Get(bot1).Verify(x => x.TriggerAsync(message), Times.Once);
@@ -429,12 +455,14 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             chatId1, botId1, message, Factory1, Cts.Token);
+        await WaitAsync();
 
         Mock.Get(bot1).Verify(x => x.TriggerAsync(message), Times.Once);
         Mock.Get(bot1).ResetCalls();
 
         await sut.HandleMessageAsync(
             chatId2, botId2, message, Factory2, Cts.Token);
+        await WaitAsync();
 
         Mock.Get(bot2).Verify(x => x.TriggerAsync(message), Times.Once);
         Mock.Get(bot1).Verify(x => x.TriggerAsync(message), Times.Never);
@@ -452,6 +480,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, foulBotId, message, factory, Cts.Token);
+        await WaitAsync();
 
         await sut.KickBotFromChatAsync(_chatId, foulBotId, Cts.Token);
 
@@ -470,6 +499,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
         await sut.HandleMessageAsync(
             _chatId, foulBotId, message, factory, Cts.Token);
+        await WaitAsync();
 
         _foulChatFactory.ResetCalls();
 
@@ -509,6 +539,7 @@ public class ChatPoolTests : Testing<ChatPool>
 
             await sut.HandleMessageAsync(
                 chatId, botId, message, Factory, Cts.Token);
+            await WaitAsync();
         }
 
         if (chatMethodType == ChatMethodType.GracefullyCloseAsync)
