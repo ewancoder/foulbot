@@ -222,13 +222,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
                 var text = response.Value.Content[0].Text;
 
-                _logger.LogDebug(
-                    "OpenAI tokens usage data: {@Context}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
-                    context,
-                    text,
-                    response.Value.Usage.InputTokens,
-                    response.Value.Usage.OutputTokens,
-                    response.Value.Usage.TotalTokens);
+                LogTokensUsage(context, text, response.Value.Usage);
 
                 return text;
             }
@@ -247,6 +241,30 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         }
 
         throw new InvalidOperationException("Logic never comes here.");
+    }
+
+    private void LogTokensUsage(
+        IEnumerable<ChatMessage> context, string text, ChatTokenUsage usage)
+    {
+        _logger.LogDebug(
+                "OpenAI tokens usage data: {@Context}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
+                context,
+                text,
+                usage.InputTokens,
+                usage.OutputTokens,
+                usage.TotalTokens);
+    }
+
+    private void LogTokensUsage(
+        IEnumerable<ThreadInitializationMessage> context, string text, RunTokenUsage usage)
+    {
+        _logger.LogDebug(
+                "OpenAI Assistants tokens usage data: {@Context}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
+                context,
+                text,
+                usage.PromptTokens,
+                usage.CompletionTokens,
+                usage.TotalTokens);
     }
 
     // TODO: Split IDocumentSearch implementation into separate class.
@@ -350,6 +368,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             await Task.Delay(TimeSpan.FromSeconds(1));
             threadRun = await _assistantClient.GetRunAsync(threadRun.Value.ThreadId, threadRun.Value.Id);
         } while (!threadRun.Value.Status.IsTerminal);
+
+        LogTokensUsage(threadOptions.InitialMessages, prompt, threadRun.Value.Usage);
 
         var messagePages = _assistantClient.GetMessagesAsync(threadRun.Value.ThreadId, new MessageCollectionOptions() { Order = ListOrder.OldestFirst });
         var messages = messagePages.GetAllValuesAsync();
