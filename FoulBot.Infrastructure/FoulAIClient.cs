@@ -334,7 +334,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             yield break;
         }
 
-        var instructions = "You are an assistant that helps searching data in the documents. When asked to generate some visualization, use the code interpreter tool to do so.";
+        //var instructions = "You are an assistant that helps searching data in the documents. When asked to generate some visualization, use the code interpreter tool to do so.";
+        var instructions = "You are an assistant that helps searching data in the documents.";
 
         AssistantCreationOptions assistantOptions = new()
         {
@@ -342,8 +343,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             Instructions = $"{instructions}",
             Tools =
             {
-                new FileSearchToolDefinition(),
-                new CodeInterpreterToolDefinition()
+                new FileSearchToolDefinition()
+                //new CodeInterpreterToolDefinition()
             },
             ToolResources = new()
             {
