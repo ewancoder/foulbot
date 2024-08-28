@@ -132,10 +132,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
                 documentSearch,
                 botMessenger,
                 aiClient,
-                chat.ChatId,
-                config.DocumentSearchStoreName!,
-                config.BotId,
-                config.Directive);
+                chat,
+                config);
 
             bot.AddFeature(feature);
         }

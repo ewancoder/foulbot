@@ -27,34 +27,30 @@ public sealed class DocumentSearchFeature : BotFeature
     private readonly IDocumentSearch _documentSearch;
     private readonly IBotMessenger _botMessenger;
     private readonly IFoulAIClient _aiClient;
-    private readonly FoulChatId _chatId;
+    private readonly IFoulChat _chat;
     private readonly string _storeName;
-    private readonly string _botId;
-    private readonly string _botDirective;
+    private readonly FoulBotConfiguration _config;
 
     public DocumentSearchFeature(
         IDocumentSearch documentSearch,
         IBotMessenger botMessenger,
         IFoulAIClient aiClient,
-        FoulChatId chatId,
-        string storeName,
-        string botId,
-        string botDirective)
+        IFoulChat chat,
+        FoulBotConfiguration config)
     {
         _documentSearch = documentSearch;
         _botMessenger = botMessenger;
         _aiClient = aiClient;
-        _chatId = chatId;
-        _storeName = storeName;
-        _botId = botId;
-        _botDirective = botDirective;
+        _chat = chat;
+        _storeName = config.DocumentSearchStoreName!;
+        _config = config;
     }
 
     public override async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
     {
         if (message.Type != FoulMessageType.Document)
         {
-            var text = CutKeyword(message.Text, $"@{_botId}");
+            var text = CutKeyword(message.Text, $"@{_config.BotId}");
             text ??= message.Text;
 
             text = CutKeyword(text, "/search");
@@ -74,18 +70,22 @@ public sealed class DocumentSearchFeature : BotFeature
                 if (result.Image == null && result.Text != null)
                 {
                     if (rawText is not null)
-                        await _botMessenger.SendTextMessageAsync(_chatId, result.Text);
+                    {
+                        await _botMessenger.SendTextMessageAsync(_chat.ChatId, result.Text);
+                        _chat.AddMessage(CreateFoulMessageFromSearchResponse(result.Text));
+                    }
                     else
                     {
-                        var funText = await _aiClient.GetCustomResponseAsync($"{_botDirective}. Imagine you have produced the following text, update it based on your character but keep the relevant facts intact: \"{result.Text}\"");
+                        var funText = await _aiClient.GetCustomResponseAsync($"{_config.Directive}. Imagine you have produced the following text, update it based on your character but keep the relevant facts intact: \"{result.Text}\"");
 
-                        await _botMessenger.SendTextMessageAsync(_chatId, funText);
+                        await _botMessenger.SendTextMessageAsync(_chat.ChatId, funText);
+                        _chat.AddMessage(CreateFoulMessageFromSearchResponse(result.Text));
                     }
                 }
 
                 if (result.Image != null)
                 {
-                    await _botMessenger.SendImageAsync(_chatId, result.Image);
+                    await _botMessenger.SendImageAsync(_chat.ChatId, result.Image);
                 }
             }
 
@@ -99,7 +99,7 @@ public sealed class DocumentSearchFeature : BotFeature
             await _documentSearch.UploadDocumentAsync(
                 _storeName, fileName, attachment.Data);
 
-            await _botMessenger.SendTextMessageAsync(_chatId, $"Uploaded file to document search: {fileName}");
+            await _botMessenger.SendTextMessageAsync(_chat.ChatId, $"Uploaded file to document search: {fileName}");
         }
 
         return true;
@@ -108,5 +108,17 @@ public sealed class DocumentSearchFeature : BotFeature
     public override ValueTask StopFeatureAsync()
     {
         return default;
+    }
+
+    private FoulMessage CreateFoulMessageFromSearchResponse(string text)
+    {
+        return FoulMessage.CreateText(
+            Guid.NewGuid().ToString(),
+            FoulMessageSenderType.Bot,
+            new(_config.BotName),
+            text,
+            DateTime.UtcNow,
+            true,
+            null);
     }
 }
