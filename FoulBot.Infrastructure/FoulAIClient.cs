@@ -46,10 +46,14 @@ public sealed class InMemoryVectorStoreMapping : IVectorStoreMapping
 
 public sealed class RedisVectorStoreMapping : IVectorStoreMapping
 {
+    private readonly ILogger<RedisVectorStoreMapping> _logger;
     private readonly IConnectionMultiplexer _redis;
 
-    public RedisVectorStoreMapping(IConnectionMultiplexer redis)
+    public RedisVectorStoreMapping(
+        ILogger<RedisVectorStoreMapping> logger,
+        IConnectionMultiplexer redis)
     {
+        _logger = logger;
         _redis = redis;
     }
 
@@ -71,7 +75,17 @@ public sealed class RedisVectorStoreMapping : IVectorStoreMapping
     {
         var db = _redis.GetDatabase();
 
-        return await db.StringGetAsync(GetKey(storeName));
+        // This issue doesn't reproduce locally, but for some reason it does on the server.
+        try
+        {
+            var value = await db.StringGetAsync(GetKey(storeName));
+            return value;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Error happened when trying to get vector store mapping. Returning null and creating a new vector store.");
+            return null;
+        }
     }
 
     private static string GetKey(string storeName)
