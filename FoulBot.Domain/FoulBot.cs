@@ -145,6 +145,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Received message by the bot: {Message}", message);
 
+        // TODO: Unit test processors processing messages even when Interlocked is already incremented below.
         foreach (var processor in _features)
         {
             if (await processor.ProcessMessageAsync(message))
@@ -168,12 +169,14 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
             // ReplyStrategy, DelayStrategy - log stuff themselves.
 
+            // TODO: Unit test simulating reading the chat BEFORE getting the context.
+            // Simulate "reading" the chat.
+            await _delayStrategy.DelayAsync(_cts.Token);
+
+            // At this point we have "read" the whole chat and are committed to writing a reply.
             var context = _replyStrategy.GetContextForReplying(message);
             if (context == null)
                 return;
-
-            // Simulate "reading" the chat.
-            await _delayStrategy.DelayAsync(_cts.Token);
 
             var replyMode = _replyModePicker.GetBotReplyMode(context);
             _logger.LogDebug("Got reply mode type: {ReplyModeType}, starting imitation of action", replyMode.Type);
