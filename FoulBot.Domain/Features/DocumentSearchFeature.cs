@@ -27,6 +27,7 @@ public sealed class DocumentSearchFeature : BotFeature
 {
     private readonly IDocumentSearch _documentSearch;
     private readonly IContextReducer _contextReducer;
+    private readonly IReplyImitatorFactory _replyImitatorFactory;
     private readonly IBotMessenger _botMessenger;
     private readonly IFoulAIClient _aiClient;
     private readonly IFoulChat _chat;
@@ -36,6 +37,7 @@ public sealed class DocumentSearchFeature : BotFeature
     public DocumentSearchFeature(
         IDocumentSearch documentSearch,
         IContextReducer contextReducer,
+        IReplyImitatorFactory replyImitatorFactory,
         IBotMessenger botMessenger,
         IFoulAIClient aiClient,
         IFoulChat chat,
@@ -43,6 +45,7 @@ public sealed class DocumentSearchFeature : BotFeature
     {
         _documentSearch = documentSearch;
         _contextReducer = contextReducer;
+        _replyImitatorFactory = replyImitatorFactory;
         _botMessenger = botMessenger;
         _aiClient = aiClient;
         _chat = chat;
@@ -70,6 +73,10 @@ public sealed class DocumentSearchFeature : BotFeature
             var rawText = CutKeyword(text, "raw");
             var directRequest = CutKeyword(rawText ?? text, "direct");
 
+            // TODO: Figure out duplication. Here we start duplicating the logic of FoulBot.
+            // Imitating typing. And if we need to imitate the initial delay too - it will add even more duplication.
+            await using var imitator = _replyImitatorFactory.ImitateReplying(_chat.ChatId, new BotReplyMode(ReplyType.Text));
+
             var asyncEnumerable = directRequest is null
                 ? _documentSearch.GetSearchResultsAsync(_storeName, _contextReducer.Reduce(_chat.GetContextSnapshot()))
                 : _documentSearch.GetSearchResultsAsync(_storeName, rawText ?? text);
@@ -77,7 +84,12 @@ public sealed class DocumentSearchFeature : BotFeature
             var hasResults = false;
             await foreach (var result in asyncEnumerable)
             {
-                hasResults = true;
+                if (!hasResults)
+                {
+                    await imitator.FinishReplyingAsync(string.Empty);
+                    hasResults = true;
+                }
+
                 if (result.Image == null && result.Text != null)
                 {
                     if (rawText is not null)

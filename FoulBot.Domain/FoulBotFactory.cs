@@ -70,7 +70,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         var contextReducer = new ContextReducer(config);
         var replyStrategy = new BotReplyStrategy(
             _botReplyStrategyLogger, contextReducer, _timeProvider, chat, config);
-        var typingImitatorFactory = new ReplyImitatorFactory(
+        var replyImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
         var aiClient = _aiClientFactory.Create(config.OpenAIModel);
         var documentSearch = (IDocumentSearch)aiClient;
@@ -85,7 +85,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             _delayStrategy,
             replyStrategy,
             replyModePicker,
-            typingImitatorFactory,
+            replyImitatorFactory,
             _random,
             aiClient,
             messageFilter,
@@ -133,6 +133,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             var feature = new DocumentSearchFeature(
                 documentSearch,
                 contextReducer,
+                replyImitatorFactory,
                 botMessenger,
                 aiClient,
                 chat,
