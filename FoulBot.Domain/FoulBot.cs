@@ -119,7 +119,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await _botMessenger.SendStickerAsync(stickerId);
         }
 
-        var directive = $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
+        var directive = _chat.IsPrivateChat
+            ? $"{_config.Directive}. You have just been added to a chat with {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it."
+            : $"{_config.Directive}. You have just been added to a chat group with a number of people by a person named {invitedBy.Name}, tell them hello in your manner or thank the person for adding you if you feel like it.";
         var greetingsMessage = await _aiClient.GetCustomResponseAsync(directive); // TODO: Pass cancellation token.
 
         _logger.LogDebug("Sending a greetings message to chat: {Message}", greetingsMessage);

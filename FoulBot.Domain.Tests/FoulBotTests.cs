@@ -26,6 +26,8 @@ public class FoulBotTests : Testing<FoulBot>
         _replyImitatorFactory = Freeze<IReplyImitatorFactory>();
         _replyModePicker = Freeze<IBotReplyModePicker>();
 
+        _chat.Setup(x => x.IsPrivateChat).Returns(false);
+
         _replyModePicker.Setup(x => x.GetBotReplyMode(It.IsAny<IList<FoulMessage>>()))
             .Returns(() => new(ReplyType.Text));
 
@@ -95,7 +97,7 @@ public class FoulBotTests : Testing<FoulBot>
     }
 
     [Theory, AutoMoqData]
-    public async Task GreetEveryoneAsync_ShouldSendAGreetingsMessage(
+    public async Task GreetEveryoneAsync_ShouldSendAGreetingsMessage_ToGroupChat(
         ChatParticipant invitedBy,
         string generatedMessage)
     {
@@ -106,6 +108,28 @@ public class FoulBotTests : Testing<FoulBot>
                 && directive.Contains(invitedBy.Name)
                 && directive.Contains("You have just been added to a chat group"))))
             .Returns(() => new(generatedMessage));
+
+        var sut = CreateFoulBot(config);
+
+        await sut.GreetEveryoneAsync(invitedBy);
+
+        _botMessenger.Verify(x => x.SendTextMessageAsync(ChatId, generatedMessage));
+    }
+
+    [Theory, AutoMoqData]
+    public async Task GreetEveryoneAsync_ShouldSendAGreetingsMessage_ToPrivateChat(
+        ChatParticipant invitedBy,
+        string generatedMessage)
+    {
+        var config = CreateDefaultConfig();
+
+        _aiClient.Setup(x => x.GetCustomResponseAsync(It.Is<string>(
+            directive => directive.Contains(config.Directive)
+                && directive.Contains($"You have just been added to a chat with {invitedBy.Name}"))))
+            .Returns(() => new(generatedMessage));
+
+        _chat.Setup(x => x.IsPrivateChat)
+            .Returns(true);
 
         var sut = CreateFoulBot(config);
 

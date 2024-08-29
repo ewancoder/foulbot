@@ -239,6 +239,7 @@ public sealed class ChatPool : IAsyncDisposable
                     }
                     catch (Exception exception)
                     {
+                        // TODO: Unit test that we don't have unhandled exceptions anymore.
                         using var _l = Logger
                             .AddScoped("ChatId", chat.ChatId)
                             .AddScoped("BotId", foulBotId)

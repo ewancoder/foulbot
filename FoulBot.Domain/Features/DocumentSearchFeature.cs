@@ -20,11 +20,13 @@ public interface IDocumentSearch
     /// Gets ordered items that should be sent in that order.
     /// </summary>
     IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, string prompt);
+    IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, IEnumerable<FoulMessage> context);
 }
 
 public sealed class DocumentSearchFeature : BotFeature
 {
     private readonly IDocumentSearch _documentSearch;
+    private readonly IContextReducer _contextReducer;
     private readonly IBotMessenger _botMessenger;
     private readonly IFoulAIClient _aiClient;
     private readonly IFoulChat _chat;
@@ -33,12 +35,14 @@ public sealed class DocumentSearchFeature : BotFeature
 
     public DocumentSearchFeature(
         IDocumentSearch documentSearch,
+        IContextReducer contextReducer,
         IBotMessenger botMessenger,
         IFoulAIClient aiClient,
         IFoulChat chat,
         FoulBotConfiguration config)
     {
         _documentSearch = documentSearch;
+        _contextReducer = contextReducer;
         _botMessenger = botMessenger;
         _aiClient = aiClient;
         _chat = chat;
@@ -64,9 +68,14 @@ public sealed class DocumentSearchFeature : BotFeature
             }
 
             var rawText = CutKeyword(text, "raw");
+            var directRequest = CutKeyword(rawText ?? text, "direct");
+
+            var asyncEnumerable = directRequest is null
+                ? _documentSearch.GetSearchResultsAsync(_storeName, _contextReducer.Reduce(_chat.GetContextSnapshot()))
+                : _documentSearch.GetSearchResultsAsync(_storeName, rawText ?? text);
 
             var hasResults = false;
-            await foreach (var result in _documentSearch.GetSearchResultsAsync(_storeName, rawText ?? text))
+            await foreach (var result in asyncEnumerable)
             {
                 hasResults = true;
                 if (result.Image == null && result.Text != null)

@@ -1,5 +1,4 @@
 ﻿using AutoFixture.Dsl;
-using Xunit.Sdk;
 
 namespace FoulBot.Domain.Tests;
 
@@ -14,16 +13,22 @@ public class NotABotMessage : ICustomization
     }
 }
 
+// TODO: Currently tests are testing BotReplyStrategy together with ContextReducer.
+// Split these tests.
 public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 {
     public const string BotName = "botName";
     private readonly Mock<IFoulChat> _chat;
+    private ContextReducer _contextReducer;
 
     public BotReplyStrategyTests()
     {
         _chat = Freeze<IFoulChat>();
         _chat.Setup(x => x.IsPrivateChat)
             .Returns(false);
+
+        _contextReducer = Fixture.Create<ContextReducer>();
+        Fixture.Register<IContextReducer>(() => _contextReducer);
 
         Fixture.Customize(new NotABotMessage());
     }
@@ -52,9 +57,15 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
             .With(x => x.KeyWords, keywords ?? [])
             .Create();
 
-        Customize("config", config);
+        CustomizeConfig(config);
 
         return config;
+    }
+
+    private void CustomizeConfig(FoulBotConfiguration config)
+    {
+        Customize("config", config);
+        _contextReducer = new ContextReducer(config);
     }
 
     private FoulMessage GenerateMessageWithPart(string part)
@@ -633,7 +644,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         _chat.Setup(x => x.GetContextSnapshot())
             .Returns(context);
 
-        Customize("config", config);
+        CustomizeConfig(config);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 

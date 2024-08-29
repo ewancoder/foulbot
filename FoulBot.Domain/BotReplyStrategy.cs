@@ -10,6 +10,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
     public static readonly TimeSpan MinimumTimeBetweenMessages = TimeSpan.FromHours(1);
 
     private readonly ILogger<BotReplyStrategy> _logger;
+    private readonly IContextReducer _contextReducer;
     private readonly TimeProvider _timeProvider;
     private readonly IFoulChat _chat;
     private readonly FoulBotConfiguration _config;
@@ -18,11 +19,13 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
 
     public BotReplyStrategy(
         ILogger<BotReplyStrategy> logger,
+        IContextReducer contextReducer,
         TimeProvider timeProvider,
         IFoulChat chat,
         FoulBotConfiguration config)
     {
         _logger = logger;
+        _contextReducer = contextReducer;
         _timeProvider = timeProvider;
         _chat = chat;
         _config = config;
@@ -39,7 +42,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         if (currentMessage.ForceReply)
         {
             _logger.LogDebug("Forcing a reply from the bot");
-            return Reduce(context);
+            return _contextReducer.Reduce(context);
         }
 
         var unprocessedMessages = context
@@ -65,20 +68,20 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         {
             _logger.LogDebug("Chat is private, replying to (every) message");
             _lastProcessedMessageId = context[^1].Id;
-            return Reduce(context);
+            return _contextReducer.Reduce(context);
         }
 
         // HACK: Duplicated code with triggerMessage.
         // TODO: Refactor this to not iterate on context multiple times.
         // And to potentially iterate only as last resort.
         var alwaysTriggerMessage = unprocessedMessages
-            .FirstOrDefault(ShouldAlwaysTrigger);
+            .Find(_contextReducer.ShouldAlwaysTrigger);
 
         if (alwaysTriggerMessage != null)
         {
             _logger.LogDebug("Trigger message found: {TriggerMessage}", alwaysTriggerMessage);
             _lastProcessedMessageId = context[^1].Id;
-            return Reduce(context);
+            return _contextReducer.Reduce(context);
         }
 
         var now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -96,7 +99,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         var keywordMessage = context
             .SkipWhile(message => _lastProcessedMessageId != null && message.Id != _lastProcessedMessageId)
             .Skip(_lastProcessedMessageId != null ? 1 : 0)
-            .FirstOrDefault(ShouldTrigger);
+            .FirstOrDefault(_contextReducer.ShouldTrigger);
 
         if (keywordMessage == null)
         {
@@ -109,72 +112,6 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         // If something bad happens later we don't re-process old messages.
         _lastProcessedMessageId = context[^1].Id;
         _lastTriggeredAt = _timeProvider.GetUtcNow().UtcDateTime;
-        return Reduce(context);
-    }
-
-    private List<FoulMessage> Reduce(IList<FoulMessage> context)
-    {
-        var onlyAddressedToMe = new List<FoulMessage>();
-        var onlyAddressedToMeCharactersCount = 0;
-        var allMessages = new List<FoulMessage>();
-        var allMessagesCharactersCount = 0;
-
-        // TODO: Consider storing context in reverse order too, to avoid copying it on every message.
-        foreach (var message in context.Reverse())
-        {
-            if (onlyAddressedToMe.Count < _config.ContextSize
-                && onlyAddressedToMeCharactersCount < _config.MaxContextSizeInCharacters / 2
-                && (ShouldTrigger(message) || IsMyOwnMessage(message)))
-            {
-                if (!IsMyOwnMessage(message) && message.SenderType == FoulMessageSenderType.Bot)
-                    onlyAddressedToMe.Add(message.AsUser());
-                else
-                    onlyAddressedToMe.Add(message);
-
-                onlyAddressedToMeCharactersCount += message.Text.Length;
-            }
-
-            if (allMessages.Count < _config.ContextSize / 2
-                && allMessagesCharactersCount < _config.MaxContextSizeInCharacters / 2
-                && !ShouldTrigger(message) && !IsMyOwnMessage(message))
-            {
-                if (message.SenderType == FoulMessageSenderType.Bot)
-                    allMessages.Add(message.AsUser());
-                else
-                    allMessages.Add(message);
-
-                allMessagesCharactersCount += message.Text.Length;
-            }
-        }
-
-        return
-        [
-            FoulMessage.CreateText("Directive", FoulMessageSenderType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
-            .. onlyAddressedToMe.Concat(allMessages)
-            .DistinctBy(x => x.Id)
-            .OrderBy(x => x.Date)
-            .TakeLast(_config.ContextSize)
-        ];
-    }
-
-    private bool ShouldTrigger(FoulMessage message)
-    {
-        return _config.KeyWords.Any(keyword => message.Text.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
-            || ShouldAlwaysTrigger(message);
-    }
-
-    private bool ShouldAlwaysTrigger(FoulMessage message)
-    {
-        return _config.Triggers.Any(trigger =>
-                message.Text.Equals(trigger, StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.StartsWith($"{trigger} ", StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.EndsWith($" {trigger}", StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.Contains($" {trigger} ", StringComparison.InvariantCultureIgnoreCase));
-    }
-
-    private bool IsMyOwnMessage(FoulMessage message)
-    {
-        return message.SenderType == FoulMessageSenderType.Bot
-            && message.SenderName == _config.BotName;
+        return _contextReducer.Reduce(context);
     }
 }
