@@ -119,6 +119,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         var allMessages = new List<FoulMessage>();
         var allMessagesCharactersCount = 0;
 
+        // TODO: Consider removing attachment messages (binary data) if not removed yet.
         // TODO: Consider storing context in reverse order too, to avoid copying it on every message.
         foreach (var message in context.Reverse())
         {
