@@ -325,7 +325,11 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         }
     }
 
-    public async IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, string prompt)
+    public IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, string prompt)
+        => GetSearchResultsAsync(storeName, [FoulMessage.CreateText("id", FoulMessageSenderType.User, new("user"), prompt, DateTime.UtcNow, false, null)]);
+
+    public async IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(
+        string storeName, IEnumerable<FoulMessage> context)
     {
         var vectorStoreId = await _vectorStoreMapping.GetVectorStoreIdAsync(storeName);
         if (vectorStoreId == null)
@@ -365,10 +369,12 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
         var assistant = await _assistantClient.CreateAssistantAsync("gpt-4o-mini", assistantOptions);
 
-        ThreadCreationOptions threadOptions = new()
+        ThreadCreationOptions threadOptions = new();
+
+        foreach (var message in GetInitialMessages(context))
         {
-            InitialMessages = { prompt }
-        };
+            threadOptions.InitialMessages.Add(message);
+        }
 
         var threadRun = await _assistantClient.CreateThreadAndRunAsync(assistant.Value.Id, threadOptions);
 
@@ -378,12 +384,12 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             threadRun = await _assistantClient.GetRunAsync(threadRun.Value.ThreadId, threadRun.Value.Id);
         } while (!threadRun.Value.Status.IsTerminal);
 
-        LogTokensUsage(threadOptions.InitialMessages, prompt, threadRun.Value.Usage);
+        LogTokensUsage(threadOptions.InitialMessages, string.Empty, threadRun.Value.Usage);
 
         var messagePages = _assistantClient.GetMessagesAsync(threadRun.Value.ThreadId, new MessageCollectionOptions() { Order = ListOrder.OldestFirst });
         var messages = messagePages.GetAllValuesAsync();
 
-        await foreach (var message in messages.Skip(1)) // Skipping the request itself.
+        await foreach (var message in messages.Skip(threadOptions.InitialMessages.Count)) // Skipping the request itself.
         {
             foreach (var contentItem in message.Content)
             {
@@ -418,4 +424,26 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             }
         }
     }
+
+    public IEnumerable<ThreadInitializationMessage> GetInitialMessages(IEnumerable<FoulMessage> messages)
+    {
+        foreach (var message in messages)
+        {
+            if (message.SenderType == FoulMessageSenderType.System)
+                continue; // Ignore system messages for assistants.
+
+            // HACK: this is a hack to try and let OpenAI know our name.
+            yield return new ThreadInitializationMessage(
+                GetMessageRole(message),
+                [message.SenderType == FoulMessageSenderType.User
+                    ? $"({message.SenderName}) {message.Text}"
+                    : message.Text]);
+        }
+    }
+
+    private static MessageRole GetMessageRole(FoulMessage message) => message.SenderType switch
+    {
+        FoulMessageSenderType.User => MessageRole.User,
+        FoulMessageSenderType.Bot => MessageRole.Assistant
+    };
 }
