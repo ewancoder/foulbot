@@ -72,7 +72,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         // TODO: Refactor this to not iterate on context multiple times.
         // And to potentially iterate only as last resort.
         var alwaysTriggerMessage = unprocessedMessages
-            .FirstOrDefault(ShouldAlwaysTrigger);
+            .Find(ShouldAlwaysTrigger);
 
         if (alwaysTriggerMessage != null)
         {
