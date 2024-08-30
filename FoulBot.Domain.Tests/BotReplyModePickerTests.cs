@@ -4,7 +4,7 @@ public class BotReplyModePickerTests : Testing<BotReplyModePicker>
 {
     [Theory, AutoMoqData]
     public void ShouldReturnTextType_WhenNoVoiceConfigured(
-        List<FoulMessage> context,
+        IList<FoulMessage> context,
         FoulBotConfiguration config)
     {
         config = config.WithVoiceBetween(0);

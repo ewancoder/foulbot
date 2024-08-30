@@ -85,7 +85,7 @@ public sealed record FoulMessage(
         DateTime date,
         bool isOriginallyBotMessage,
         string? replyTo) => new(
-            id, FoulMessageType.Text, senderType, sender, text, date, isOriginallyBotMessage, replyTo, Enumerable.Empty<Attachment>());
+            id, FoulMessageType.Text, senderType, sender, text, date, isOriginallyBotMessage, replyTo, []);
 
     public static FoulMessage CreateDocument(
         string id,

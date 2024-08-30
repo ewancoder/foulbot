@@ -657,7 +657,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         }
 
         // Assert first message is directive.
-        var directive = contextForReplying.First();
+        var directive = contextForReplying[0];
         Assert.Equal(FoulMessageSenderType.System, directive.SenderType);
         Assert.Equal("System", directive.SenderName);
         Assert.Equal(config.Directive, directive.Text);

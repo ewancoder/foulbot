@@ -31,8 +31,10 @@ public sealed class ChatLoader : IDisposable
     {
         var chatIds = await _allowedChatsProvider.GetAllAllowedChatsAsync();
 
+        _logger.LogInformation("Loading all chats");
         await Task.WhenAll(chatIds.Select(chatId =>
         {
+            _logger.LogInformation("Loading chat {ChatId}", chatId);
             // If chat is private - only add the bot that belongs here.
             if (chatId.IsPrivate && chatId.FoulBotId?.BotId != configuration.BotId)
                 return Task.CompletedTask;

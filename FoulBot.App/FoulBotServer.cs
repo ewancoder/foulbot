@@ -4,6 +4,8 @@ namespace FoulBot.App;
 
 public sealed class FoulBotServer
 {
+    private FoulBotServer() { }
+
     public static async Task StartAsync(CancellationToken cancellationToken)
     {
         var isDebug = false;
@@ -45,7 +47,6 @@ public sealed class FoulBotServer
             catch (Exception exception)
             {
                 logger.LogError(exception, "Error happened during initialization.");
-                throw;
             }
             finally
             {

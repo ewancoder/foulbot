@@ -19,7 +19,7 @@ public abstract class Testing<TSut> : IDisposable
     protected Mock<TObject> Freeze<TObject>() where TObject : class
         => Fixture.Freeze<Mock<TObject>>();
 
-    protected Task WaitAsync() => Task.Delay(15);
+    protected static Task WaitAsync() => Task.Delay(15);
     protected Task WaitAsync(Task task) => Task.WhenAny(task, WaitAsync());
     protected void AdvanceTime(int milliseconds) => TimeProvider.Advance(TimeSpan.FromMilliseconds(milliseconds));
 

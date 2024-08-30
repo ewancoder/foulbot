@@ -22,7 +22,7 @@ public interface IVectorStoreMapping
 
 public sealed class InMemoryVectorStoreMapping : IVectorStoreMapping
 {
-    private readonly Dictionary<string, string> _storeNameToVectorStoreId = new();
+    private readonly Dictionary<string, string> _storeNameToVectorStoreId = [];
 
     public ValueTask ClearAsync(string storeName)
     {
@@ -321,7 +321,6 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         {
             // Vector store has been deleted on OpenAI side.
             await _vectorStoreMapping.ClearAsync(storeName);
-            return;
         }
     }
 
@@ -425,7 +424,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         }
     }
 
-    public IEnumerable<ThreadInitializationMessage> GetInitialMessages(IEnumerable<FoulMessage> messages)
+    public static IEnumerable<ThreadInitializationMessage> GetInitialMessages(IEnumerable<FoulMessage> messages)
     {
         foreach (var message in messages)
         {

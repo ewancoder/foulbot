@@ -91,7 +91,7 @@ public sealed class ChatPool : IAsyncDisposable
             return;
 
         // TODO: Consider throwing exception here. If bot wasn't able to join the chat - it just returns.
-        var chat = await InitializeChatAndBotAsync(
+        await InitializeChatAndBotAsync(
             chatId,
             foulBotId,
             botFactory,
@@ -271,7 +271,7 @@ public sealed class ChatPool : IAsyncDisposable
 
                 await bot.DisposeAsync();
 
-                _logger.LogWarning("Successfully unsubscribed and disposed of bot");
+                _logger.LogInformation("Successfully unsubscribed and disposed of bot");
             };
             _logger.LogDebug("Subscribed to bot shutdown event, so we can dispose of bot when needed");
 
@@ -310,8 +310,8 @@ public sealed class ChatPool : IAsyncDisposable
         _isStopping = true;
 
         await Task.WhenAll(
-            _chats.Values.ToList().Select(chat => chat.GracefullyCloseAsync()).Concat(
-                _bots.Values.ToList().Select(bot => bot.GracefulShutdownAsync())));
+            _chats.Values.Select(chat => chat.GracefullyCloseAsync()).Concat(
+                _bots.Values.Select(bot => bot.GracefulShutdownAsync())));
 
         _logger.LogDebug("Graceful shutdown of ChatPool successfully finished");
     }
