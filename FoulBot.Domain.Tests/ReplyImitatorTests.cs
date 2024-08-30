@@ -100,10 +100,8 @@ public class ReplyImitatorTests : Testing<ReplyImitator>
         await AssertStoppedImitationAsync(1);
     }
 
-    // TODO: Unfortunately this test fails miraculously on the Github CI. Increasing delays doesn't help
-    // Ncrunch churning doesn't find an issue.
     // Should type 1000 characters for 30 seconds (400 wpm): two Barbaras.
-    //[Fact]
+    [Fact]
     public async Task ShouldFinishTyping_WhenRequestedToStop_AndTextIsLarge()
     {
         SetupReplyType(ReplyType.Text);
@@ -114,7 +112,7 @@ public class ReplyImitatorTests : Testing<ReplyImitator>
 
         _messenger.Verify(x => x.NotifyTyping(_chatId));
 
-        TimeProvider.Advance(TimeSpan.FromMilliseconds(100)); // Canceling after 100 ms have passed.
+        TimeProvider.Advance(TimeSpan.FromMilliseconds(101)); // Canceling after 100 ms have passed.
         await WaitAsync();
         _messenger.Verify(x => x.NotifyTyping(_chatId), Times.Once); // No more calls for now.
 
@@ -122,7 +120,7 @@ public class ReplyImitatorTests : Testing<ReplyImitator>
 
         // This task will block until it's done typing, so we are not awaiting it.
         // Saying that the total text is 1000 characters (should be typed for 30 seconds).
-        var task = sut.FinishReplyingAsync(new string('a', 1000));
+        var task = sut.FinishReplyingAsync(new string('a', 1000)).AsTask();
         await WaitAsync();
 
         // It should cancel the wait, and start sending notifications to bot again.
@@ -130,21 +128,21 @@ public class ReplyImitatorTests : Testing<ReplyImitator>
 
         // Still need to wait 29900.
         SetupNextRandom(29600);
-        TimeProvider.Advance(TimeSpan.FromMilliseconds(200)); // Total 100 + 200 = 300.
+        TimeProvider.Advance(TimeSpan.FromMilliseconds(201)); // Total 100 + 200 = 300.
         await WaitAsync();
         _messenger.Verify(x => x.NotifyTyping(_chatId), Times.Exactly(3));
 
         // Still need to wait 29700.
         SetupNextRandom(100);
-        TimeProvider.Advance(TimeSpan.FromMilliseconds(29600)); // Total 300 + 29600 = 29900.
+        TimeProvider.Advance(TimeSpan.FromMilliseconds(29601)); // Total 300 + 29600 = 29900.
         await WaitAsync();
         _messenger.Verify(x => x.NotifyTyping(_chatId), Times.Exactly(4));
 
         Assert.False(task.IsCompleted);
 
         // This time we finish waiting for the whole 30000.
-        TimeProvider.Advance(TimeSpan.FromMilliseconds(100));
-        await WaitAsync();
+        TimeProvider.Advance(TimeSpan.FromMilliseconds(101));
+        await WaitAsync(task);
         _messenger.Verify(x => x.NotifyTyping(_chatId), Times.Exactly(4));
 
         Assert.True(task.IsCompleted);
