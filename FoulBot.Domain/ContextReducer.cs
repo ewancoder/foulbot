@@ -71,11 +71,11 @@ public sealed class ContextReducer : IContextReducer
 
     public bool ShouldAlwaysTrigger(FoulMessage message)
     {
-        return _config.Triggers.Any(trigger =>
-                message.Text.Equals(trigger, StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.StartsWith($"{trigger} ", StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.EndsWith($" {trigger}", StringComparison.InvariantCultureIgnoreCase)
-                || message.Text.Contains($" {trigger} ", StringComparison.InvariantCultureIgnoreCase));
+        return !message.IsOriginallyBotMessage && _config.Triggers.Any(trigger =>
+            message.Text.Equals(trigger, StringComparison.InvariantCultureIgnoreCase)
+            || message.Text.StartsWith($"{trigger} ", StringComparison.InvariantCultureIgnoreCase)
+            || message.Text.EndsWith($" {trigger}", StringComparison.InvariantCultureIgnoreCase)
+            || message.Text.Contains($" {trigger} ", StringComparison.InvariantCultureIgnoreCase));
     }
 
     private bool IsMyOwnMessage(FoulMessage message)

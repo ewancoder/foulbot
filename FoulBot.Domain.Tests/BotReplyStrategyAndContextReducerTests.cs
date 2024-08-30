@@ -47,10 +47,12 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
         _contextReducer = new ContextReducer(config);
     }
 
-    private FoulMessage GenerateMessageWithPart(string part)
+    private FoulMessage GenerateMessageWithPart(
+        string part, bool isOriginallyBotMessage = false)
     {
         return BuildUserMessage()
             .With(x => x.Text, $"{Fixture.Create<string>()}{part}{Fixture.Create<string>()}")
+            .With(x => x.IsOriginallyBotMessage, isOriginallyBotMessage)
             .Create();
     }
 
@@ -307,12 +309,30 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
             Fixture.Create<FoulMessage>()
         ]);
 
-        ConfigureBot(keywords: triggers);
+        ConfigureBot(triggers: triggers);
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var result = sut.GetContextForReplying(context[1]);
         Assert.NotNull(result);
+    }
+
+    // When there are unprocessed messages that have trigger in them with spaces - process them.
+    [Theory, AutoMoqData]
+    public void ShouldNotProduceResults_WhenTriggeredByTrigger_ByAnotherBot(string[] triggers)
+    {
+        var context = ConfigureWithContext([
+            Fixture.Create<FoulMessage>(),
+            GenerateMessageWithPart($" {triggers[0]} ", isOriginallyBotMessage: true),
+            Fixture.Create<FoulMessage>()
+        ]);
+
+        ConfigureBot(triggers: triggers);
+
+        var sut = Fixture.Create<BotReplyStrategy>();
+
+        var result = sut.GetContextForReplying(context[1]);
+        Assert.Null(result);
     }
 
     // When there are unprocessed messages that have trigger in them without spaces - skip them.
