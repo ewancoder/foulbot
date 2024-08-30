@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Features;
+﻿using FoulBot.Domain.Connections;
+using FoulBot.Domain.Features;
 
 namespace FoulBot.Domain.Tests;
 

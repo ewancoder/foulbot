@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using FoulBot.Domain.Connections;
 using FoulBot.Domain.Storage;
 using FoulBot.Infrastructure.Storage;
 using FoulBot.Infrastructure.Telegram;

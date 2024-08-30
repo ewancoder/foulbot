@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using FoulBot.Domain.Connections;
+using Telegram.Bot;
 
 namespace FoulBot.Infrastructure.Telegram;
 

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using FoulBot.Domain.Connections;
 
 namespace FoulBot.Domain.Features;
 

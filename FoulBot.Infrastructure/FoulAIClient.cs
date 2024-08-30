@@ -1,5 +1,6 @@
 ﻿using System.ClientModel;
 using System.Text.RegularExpressions;
+using FoulBot.Domain.Connections;
 using FoulBot.Domain.Features;
 using Microsoft.Extensions.Configuration;
 using OpenAI;

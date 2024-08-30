@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain.Tests;
+﻿using FoulBot.Domain.Connections;
+
+namespace FoulBot.Domain.Tests;
 
 public class ReplyImitatorTests : Testing<ReplyImitator>
 {

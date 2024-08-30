@@ -1,7 +1,10 @@
 ﻿using System.Collections.Concurrent;
+using FoulBot.Domain.Connections;
 using FoulBot.Domain.Storage;
 
 namespace FoulBot.Domain;
+
+public delegate ValueTask<IFoulBot?> JoinBotToChatAsync(IFoulChat chat);
 
 public sealed class ChatPool : IAsyncDisposable
 {

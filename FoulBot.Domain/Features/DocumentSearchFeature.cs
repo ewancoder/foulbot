@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain.Features;
+﻿using FoulBot.Domain.Connections;
+
+namespace FoulBot.Domain.Features;
 
 public sealed record DocumentId(string Value);
 

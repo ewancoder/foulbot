@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using FoulBot.Domain.Connections;
+
+namespace FoulBot.Domain;
 
 public interface IReplyImitatorFactory
 {

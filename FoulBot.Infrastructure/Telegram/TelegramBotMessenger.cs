@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using FoulBot.Domain.Connections;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;

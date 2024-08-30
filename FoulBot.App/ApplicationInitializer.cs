@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FoulBot.Domain.Connections;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
 
