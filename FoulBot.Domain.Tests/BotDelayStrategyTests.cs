@@ -51,7 +51,7 @@ public class BotDelayStrategyTests : Testing<BotDelayStrategy>
     }
 }
 
-public sealed class BotDelayStrategyTheoryData : TheoryData<int, int, int>
+sealed file class BotDelayStrategyTheoryData : TheoryData<int, int, int>
 {
     /// <summary>
     /// When random between 1 and 100 is higher than 90, delay should be the highest.

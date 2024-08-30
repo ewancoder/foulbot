@@ -1,27 +1,13 @@
-﻿using AutoFixture.Dsl;
+﻿namespace FoulBot.Domain.Tests;
 
-namespace FoulBot.Domain.Tests;
-
-public class NotABotMessage : ICustomization
-{
-    public void Customize(IFixture fixture)
-    {
-        fixture.Customize<FoulMessage>(
-            composer => composer
-                .With(p => p.IsOriginallyBotMessage, false)
-                .With(p => p.ForceReply, false));
-    }
-}
-
-// TODO: Currently tests are testing BotReplyStrategy together with ContextReducer.
-// Split these tests.
-public class BotReplyStrategyTests : Testing<BotReplyStrategy>
+// TODO: Test BotReplyStrategy and ContextReducer separately.
+public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
 {
     public const string BotName = "botName";
     private readonly Mock<IFoulChat> _chat;
     private ContextReducer _contextReducer;
 
-    public BotReplyStrategyTests()
+    public BotReplyStrategyAndContextReducerTests()
     {
         _chat = Freeze<IFoulChat>();
         _chat.Setup(x => x.IsPrivateChat)
@@ -29,14 +15,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         _contextReducer = Fixture.Create<ContextReducer>();
         Fixture.Register<IContextReducer>(() => _contextReducer);
-
-        Fixture.Customize(new NotABotMessage());
     }
-
-    private IPostprocessComposer<FoulMessage> BuildMessage()
-        => Fixture.Build<FoulMessage>()
-            .With(x => x.IsOriginallyBotMessage, false)
-            .With(x => x.ForceReply, false);
 
     private IList<FoulMessage> ConfigureWithContext(IList<FoulMessage>? messages = null)
     {
@@ -70,7 +49,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
     private FoulMessage GenerateMessageWithPart(string part)
     {
-        return BuildMessage()
+        return BuildUserMessage()
             .With(x => x.Text, $"{Fixture.Create<string>()}{part}{Fixture.Create<string>()}")
             .Create();
     }
@@ -141,7 +120,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     {
         var config = ConfigureBot();
 
-        var messages = BuildMessage()
+        var messages = BuildUserMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create();
 
@@ -158,7 +137,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
         result = sut.GetContextForReplying(message);
         Assert.Null(result);
 
-        message = BuildMessage()
+        message = BuildUserMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create();
         context.Add(message);
@@ -173,7 +152,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     {
         var config = ConfigureBot();
 
-        var messages = BuildMessage()
+        var messages = BuildUserMessage()
             .With(x => x.ReplyTo, config.BotId)
             .CreateMany()
             .ToList();
@@ -428,7 +407,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(BuildMessage()
+        var response = sut.GetContextForReplying(BuildUserMessage()
             .With(x => x.ReplyTo, config.BotId)
             .Create());
 
@@ -443,7 +422,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(BuildMessage()
+        var response = sut.GetContextForReplying(BuildUserMessage()
             .With(x => x.Sender, () => new(config.BotName))
             .With(x => x.IsOriginallyBotMessage, true)
             .Create());
@@ -459,7 +438,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         var sut = Fixture.Create<BotReplyStrategy>();
 
-        var response = sut.GetContextForReplying(BuildMessage()
+        var response = sut.GetContextForReplying(BuildUserMessage()
             .With(x => x.Sender, () => new(config.BotName))
             .With(x => x.IsOriginallyBotMessage, false)
             .With(x => x.ReplyTo, config.BotId) // To make the message trigger a reply.
@@ -471,7 +450,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     [Fact]
     public void GetContextForReplying_ShouldConvertBotMessagesToUserMessages()
     {
-        var messages = BuildMessage()
+        var messages = BuildUserMessage()
             .With(x => x.SenderType, FoulMessageSenderType.Bot)
             .With(x => x.Text, "trigger")
             .CreateMany()
@@ -497,7 +476,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_WhenEnoughTimePassedBetweenKeywords_WorksAnyCase(
         string trigger)
     {
-        var context = BuildMessage()
+        var context = BuildUserMessage()
             .With(x => x.Text, "some_trigger_some")
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -505,7 +484,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         void AddMessages(string keyword)
         {
-            context.Add(BuildMessage()
+            context.Add(BuildUserMessage()
                 .With(x => x.Text, $"{Fixture.Create<string>()}{keyword}{Fixture.Create<string>()}")
                 .Create());
         }
@@ -545,7 +524,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_EvenWhenNotEnoughTimePassedBetweenTriggers_IfMandatoryTrigger(
         string trigger, bool shouldReply)
     {
-        var context = BuildMessage()
+        var context = BuildUserMessage()
             .With(x => x.Text, $"something {trigger} something")
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -553,7 +532,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
 
         void AddMessages(string trigger)
         {
-            context.Add(BuildMessage()
+            context.Add(BuildUserMessage()
                 .With(x => x.Text, $"{Fixture.Create<string>()} {trigger} {Fixture.Create<string>()}")
                 .Create());
         }
@@ -599,7 +578,7 @@ public class BotReplyStrategyTests : Testing<BotReplyStrategy>
     public void GetContextForReplying_ShouldReturnResult_WhenMandatoryTriggerIsFound_WorksAnyCase_ButWithSpaces(
         string trigger, bool returns)
     {
-        var context = BuildMessage()
+        var context = BuildUserMessage()
             .With(x => x.Text, trigger)
             .CreateMany()
             .OrderBy(x => x.Date)
@@ -690,7 +669,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         // When bot is the sender - do not reply.
         Add(
             GenerateMessages(),
-            Message(senderName: BotReplyStrategyTests.BotName, true),
+            Message(senderName: BotReplyStrategyAndContextReducerTests.BotName, true),
             null,
             100, 100);
 
