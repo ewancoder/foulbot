@@ -60,6 +60,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         SetupReminders(reminders);
 
         await using var sut = Fixture.Create<ReminderFeature>();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
