@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Infrastructure.Telegram;
+﻿using FoulBot.Domain.Connections;
+
+namespace FoulBot.Infrastructure.Telegram;
 
 public sealed class TelegramDuplicateMessageHandler : IDuplicateMessageHandler
 {

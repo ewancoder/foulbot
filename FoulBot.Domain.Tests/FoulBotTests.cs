@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Features;
+﻿using FoulBot.Domain.Connections;
+using FoulBot.Domain.Features;
 
 namespace FoulBot.Domain.Tests;
 
@@ -75,7 +76,7 @@ public class FoulBotTests : Testing<FoulBot>
             .Returns(0);
 
         var sut = CreateFoulBot(config);
-;
+
         await sut.GreetEveryoneAsync(invitedBy);
 
         _botMessenger.Verify(x => x.SendStickerAsync(ChatId, stickerIds[0]));
@@ -162,7 +163,7 @@ public class FoulBotTests : Testing<FoulBot>
 
     #region DisposeAsync
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task DisposeAsync_ShouldDisposeOfCancellationToken()
     {
         using var cts = new CancellationTokenSource();
@@ -176,7 +177,7 @@ public class FoulBotTests : Testing<FoulBot>
             () => cts.Token.ThrowIfCancellationRequested());
     }
 
-    [Theory, AutoMoqData]
+    [Fact]
     public async Task DisposeAsync_ShouldCancelTheToken()
     {
         using var cts = new CancellationTokenSource();
@@ -709,7 +710,7 @@ public class FoulBotTests : Testing<FoulBot>
     {
         _chat.Verify(x => x.AddMessage(It.Is<FoulMessage>(
             message => message.SenderType == FoulMessageSenderType.Bot
-                && message.IsOriginallyBotMessage == true
+                && message.IsOriginallyBotMessage
                 && message.Text == messageAddedToContext
                 && message.SenderName == botName)));
     }

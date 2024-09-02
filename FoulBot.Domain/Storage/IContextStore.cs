@@ -10,7 +10,7 @@ public sealed class NoContextStore : IContextStore
 {
     public ValueTask<IEnumerable<FoulMessage>> GetLastAsync(FoulChatId chatId, int amount)
     {
-        return new(Enumerable.Empty<FoulMessage>());
+        return new([]);
     }
 
     public ValueTask SaveMessageAsync(FoulChatId chatId, FoulMessage message)

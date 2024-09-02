@@ -4,10 +4,13 @@ public class BotReplyModePickerTests : Testing<BotReplyModePicker>
 {
     [Theory, AutoMoqData]
     public void ShouldReturnTextType_WhenNoVoiceConfigured(
-        List<FoulMessage> context,
+        IList<FoulMessage> context,
         FoulBotConfiguration config)
     {
-        config = config.WithVoiceBetween(0);
+        config = config with
+        {
+            MessagesBetweenVoice = 0
+        };
 
         Customize("config", config);
 
@@ -28,7 +31,12 @@ public class BotReplyModePickerTests : Testing<BotReplyModePicker>
         FoulBotConfiguration config)
     {
         var intVoices = voicesOnIterations.Split(',').Select(int.Parse).ToArray();
-        config = config.WithVoiceBetween(voiceBetween);
+
+        config = config with
+        {
+            MessagesBetweenVoice = voiceBetween
+        };
+
         Customize("config", config);
 
         var sut = Fixture.Create<BotReplyModePicker>();

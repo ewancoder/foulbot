@@ -303,6 +303,9 @@ dotnet_diagnostic.CA1034.severity = none
 # Can be empty interfaces in tests, for testing purposes.
 dotnet_diagnostic.CA1040.severity = none
 
+# Use local function instead of lambda
+dotnet_diagnostic.IDE0039.severity = none
+
 # === .NET Core API ===
 [**.Api/**]
 

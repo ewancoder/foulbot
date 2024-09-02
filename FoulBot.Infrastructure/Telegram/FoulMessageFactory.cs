@@ -68,12 +68,12 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
             telegramMessage.ReplyToMessage?.From?.Username);
     }
 
-    private string GetUniqueMessageId(Message message)
+    private static string GetUniqueMessageId(Message message)
     {
         return $"{message.From?.Id}-{message.Date.Ticks}";
     }
 
-    private string? GetSenderName(Message message)
+    private static string? GetSenderName(Message message)
     {
         // TODO: Remove all unsupported characters (normalize name).
         // Maybe do this on OpenAI side.

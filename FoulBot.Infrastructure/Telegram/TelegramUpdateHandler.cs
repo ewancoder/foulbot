@@ -45,8 +45,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private IScopedLogger Logger => _logger
         .AddScoped("BotId", _botConfiguration.BotId);
 
-    private readonly HashSet<int> _pollingErrorCodes = new HashSet<int>();
-    private readonly object _pollingErrorLock = new object();
+    private readonly HashSet<int> _pollingErrorCodes = [];
+    private readonly object _pollingErrorLock = new();
     public Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
         // This thing happens for couple second every two days with Bad Gateway error during midnight.

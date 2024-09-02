@@ -1,4 +1,4 @@
-﻿namespace FoulBot.Domain;
+﻿namespace FoulBot.Domain.Connections;
 
 /// <param name="Type">Bot type. Keyed <see cref="IBotConnectionHandler"/>
 /// should be registered with this type as key.</param>

@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Storage;
+﻿using FoulBot.Domain.Connections;
+using FoulBot.Domain.Storage;
 
 namespace FoulBot.Domain.Tests;
 
@@ -514,10 +515,10 @@ public class ChatPoolTests : Testing<ChatPool>
     [InlineAutoMoqData(ChatMethodType.DisposeAsync)]
     public async Task GracefullyClose_AndDispose_ShouldCallGracefullyCloseOnAllChatsAndBots(
         ChatMethodType chatMethodType,
-        List<FoulChatId> chatIds,
-        List<FoulBotId> botIds,
-        List<IFoulChat> foulChats,
-        List<IFoulBot> foulBots,
+        IList<FoulChatId> chatIds,
+        IList<FoulBotId> botIds,
+        IList<IFoulChat> foulChats,
+        IList<IFoulBot> foulBots,
         FoulMessage message)
     {
         ValueTask<IFoulBot?> Factory(IFoulChat chat)

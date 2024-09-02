@@ -60,7 +60,8 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         SetupReminders(reminders);
 
         await using var sut = Fixture.Create<ReminderFeature>();
-        /*await WaitAsync();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
+        await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
         var timeLeftTillDue = reminders[0].AtUtc - TimeProvider.GetUtcNow().UtcDateTime;
@@ -76,7 +77,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()));
         _reminderStore.Verify(x => x.RemoveReminderAsync(reminders[0]));
         _reminderStore.Verify(x => x.AddReminderAsync(It.IsAny<Reminder>()), Times.Never);
-        _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(3));*/
+        _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(3));
     }
 
     [Theory, AutoMoqData]
@@ -319,7 +320,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
             && r.BotId == _botId
             && r.ChatId == _chatId
             && r.AtUtc == TimeProvider.GetUtcNow().UtcDateTime + TimeSpan.FromSeconds(advanceSeconds)
-            && r.EveryDay == false)));
+            && !r.EveryDay)));
 
         TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();

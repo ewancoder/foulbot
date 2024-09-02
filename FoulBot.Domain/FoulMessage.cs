@@ -42,6 +42,13 @@ public enum FoulMessageType
     Document = 2
 }
 
+public enum FoulMessageSenderType
+{
+    System = 1,
+    Bot = 2,
+    User = 3
+}
+
 /// <summary>
 /// Id should be implementation-agnostic UNIQUE value between messages.
 /// </summary>
@@ -85,7 +92,7 @@ public sealed record FoulMessage(
         DateTime date,
         bool isOriginallyBotMessage,
         string? replyTo) => new(
-            id, FoulMessageType.Text, senderType, sender, text, date, isOriginallyBotMessage, replyTo, Enumerable.Empty<Attachment>());
+            id, FoulMessageType.Text, senderType, sender, text, date, isOriginallyBotMessage, replyTo, []);
 
     public static FoulMessage CreateDocument(
         string id,
