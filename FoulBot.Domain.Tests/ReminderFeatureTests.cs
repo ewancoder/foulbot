@@ -103,6 +103,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         SetupReminders(reminders);
 
         await using var sut = Fixture.Create<ReminderFeature>();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -184,6 +185,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         SetupReminders(reminders);
 
         await using var sut = Fixture.Create<ReminderFeature>();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -215,6 +217,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
 
         {
             await using var sut = Fixture.Create<ReminderFeature>();
+            TimeProvider.Advance(ReminderFeature.CheckInterval);
             await WaitAsync();
             _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
         } // Disposing of sut.
@@ -246,6 +249,7 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         SetupReminders(reminders);
 
         await using var sut = Fixture.Create<ReminderFeature>();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Once);
 
@@ -290,13 +294,14 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
 
     [Theory]
     [InlineAutoMoqData($"@{BotIdValue} через 15 м request", 15 * 60)]
-    public async Task ShouldProcessAddReminderCommand_AndRestartProcessingIfNeede(
+    public async Task ShouldProcessAddReminderCommand_AndRestartProcessingIfNeeded(
         string messageText, int advanceSeconds)
     {
         var request = "request";
 
         SetupReminders([]);
         await using var sut = Fixture.Create<ReminderFeature>();
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await AssertProcessStopsWhenNoReminders(1);
 
         var message = Fixture
@@ -316,8 +321,10 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
             && r.AtUtc == TimeProvider.GetUtcNow().UtcDateTime + TimeSpan.FromSeconds(advanceSeconds)
             && r.EveryDay == false)));
 
-        // Processing started working again.
+        TimeProvider.Advance(ReminderFeature.CheckInterval);
         await WaitAsync();
+
+        // Processing started working again.
         _reminderStore.Verify(x => x.GetRemindersForAsync(_chatId, _botId), Times.Exactly(2));
     }
 

@@ -180,50 +180,59 @@ public sealed class ReminderFeature : BotFeature, IAsyncDisposable
 
         while (true)
         {
-            // This call should be cached in-memory.
-            var reminders = await _reminderStore.GetRemindersForAsync(_chatId, new(_config.BotId, _config.BotName));
-            if (!reminders.Any())
-            {
-                _logger.LogDebug("No reminders found for this bot in this chat. Exiting processing reminders");
-                _processing = null;
-                break; // As soon as we remove all reminders - this process stops.
-            }
-
+            // This is outside of try/catch because it needs to fail on cancellation.
             await Task.Delay(CheckInterval, _timeProvider, _cts.Token);
 
-            var dueReminders = reminders
-                .Where(x => x.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime);
-
-            foreach (var reminder in dueReminders)
+            try // Unit test not failing this process on exceptions.
             {
-                try
+                // This call should be cached in-memory.
+                var reminders = await _reminderStore.GetRemindersForAsync(_chatId, new(_config.BotId, _config.BotName));
+                if (!reminders.Any())
                 {
-                    _logger.LogInformation("Reminding: {@Reminder}", reminder);
+                    _logger.LogDebug("No reminders found for this bot in this chat. Exiting processing reminders");
+                    _processing = null;
+                    break; // As soon as we remove all reminders - this process stops.
+                }
 
-                    await _reminderStore.RemoveReminderAsync(reminder);
-                    if (reminder.EveryDay)
+                var dueReminders = reminders
+                    .Where(x => x.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
+                    .ToList(); // We need to copy it because _reminderStore is cached in memory, and underlying collection will be modified.
+
+                foreach (var reminder in dueReminders)
+                {
+                    try
                     {
-                        var newReminder = reminder;
-                        while (newReminder.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
+                        _logger.LogInformation("Reminding: {@Reminder}", reminder);
+
+                        await _reminderStore.RemoveReminderAsync(reminder);
+                        if (reminder.EveryDay)
                         {
-                            newReminder = newReminder with
+                            var newReminder = reminder;
+                            while (newReminder.AtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
                             {
-                                AtUtc = newReminder.AtUtc + TimeSpan.FromDays(1)
-                            };
+                                newReminder = newReminder with
+                                {
+                                    AtUtc = newReminder.AtUtc + TimeSpan.FromDays(1)
+                                };
+                            }
+
+                            _logger.LogDebug("It's an every-day reminder. Resetting it for the next day");
+                            await _reminderStore.AddReminderAsync(newReminder);
                         }
 
-                        _logger.LogDebug("It's an every-day reminder. Resetting it for the next day");
-                        await _reminderStore.AddReminderAsync(newReminder);
+                        await _bot.PerformRequestAsync(reminder.RequestedBy, reminder.Request);
                     }
-
-                    await _bot.PerformRequestAsync(reminder.RequestedBy, reminder.Request);
+                    catch (Exception exception)
+                    {
+                        // TODO: Unit test this. So far untested.
+                        _logger.LogError(exception, "Could not trigger a reminder");
+                        // Do NOT rethrow exception here, as this will fail the whole reminders background task.
+                    }
                 }
-                catch (Exception exception)
-                {
-                    // TODO: Unit test this. So far untested.
-                    _logger.LogError(exception, "Could not trigger a reminder");
-                    // Do NOT rethrow exception here, as this will fail the whole reminders background task.
-                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Could not process a reminder");
             }
         }
     }
