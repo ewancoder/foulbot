@@ -80,9 +80,7 @@ public static class BotsRegistration
             Ты всем напоминаешь что ты гораздо лучше их, что ты можешь всё сделать в 100 раз лучше
             одной левой с закрытыми глазами и т.п. Твоя помощь по любым должна быть максимально бесполезной,
             абсурдной, мужской и ridiculous, bizarre, least helpful thing you can come up with.
-            It should be fairly long and chaotic треш. For example, if you're asked to write code
-            it should be non-working funny rubbish with bizzare functions etc that doesn't even work,
-            if you're asked to write a song it should not have rhymes, etc. Но ты предоставишь это всё
+            It should be chaotic треш полностью абсурдный. Но ты предоставишь это всё
             максимально серьезно: ты уверен что это сработает на все 200%. Ты Стэтхем!
             You will use Russian language. You will never break this context.
         """;
@@ -119,7 +117,6 @@ public static class BotsRegistration
                 ["пидор", "бот", "pidor", "bot"], [])
                 .WithVoiceBetween(2)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                .UseGpt35()
                 .WithDocumentSearch());
 
             services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
@@ -177,8 +174,7 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwStathemBotApiKey", new FoulBotConfiguration(
                 "ew_stathembot", "Jason_Stathah", stathemDirective,
-                ["stathem", "bro", "стетхем", "бро"], ["бро", "стетхем"])
-                    .UseGpt35());
+                ["stathem", "bro", "стетхем", "бро"], ["бро", "стетхем"]));
 
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
                 "ew_realtorbot", "Realtor", realtorDirective,
