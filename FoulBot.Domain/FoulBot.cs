@@ -151,7 +151,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         {
             if (await processor.ProcessMessageAsync(message))
             {
-                _logger.LogWarning("Message was processed by a command processor: {Processor}", processor.GetType());
+                _logger.LogInformation("Message was processed by a command processor: {Processor}", processor.GetType());
 
                 await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
                 return; // Message was processed by a command processor.
@@ -164,7 +164,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
         {
             if (value > 1)
             {
-                _logger.LogWarning("This bot already processing another message. Skipping");
+                _logger.LogDebug("This bot already processing another message. Skipping");
                 return;
             }
 

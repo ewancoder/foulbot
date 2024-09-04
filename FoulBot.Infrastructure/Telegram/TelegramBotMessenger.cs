@@ -66,7 +66,7 @@ public sealed class TelegramBotMessenger : IBotMessenger
         }
         catch (ApiRequestException exception)
         {
-            _logger.LogError(exception, "Error when sending markdown to telegram. Sending regular text now.");
+            _logger.LogDebug(exception, "Error when sending markdown to telegram. Sending regular text now.");
             await _client.SendTextMessageAsync(chatId.ToTelegramChatId(), message);
         }
     }

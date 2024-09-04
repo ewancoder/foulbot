@@ -74,8 +74,10 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
                 }, cancellationToken);
             }
         }
-
-        _logger.LogError(exception, "Polling error occurred.");
+        else
+        {
+            _logger.LogError(exception, "Polling error occurred.");
+        }
 
         return Task.CompletedTask;
     }
