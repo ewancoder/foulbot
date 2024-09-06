@@ -66,7 +66,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         // Reply to every message in private chat, and to Replies.
         if (_chat.IsPrivateChat || currentMessage.ReplyTo == _config.BotId)
         {
-            _logger.LogDebug("Chat is private, replying to (every) message");
+            _logger.LogDebug("Chat is private OR it's a reply, replying to (every) message");
             _lastProcessedMessageId = context[^1].Id;
             return _contextReducer.Reduce(context);
         }

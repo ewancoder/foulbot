@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Storage;
+﻿using FoulBot.Domain.Connections;
+using FoulBot.Domain.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -7,7 +8,7 @@ namespace FoulBot.Infrastructure.Telegram;
 
 public interface ITelegramUpdateHandlerFactory
 {
-    IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client);
+    IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client, IBotMessenger botMessenger);
 }
 
 public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
@@ -22,7 +23,7 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
     public TelegramUpdateHandlerFactory(
         ILogger<TelegramBotMessenger> bmLogger,
         ILogger<TelegramUpdateHandler> logger,
-        [FromKeyedServices("Telegram")]ChatPool chatPool,
+        [FromKeyedServices(Constants.BotTypes.Telegram)]ChatPool chatPool,
         IFoulBotFactory botFactory,
         IFoulMessageFactory foulMessageFactory,
         IAllowedChatsProvider allowedChatsProvider)
@@ -35,9 +36,9 @@ public sealed class TelegramUpdateHandlerFactory : ITelegramUpdateHandlerFactory
         _allowedChatsProvider = allowedChatsProvider;
     }
 
-    public IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client)
+    public IUpdateHandler Create(FoulBotConfiguration configuration, TelegramBotClient client, IBotMessenger botMessenger)
     {
         return new TelegramUpdateHandler(
-            _bmLogger, _logger, _chatPool, _botFactory, _foulMessageFactory, configuration, _allowedChatsProvider, client);
+            _bmLogger, _logger, _chatPool, _botFactory, _foulMessageFactory, configuration, _allowedChatsProvider, client, botMessenger);
     }
 }

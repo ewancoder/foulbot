@@ -185,8 +185,11 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
     public async ValueTask<string> GetTextResponseAsync(IEnumerable<FoulMessage> context)
     {
-        var aiContext = context.Select<FoulMessage, ChatMessage>(message =>
+        var cleanContext = context.Where(x => x.Sender.Name != null);
+        var aiContext = cleanContext.Select<FoulMessage, ChatMessage>(message =>
         {
+            // TODO: Log warning if there are Sender Names = empty string.
+
             if (message.SenderType == FoulMessageSenderType.System)
                 return new SystemChatMessage(message.Text);
 
