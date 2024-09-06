@@ -1,4 +1,9 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0-alpine AS base
+
+RUN apk add --no-cache \
+    icu-data-full \
+    icu-libs
+
 USER app
 WORKDIR /app
 
