@@ -146,6 +146,16 @@ public static class BotsRegistration
         }
         else
         {
+            services.RegisterBot(configuration, "DiscordSanchezBotApiKey", new FoulBotConfiguration(
+                "1244427938561134702", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"]),
+                type: Constants.BotTypes.Discord);
+
+            services.RegisterBot(configuration, "EwSanchezBotApiKey", new FoulBotConfiguration(
+                "ew_sanchezbot", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"]),
+                type: Constants.BotTypes.Telegram);
+
             services.RegisterBot(configuration, "EwPidorBotApiKey", new FoulBotConfiguration(
                 "ew_pidorbot", "Pidor_Bot", grumpyDirective,
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
