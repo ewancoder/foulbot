@@ -54,6 +54,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly List<IBotFeature> _features = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
+    private DateTime _resetContextAt = DateTime.UtcNow;
 
     public FoulBot(
         ILogger<FoulBot> logger,
@@ -143,6 +144,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
+        // TODO: Unit test.
+        if (DateTime.UtcNow - _resetContextAt > TimeSpan.FromDays(1))
+            _resetContextAt = DateTime.UtcNow;
+
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Received message by the bot: {Message}", message);
 
@@ -175,7 +180,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await _delayStrategy.DelayAsync(_cts.Token);
 
             // At this point we have "read" the whole chat and are committed to writing a reply.
-            var context = _replyStrategy.GetContextForReplying(message);
+            // TODO: Unit test passing _resetContextAt.
+            var context = _replyStrategy.GetContextForReplying(message, _config.ResettableContext ? _resetContextAt : null);
             if (context == null)
                 return;
 

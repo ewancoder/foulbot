@@ -11,7 +11,7 @@ public interface IFoulChat
     FoulChatId ChatId { get; }
     bool IsPrivateChat { get; }
 
-    IList<FoulMessage> GetContextSnapshot();
+    IList<FoulMessage> GetContextSnapshot(DateTime? notEarlierThan = null);
     ValueTask HandleMessageAsync(FoulMessage message);
     void AddMessage(FoulMessage message);
 
@@ -83,7 +83,8 @@ public sealed class FoulChat : IFoulChat
     public FoulChatId ChatId { get; }
     public bool IsPrivateChat => ChatId.IsPrivate;
 
-    public IList<FoulMessage> GetContextSnapshot()
+    // TODO: Unit test passing _notEarlierThan.
+    public IList<FoulMessage> GetContextSnapshot(DateTime? notEarlierThan = null)
     {
         // Instead of locking.
         while (true)
@@ -91,6 +92,7 @@ public sealed class FoulChat : IFoulChat
             try
             {
                 var snapshot = _context
+                    .Where(x => notEarlierThan == null || x.Date >= notEarlierThan)
                     .OrderBy(x => x.Date) // Order by date so we're sure context is in correct order at decision making step.
                     .ToList();
 

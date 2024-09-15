@@ -203,7 +203,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -227,7 +227,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -259,7 +259,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -291,7 +291,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -324,7 +324,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -353,7 +353,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -386,7 +386,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -421,7 +421,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         string responseMessage)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -461,7 +461,7 @@ public class FoulBotTests : Testing<FoulBot>
     public async Task TriggerAsync_ShouldNotReply_WhenContextIsEmpty(
         FoulMessage message)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(() => null);
 
         var sut = CreateFoulBot();
@@ -503,7 +503,7 @@ public class FoulBotTests : Testing<FoulBot>
         var responseMessageTask = new Task<string>(() => responseMessage);
         var typingImitatorFinishTask = new Task(() => finishedTyping = true);
 
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _aiClient.Setup(x => x.GetTextResponseAsync(context))
@@ -591,7 +591,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         var order = 0;
 
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
@@ -637,7 +637,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         var order = 0;
 
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
@@ -686,7 +686,7 @@ public class FoulBotTests : Testing<FoulBot>
         IList<FoulMessage> context,
         IReplyImitator imitator)
     {
-        _replyStrategy.Setup(x => x.GetContextForReplying(message))
+        _replyStrategy.Setup(x => x.GetContextForReplying(message, null))
             .Returns(context);
 
         _replyModePicker.Setup(x => x.GetBotReplyMode(context))
@@ -763,6 +763,7 @@ public class FoulBotTests : Testing<FoulBot>
         return Fixture.Build<FoulBotConfiguration>()
             .With(x => x.Stickers, [])
             .With(x => x.NotAnAssistant, true)
+            .With(x => x.ResettableContext, false)
             .Create();
     }
 

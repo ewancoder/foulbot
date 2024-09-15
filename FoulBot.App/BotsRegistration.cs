@@ -138,7 +138,7 @@ public static class BotsRegistration
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                .UseGpt35()
+                .UseGpt35().WithResettableContext()
                 .WithDocumentSearch());
 
             // Commented out configuration for the Boston Dynamics bot.
@@ -174,7 +174,8 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwStathemBotApiKey", new FoulBotConfiguration(
                 "ew_stathembot", "Jason_Stathah", stathemDirective,
-                ["stathem", "bro", "стетхем", "бро"], ["бро", "стетхем"]));
+                ["stathem", "bro", "стетхем", "бро", "джейсон"], ["бро", "стетхем", "джейсон"])
+                    .UseGpt35().WithResettableContext());
 
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
                 "ew_realtorbot", "Realtor", realtorDirective,

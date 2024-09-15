@@ -2,7 +2,7 @@
 
 public interface IBotReplyStrategy
 {
-    IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage);
+    IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage, DateTime? notEarlierThan = null);
 }
 
 public sealed class BotReplyStrategy : IBotReplyStrategy
@@ -31,7 +31,7 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         _config = config;
     }
 
-    public IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage)
+    public IList<FoulMessage>? GetContextForReplying(FoulMessage currentMessage, DateTime? notEarlierThan = null)
     {
         _logger.LogDebug("Getting context for replying to message");
 
