@@ -41,6 +41,9 @@ public sealed class BotReplyStrategy : IBotReplyStrategy
         // or the last message is a bot message etc. We ALWAYS reply.
         if (currentMessage.ForceReply)
         {
+            if (context.Count > 0 && context[^1].IsOriginallyBotMessage && context[^1].SenderName == _config.BotName)
+                return null; // TODO: Unit test this or remove this. This is a temporary hack to now allow bot to send multiple messages in a row.
+
             _logger.LogDebug("Forcing a reply from the bot");
             return _contextReducer.Reduce(context);
         }
