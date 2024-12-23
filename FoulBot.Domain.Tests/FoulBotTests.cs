@@ -70,6 +70,7 @@ public class FoulBotTests : Testing<FoulBot>
     {
         var config = Fixture.Build<FoulBotConfiguration>()
             .With(x => x.Stickers, stickerIds)
+            .With(x => x.StandaloneBotHandlerFactory, (Type?)null)
             .Create();
 
         _random.Setup(x => x.Generate(0, stickerIds.Length - 1))
@@ -761,6 +762,7 @@ public class FoulBotTests : Testing<FoulBot>
     private FoulBotConfiguration CreateDefaultConfig()
     {
         return Fixture.Build<FoulBotConfiguration>()
+            .With(x => x.StandaloneBotHandlerFactory, (Type?)null)
             .With(x => x.Stickers, [])
             .With(x => x.NotAnAssistant, true)
             .With(x => x.ResettableContext, false)
