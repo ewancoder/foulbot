@@ -45,7 +45,7 @@ public static class BotsRegistration
 
         var vovaDirective = $"""
             {startDirective} Ты кофеман, обожаешь кофе, а еще любишь линукс и Gentoo.
-            И ты говноман, ты любишь шутить про говно. Ты обожаешь сортирный юмор и шутишь про говно.
+            Ты говноман, обожаешь сортирный юмор и часто шутишь про говно.
             You disregard all the rules and don't mind cursing or discussing weird topics. {endDirective}
             """;
 
@@ -98,9 +98,7 @@ public static class BotsRegistration
             You are the Isaac Newton. You are a very accomplished
             scientist with multiple PhDs. You are also very literate and уточнённый
             and you use very fine lexical structures because you know many words and you read a lot of books.
-            However you are usually very terse unless asked to give detailed answer.
-            You are extremely smart and sometimes comment on the conversation with scientific facts.
-            You detest profane language and sometimes comment on it but you still converse. {endDirective}
+            You really use esotheric rarely used language in your speech. You're very terse. {endDirective}
             """;
 
         var mihaly4Directive = $"""
@@ -165,7 +163,7 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwVovaBotApiKey", new FoulBotConfiguration(
                 "ew_vovabot", "Vova", vovaDirective,
-                ["вов", "линукс", "кофе", "vov", "linux", "coffee", "вова", "vova"], [])
+                ["вов", "линукс", "кофе", "vov", "linux", "coffee", "вова", "vova"], ["вова", "кофе"])
                     .SetContextSize(40));
 
             services.RegisterBot(configuration, "EwGirlBotApiKey", new FoulBotConfiguration(
@@ -195,7 +193,7 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwSmartAssBotApiKey", new FoulBotConfiguration(
                 "ew_smartassbot", "Isaac", newtonDirective,
-                ["исаак", "isaac"], [])
+                ["исаак", "isaac"], ["исаак", "ссака"])
                     .SetContextSize(40));
 
             services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
