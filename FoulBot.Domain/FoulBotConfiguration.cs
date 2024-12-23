@@ -1,4 +1,6 @@
-﻿namespace FoulBot.Domain;
+﻿using FoulBot.Domain.Features;
+
+namespace FoulBot.Domain;
 
 public sealed record FoulBotConfiguration
 {
@@ -39,6 +41,8 @@ public sealed record FoulBotConfiguration
     public bool OnlyReadAddressedToBotMessages { get; init; }
     public bool TalkOnYourOwn { get; init; } = true;
     public bool ResettableContext { get; init; }
+    public bool IsStandalone => StandaloneBotHandlerFactory != null;
+    public Type? StandaloneBotHandlerFactory { get; init; }
 
     public string? DocumentSearchStoreName { get; init; }
     public bool HasDocumentSearch => DocumentSearchStoreName != null;
@@ -112,6 +116,15 @@ public sealed record FoulBotConfiguration
         {
             ContextSize = contextSize,
             MaxContextSizeInCharacters = maxContextSizeInCharacters
+        };
+    }
+
+    public FoulBotConfiguration MakeStandalone<TStandaloneBotHandlerFactory>()
+        where TStandaloneBotHandlerFactory : IStandaloneBotHandlerFactory
+    {
+        return this with
+        {
+            StandaloneBotHandlerFactory = typeof(TStandaloneBotHandlerFactory)
         };
     }
 

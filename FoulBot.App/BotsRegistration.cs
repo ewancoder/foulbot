@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FoulBot.Domain.VanyaBirthday;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
@@ -111,16 +112,20 @@ public static class BotsRegistration
 
         var assistantDirective = "You are a helpful assistant.";
 
+        var questBot = "Ты квест мастер. Твоя задача увлекательно сообщать о заданиях для квеста.";
+
         if (isDebug)
         {
             services.RegisterBot(configuration, "EwTest1BotApiKey", new FoulBotConfiguration(
-                "ew_test1bot", "First_TestBot", grumpyDirective,
-                ["пидор", "бот", "pidor", "bot"], [])
+                "ew_test1bot", "First_TestBot", questBot,
+                ["квест", "бот", "привет"], [])
                 .WithVoiceBetween(2)
-                .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                .WithDocumentSearch());
+                .AddStickers("CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA")
+                .NeverReplyOutOfTurn()
+                .SetContextSize(50, 12000)
+                .MakeStandalone<VanyaBirthdayBotHandlerFactory>());
 
-            services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
+            /*services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
                 "ew_test2bot", "Second_TestBot", grumpyDirective, ["xxx"], ["xxx"])
                 .WithOnlyVoice()
                 .AddStickers(
@@ -130,7 +135,7 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAANhZkjBjsXxDF4SAAHjH_VF4_C4nDqUAAIrAwACz7vUDoLu1J5tqV6nNQQ",
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
                 )
-                .WithDocumentSearch());
+                .WithDocumentSearch());*/
         }
         else
         {

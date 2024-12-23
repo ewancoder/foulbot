@@ -1,5 +1,6 @@
 ﻿using FoulBot.Domain.Connections;
 using FoulBot.Domain.Storage;
+using FoulBot.Domain.VanyaBirthday;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -19,7 +20,8 @@ public static class RegistrationExtensions
             .AddSingleton<IBotDelayStrategy, BotDelayStrategy>()
             .AddSingleton<IContextStore, NoContextStore>()
             .AddTransient<IFoulBotFactory, FoulBotFactory>()
-            .AddTransient<IFoulChatFactory, FoulChatFactory>();
+            .AddTransient<IFoulChatFactory, FoulChatFactory>()
+            .AddTransient<VanyaBirthdayBotHandlerFactory>();
     }
 
     public static IServiceCollection AddChatPool<TDuplicateMessageHandler>(

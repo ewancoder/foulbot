@@ -110,6 +110,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
+        // TODO: Unit test this.
+        if (_config.IsStandalone)
+            return; // Do not greet anyone if standalone.
+
         using var _ = Logger.BeginScope();
 
         if (_config.Stickers.Count != 0)
@@ -158,7 +162,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 _logger.LogInformation("Message was processed by a command processor: {Processor}", processor.GetType());
 
-                await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
+                // TODO: Unit test this.
+                if (!_config.IsStandalone) // Only send info when not standalone.
+                    await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
                 return; // Message was processed by a command processor.
             }
         }
