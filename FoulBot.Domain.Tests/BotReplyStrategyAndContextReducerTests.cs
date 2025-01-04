@@ -23,7 +23,7 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
             .OrderBy(x => x.Date)
             .ToList();
 
-        _chat.Setup(x => x.GetContextSnapshot())
+        _chat.Setup(x => x.GetContextSnapshot(null))
             .Returns(context);
 
         return context;
@@ -640,7 +640,7 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
             .With(x => x.MaxContextSizeInCharacters, maxContextSizeInCharacters)
             .Create();
 
-        _chat.Setup(x => x.GetContextSnapshot())
+        _chat.Setup(x => x.GetContextSnapshot(null))
             .Returns(context);
 
         CustomizeConfig(config);

@@ -12,7 +12,7 @@ public sealed class FoulBotServer
 #if DEBUG
         isDebug = true;
 #endif
-        var isInMemory = false; // Enable this to debug without Redis etc.
+        var isInMemory = true; // Enable this to debug without Redis etc.
 
         var builder = FoulBotServerBuilder.Create(isDebug, isInMemory);
 

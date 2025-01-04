@@ -54,6 +54,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
     private readonly List<IBotFeature> _features = [];
     private int _triggerCalls;
     private bool _isShuttingDown;
+    private DateTime _resetContextAt = DateTime.UtcNow;
 
     public FoulBot(
         ILogger<FoulBot> logger,
@@ -109,6 +110,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask GreetEveryoneAsync(ChatParticipant invitedBy)
     {
+        // TODO: Unit test this.
+        if (_config.IsStandalone)
+            return; // Do not greet anyone if standalone.
+
         using var _ = Logger.BeginScope();
 
         if (_config.Stickers.Count != 0)
@@ -143,6 +148,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
     public async ValueTask TriggerAsync(FoulMessage message)
     {
+        // TODO: Unit test.
+        if (DateTime.UtcNow - _resetContextAt > TimeSpan.FromDays(1))
+            _resetContextAt = DateTime.UtcNow;
+
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Received message by the bot: {Message}", message);
 
@@ -153,7 +162,9 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             {
                 _logger.LogInformation("Message was processed by a command processor: {Processor}", processor.GetType());
 
-                await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
+                // TODO: Unit test this.
+                if (!_config.IsStandalone) // Only send info when not standalone.
+                    await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
                 return; // Message was processed by a command processor.
             }
         }
@@ -175,7 +186,8 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
             await _delayStrategy.DelayAsync(_cts.Token);
 
             // At this point we have "read" the whole chat and are committed to writing a reply.
-            var context = _replyStrategy.GetContextForReplying(message);
+            // TODO: Unit test passing _resetContextAt.
+            var context = _replyStrategy.GetContextForReplying(message, _config.ResettableContext ? _resetContextAt : null);
             if (context == null)
                 return;
 

@@ -1,6 +1,7 @@
 ﻿using FoulBot.Domain.Connections;
 using FoulBot.Domain.Features;
 using FoulBot.Domain.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.Domain;
 
@@ -25,6 +26,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ILogger<ReminderFeature> _remindersFeatureLogger;
     private readonly ILogger<BotReplyStrategy> _botReplyStrategyLogger;
     private readonly ILogger<TalkYourselfFeature> _talkYourselfFeatureLogger;
+    private readonly IServiceProvider _serviceProvider;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
@@ -37,7 +39,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ILogger<ReplyImitator> typingImitatorLogger,
         ILogger<ReminderFeature> reminderCreatorLogger,
         ILogger<BotReplyStrategy> botReplyStrategyLogger,
-        ILogger<TalkYourselfFeature> talkYourselfFeatureLogger)
+        ILogger<TalkYourselfFeature> talkYourselfFeatureLogger,
+        IServiceProvider serviceProvider)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
@@ -50,6 +53,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _remindersFeatureLogger = reminderCreatorLogger;
         _botReplyStrategyLogger = botReplyStrategyLogger;
         _talkYourselfFeatureLogger = talkYourselfFeatureLogger;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -91,6 +95,14 @@ public sealed class FoulBotFactory : IFoulBotFactory
             chat,
             cts,
             config);
+
+        if (config.IsStandalone)
+        {
+            var standaloneHandlerFactory = _serviceProvider.GetRequiredService(config.StandaloneBotHandlerFactory!) as IStandaloneBotHandlerFactory;
+            var standaloneFeature = new StandaloneFeature(standaloneHandlerFactory!.CreateStandaloneBotHandler(messenger, aiClient));
+            bot.AddFeature(standaloneFeature);
+            return bot;
+        }
 
         // Legacy class to be reworked. Currently starts reminders mechanism
         // on creation, so no need to keep the reference.
