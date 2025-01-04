@@ -1,5 +1,4 @@
-﻿using FoulBot.Domain.VanyaBirthday;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
@@ -128,8 +127,8 @@ public static class BotsRegistration
                 .WithVoiceBetween(2)
                 .AddStickers("CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA")
                 .NeverReplyOutOfTurn()
-                .SetContextSize(50, 12000)
-                .MakeStandalone<VanyaBirthdayBotHandlerFactory>());
+                .SetContextSize(50, 12000));
+                //.MakeStandalone<VanyaBirthdayBotHandlerFactory>());
 
             /*services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
                 "ew_test2bot", "Second_TestBot", grumpyDirective, ["xxx"], ["xxx"])
@@ -143,7 +142,12 @@ public static class BotsRegistration
                 )
                 .WithDocumentSearch());*/
 
-            services.RegisterBot(configuration, "DiscordEwTest1BotApiKey", new FoulBotConfiguration(
+            /*services.RegisterBot(configuration, "DiscordEwTest1BotApiKey", new FoulBotConfiguration(
+                "1244427938561134702", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"])
+                .WithDocumentSearch(), type: Constants.BotTypes.Discord);*/
+
+            services.RegisterBot(configuration, "DiscordSanchezBotApiKey", new FoulBotConfiguration(
                 "1244427938561134702", "Rick_Sanchez", rickDirective,
                 ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"])
                 .WithDocumentSearch(), type: Constants.BotTypes.Discord);

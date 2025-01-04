@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using FoulBot.Domain.Connections;
 using FoulBot.Domain.Features;
 using Microsoft.Extensions.Configuration;
-using OpenAI;
 using OpenAI.Assistants;
 using OpenAI.Audio;
 using OpenAI.Chat;
@@ -142,7 +141,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
     private readonly AudioClient _audioClient;
 
 #pragma warning disable OPENAI001
-    private readonly FileClient _fileClient;
+    private readonly OpenAIFileClient _fileClient;
     private readonly AssistantClient _assistantClient;
     private readonly VectorStoreClient _vectorClient;
 
@@ -254,9 +253,9 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
                 "OpenAI tokens usage data: {@Context}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
                 context,
                 text,
-                usage.InputTokens,
-                usage.OutputTokens,
-                usage.TotalTokens);
+                usage.InputTokenCount,
+                usage.OutputTokenCount,
+                usage.TotalTokenCount);
     }
 
     private void LogTokensUsage(
@@ -266,9 +265,9 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
                 "OpenAI Assistants tokens usage data: {@Context}, {ResponseMessage}, {PromptTokens}, {CompletionTokens}, {TotalTokens}",
                 context,
                 text,
-                usage.PromptTokens,
-                usage.CompletionTokens,
-                usage.TotalTokens);
+                usage.InputTokenCount,
+                usage.OutputTokenCount,
+                usage.TotalTokenCount);
     }
 
     // TODO: Split IDocumentSearch implementation into separate class.
@@ -281,7 +280,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         {
             try
             {
-                vectorStore = await _vectorClient.GetVectorStoreAsync(vectorStoreId);
+                // TODO: Make sure it is NON-blocking!
+                vectorStore = _vectorClient.GetVectorStore(vectorStoreId);
             }
             catch (ClientResultException exception) when (exception.Status == 404)
             {
@@ -290,18 +290,19 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             }
         }
 
-        vectorStore ??= await _vectorClient.CreateVectorStoreAsync(new VectorStoreCreationOptions
+        var operation = await _vectorClient.CreateVectorStoreAsync(true, new VectorStoreCreationOptions
         {
             Name = $"foulbot_{storeName}",
             ExpirationPolicy = new VectorStoreExpirationPolicy(VectorStoreExpirationAnchor.LastActiveAt, 30)
         });
+        vectorStore ??= await operation.GetVectorStoreAsync();
 
         await _vectorStoreMapping.CreateMappingAsync(storeName, vectorStore.Id);
 
         try
         {
             var file = await _fileClient.UploadFileAsync(document, documentName, FileUploadPurpose.Assistants);
-            await _vectorClient.AddFileToVectorStoreAsync(vectorStore, file);
+            await _vectorClient.AddFileToVectorStoreAsync(vectorStore.Id, file.Value.Id, true);
         }
         catch (Exception exc)
         {
@@ -340,7 +341,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
         try
         {
-            await _vectorClient.GetVectorStoreAsync(vectorStoreId);
+            // TODO: Make it NON-blocking!
+            _vectorClient.GetVectorStore(vectorStoreId);
         }
         catch (ClientResultException exception) when (exception.Status == 404)
         {
@@ -352,6 +354,8 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         //var instructions = "You are an assistant that helps searching data in the documents. When asked to generate some visualization, use the code interpreter tool to do so.";
         var instructions = "You are an assistant that helps searching data in the documents.";
 
+        var fstr = new FileSearchToolResources();
+        fstr.VectorStoreIds.Add(vectorStoreId);
         AssistantCreationOptions assistantOptions = new()
         {
             Name = "Document Search",
@@ -363,10 +367,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
             },
             ToolResources = new()
             {
-                FileSearch = new()
-                {
-                    VectorStoreIds = [vectorStoreId]
-                }
+                FileSearch = fstr
             },
         };
 
@@ -389,10 +390,10 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
 
         LogTokensUsage(threadOptions.InitialMessages, string.Empty, threadRun.Value.Usage);
 
-        var messagePages = _assistantClient.GetMessagesAsync(threadRun.Value.ThreadId, new MessageCollectionOptions() { Order = ListOrder.OldestFirst });
-        var messages = messagePages.GetAllValuesAsync();
+        // TODO: Test that ascending order is correct.
+        var messagePages = _assistantClient.GetMessagesAsync(threadRun.Value.ThreadId, new MessageCollectionOptions() { Order = MessageCollectionOrder.Ascending });
 
-        await foreach (var message in messages.Skip(threadOptions.InitialMessages.Count)) // Skipping the request itself.
+        await foreach (var message in messagePages.Skip(threadOptions.InitialMessages.Count)) // Skipping the request itself.
         {
             foreach (var contentItem in message.Content)
             {

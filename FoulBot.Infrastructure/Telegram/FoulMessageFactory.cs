@@ -36,7 +36,7 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
             var fileId = document.FileId;
 
             var stream = new MemoryStream();
-            await client.GetInfoAndDownloadFileAsync(fileId, stream); // TODO: Pass cancellation token.
+            await client.GetInfoAndDownloadFile(fileId, stream); // TODO: Pass cancellation token.
 
             attachments.Add(new(document.FileName, stream));
 
