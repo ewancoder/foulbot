@@ -1,4 +1,5 @@
-﻿using FoulBot.Domain.Storage;
+﻿using FoulBot.Domain.Connections;
+using FoulBot.Domain.Storage;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -17,6 +18,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
     private readonly FoulBotConfiguration _botConfiguration;
     private readonly DateTime _coldStarted = DateTime.UtcNow + TimeSpan.FromSeconds(2); // Make a delay on first startup so all the bots are properly initialized.
     private readonly IAllowedChatsProvider _allowedChatsProvider;
+    private readonly IBotMessenger _botMessenger;
     private readonly TelegramBotClient _client;
 
     public TelegramUpdateHandler(
@@ -27,7 +29,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         IFoulMessageFactory foulMessageFactory,
         FoulBotConfiguration botConfiguration,
         IAllowedChatsProvider allowedChatsProvider,
-        TelegramBotClient client)
+        TelegramBotClient client,
+        IBotMessenger botMessenger)
     {
         _botMessengerLogger = botMessengerLogger;
         _logger = logger;
@@ -37,6 +40,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
         _botConfiguration = botConfiguration;
         _allowedChatsProvider = allowedChatsProvider;
         _client = client;
+        _botMessenger = botMessenger;
 
         using var _ = Logger.BeginScope();
         _logger.LogInformation("Initialized TelegramUpdateHandler with configuration {@Configuration}.", _botConfiguration);
@@ -94,9 +98,6 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
             return;
         }
 
-        // Consider caching instances for every botClient instead of creating a lot of them.
-        var botMessenger = new TelegramBotMessenger(_botMessengerLogger, botClient);
-
         if (DateTime.UtcNow < _coldStarted)
         {
             _logger.LogInformation("Handling update on cold start, delaying for 2 seconds.");
@@ -105,7 +106,7 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
         try
         {
-            await HandleUpdateAsync(new(_botConfiguration.BotId, _botConfiguration.BotName), update, chat => _botFactory.JoinBotToChatAsync(botMessenger, chat, _botConfiguration), cancellationToken);
+            await HandleUpdateAsync(new(_botConfiguration.BotId, _botConfiguration.BotName), update, chat => _botFactory.JoinBotToChatAsync(_botMessenger, chat, _botConfiguration), cancellationToken);
         }
         catch (Exception exception)
         {
@@ -180,6 +181,8 @@ public sealed class TelegramUpdateHandler : IUpdateHandler
 
             if (update.Message.Text == "$activate")
             {
+                // TODO: Consider moving allowing/disallowing logic to Domain.
+                // Same for discord.
                 await _allowedChatsProvider.AllowChatAsync(GetChatId());
 
                 // Invite the bot.

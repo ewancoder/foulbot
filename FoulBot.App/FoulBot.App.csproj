@@ -9,6 +9,7 @@
     <UserSecretsId>46aa42b7-b77d-46fa-8191-54e3e1f288ca</UserSecretsId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <GarbageCollectionAdaptationMode>1</GarbageCollectionAdaptationMode>
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="*chats" />

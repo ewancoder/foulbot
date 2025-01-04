@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using FoulBot.Domain.Connections;
 using FoulBot.Domain.Storage;
+using FoulBot.Infrastructure.Discord;
 using FoulBot.Infrastructure.Storage;
 using FoulBot.Infrastructure.Telegram;
 using Microsoft.Extensions.Configuration;
@@ -52,7 +53,8 @@ public static class RegistrationExtensions
         _ = isDebug;
         services
             .AddCachedReminderStore<NonThreadSafeFileReminderStorage>()
-            .AddChatPool<TelegramDuplicateMessageHandler>("Telegram")
+            .AddChatPool<TelegramDuplicateMessageHandler>(Constants.BotTypes.Telegram)
+            .AddChatPool<DiscordDuplicateMessageHandler>(Constants.BotTypes.Discord)
             .AddSingleton<IAllowedChatsProvider, AllowedChatsProvider>()
             .AddSingleton<IVectorStoreMapping, InMemoryVectorStoreMapping>()
             .AddTransient<IFoulAIClientFactory, FoulAIClientFactory>()                 // OpenAI
@@ -60,7 +62,14 @@ public static class RegistrationExtensions
             .AddTransient<ITelegramBotMessengerFactory, TelegramBotMessengerFactory>() // Telegram
             .AddTransient<IFoulMessageFactory, FoulMessageFactory>()
             .AddTransient<ITelegramUpdateHandlerFactory, TelegramUpdateHandlerFactory>()
-            .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram);
+            .AddKeyedTransient<IBotConnectionHandler, TelegramBotConnectionHandler>(Constants.BotTypes.Telegram)
+            .AddTransient<IDiscordBotMessengerFactory, DiscordBotMessengerFactory>()   // Discord
+            .AddKeyedTransient<IBotConnectionHandler>(Constants.BotTypes.Discord, (p, _) => new DiscordBotConnectionHandler(
+                p.GetRequiredService<ILogger<DiscordBotConnectionHandler>>(),
+                p.GetRequiredService<IDiscordBotMessengerFactory>(),
+                p.GetRequiredService<IFoulBotFactory>(),
+                p.GetRequiredService<IAllowedChatsProvider>(),
+                p.GetRequiredKeyedService<ChatPool>(Constants.BotTypes.Discord)));
 
         if (!isInMemory)
         {

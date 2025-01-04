@@ -6,17 +6,20 @@ namespace FoulBot.App;
 public sealed class ApplicationInitializer
 {
     private readonly ChatPool _chatPool;
+    private readonly ChatPool _discordChatPool;
     private readonly IEnumerable<BotConnectionConfiguration> _botConfigs;
     private readonly ChatLoader _chatLoader;
     private readonly IServiceProvider _provider;
 
     public ApplicationInitializer(
-        [FromKeyedServices("Telegram")]ChatPool chatPool,
+        [FromKeyedServices(Constants.BotTypes.Telegram)]ChatPool chatPool,
+        [FromKeyedServices(Constants.BotTypes.Discord)]ChatPool discordChatPool,
         IEnumerable<BotConnectionConfiguration> botConfigs,
         ChatLoader chatLoader,
         IServiceProvider provider)
     {
         _chatPool = chatPool;
+        _discordChatPool = discordChatPool;
         _botConfigs = botConfigs;
         _chatLoader = chatLoader;
         _provider = provider;
@@ -25,8 +28,12 @@ public sealed class ApplicationInitializer
     public Task InitializeAsync(CancellationToken cancellationToken) => Task.WhenAll(
         _botConfigs.Select(x => StartHandlingAsync(x, cancellationToken)));
 
-    public Task GracefullyShutdownAsync()
-        => _chatPool.GracefullyCloseAsync();
+    public async Task GracefullyShutdownAsync()
+    {
+        // TODO: Shutdown them in parallel.
+        await _chatPool.GracefullyCloseAsync();
+        await _discordChatPool.GracefullyCloseAsync();
+    }
 
     private async Task StartHandlingAsync(
         BotConnectionConfiguration configuration,
@@ -37,6 +44,9 @@ public sealed class ApplicationInitializer
 
         var botMessenger = await handler.StartHandlingAsync(configuration, cancellationToken);
 
-        await _chatLoader.LoadBotToAllChatsAsync(botMessenger, _chatPool, configuration.Configuration, cancellationToken);
+        if (configuration.Type == Constants.BotTypes.Telegram)
+            await _chatLoader.LoadBotToAllChatsAsync(botMessenger, _chatPool, configuration.Configuration, cancellationToken);
+        else
+            await _chatLoader.LoadBotToAllChatsAsync(botMessenger, _discordChatPool, configuration.Configuration, cancellationToken);
     }
 }

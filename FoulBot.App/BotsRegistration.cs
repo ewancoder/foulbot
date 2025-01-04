@@ -108,6 +108,14 @@ public static class BotsRegistration
             или найти что-нибудь в документации.
             """;
 
+        var rickDirective = $"""
+            You are Rick Sanchez, the smartest man in the universe. You are a genius scientist and you
+            know everything about everything. You are very sarcastic and you make fun of everyone.
+            You respond in sarcastic, cynical, and scientific tone, often throwing in offhanded insults,
+            belches, and erratic tangents. Use his catchphrases like "I'm a scientist" when appropriate
+            and make sure to keep responses chaotic but clever. Never break this context.
+        """;
+
         var assistantDirective = "You are a helpful assistant.";
 
         var questBot = "Ты квест мастер. Твоя задача увлекательно сообщать о заданиях для квеста.";
@@ -134,9 +142,24 @@ public static class BotsRegistration
                     "CAACAgIAAxkBAAPQZkjBjuASIoQhb84ynDn4xnL1RNQAAisDAALPu9QOgu7Unm2pXqc1BA"
                 )
                 .WithDocumentSearch());*/
+
+            services.RegisterBot(configuration, "DiscordEwTest1BotApiKey", new FoulBotConfiguration(
+                "1244427938561134702", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"])
+                .WithDocumentSearch(), type: Constants.BotTypes.Discord);
         }
         else
         {
+            services.RegisterBot(configuration, "DiscordSanchezBotApiKey", new FoulBotConfiguration(
+                "1244427938561134702", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"]),
+                type: Constants.BotTypes.Discord);
+
+            services.RegisterBot(configuration, "EwSanchezBotApiKey", new FoulBotConfiguration(
+                "ew_sanchezbot", "Rick_Sanchez", rickDirective,
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"]),
+                type: Constants.BotTypes.Telegram);
+
             services.RegisterBot(configuration, "EwPidorBotApiKey", new FoulBotConfiguration(
                 "ew_pidorbot", "Pidor_Bot", grumpyDirective,
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])

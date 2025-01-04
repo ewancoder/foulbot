@@ -20,10 +20,12 @@ public sealed class TelegramBotConnectionHandler : IBotConnectionHandler
     {
         var client = new TelegramBotClient(configuration.ConnectionString);
 
+        var botMessenger = _botMessengerFactory.Create(client);
+
         client.StartReceiving(
-            _telegramUpdateHandlerFactory.Create(configuration.Configuration, client),
+            _telegramUpdateHandlerFactory.Create(configuration.Configuration, client, botMessenger),
             cancellationToken: cancellationToken);
 
-        return new(_botMessengerFactory.Create(client));
+        return new(botMessenger);
     }
 }

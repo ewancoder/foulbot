@@ -316,6 +316,8 @@ dotnet_diagnostic.CA2007.severity = none
 [FoulBot.**]
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = none
+# For this project I don't care about XML documentation
+dotnet_diagnostic.CS1573.severity = none
 
 # === Data Access projects for specific domain ===
 [**.DataAccess/**]
