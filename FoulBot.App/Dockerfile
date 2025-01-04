@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/runtime:9.0-alpine AS base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
 
 RUN apk add --no-cache \
     icu-data-full \
