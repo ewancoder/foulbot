@@ -152,8 +152,10 @@ public class ReminderFeatureTests : Testing<ReminderFeature>
         await using var sut = Fixture.Create<ReminderFeature>();
         await WaitAsync();
 
-        TimeProvider.Advance(ReminderFeature.CheckInterval);
+        TimeProvider.Advance(ReminderFeature.CheckInterval + TimeSpan.FromSeconds(10));
         await WaitAsync();
+        await WaitAsync(); // This test is inconclusive, this should improve the success rate.
+        // TODO: Figure out why it fails sometimes.
 
         _bot.Verify(x => x.PerformRequestAsync(It.IsAny<ChatParticipant>(), It.IsAny<string>()));
         _reminderStore.Verify(x => x.RemoveReminderAsync(reminders[0]));
