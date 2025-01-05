@@ -319,7 +319,8 @@ public class FoulBotTests : Testing<FoulBot>
         processor2.Verify(x => x.ProcessMessageAsync(message), Times.Never);
     }
 
-    [Theory, AutoMoqData]
+    // TODO: Uncomment this if I return this behavior.
+    //[Theory, AutoMoqData]
     public async Task TriggerAsync_ShouldNotifyUsers_WhenTheirPromptHasBeenHandledByAFeature(
         FoulMessage message,
         IList<FoulMessage> context,

@@ -165,8 +165,10 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
                 _logger.LogInformation("Message was processed by a command processor: {Processor}", processor.GetType());
 
                 // TODO: Unit test this.
-                if (!_config.IsStandalone) // Only send info when not standalone.
-                    await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");
+                // Temporarily disable message about a processed command, do not clutter chats with technical infos.
+                /*if (!_config.IsStandalone) // Only send info when not standalone.
+                    await _botMessenger.SendTextMessageAsync($"Command processed by @{_config.BotId} {processor.GetType().Name}");*/
+
                 return; // Message was processed by a command processor.
             }
         }
