@@ -1,5 +1,6 @@
 ﻿
 using FoulBot.Domain.Connections;
+using HtmlAgilityPack;
 
 namespace FoulBot.Domain.Features;
 
@@ -55,9 +56,21 @@ public sealed class DailyCelebrationFeature : IBotFeature
 
     private async ValueTask SayWhatIsTodayAsync()
     {
-        var todayIs = await _foulAiClientFactory.Create("gpt-4o-mini")
-            .GetCustomResponseAsync($"What is celebrated worldwide on {DateTime.UtcNow.Day} of {DateTime.UtcNow.ToString("MMM")}? Return the name of the celebration, followed by a short summary. {(_language == null ? string.Empty : $"Use {_language} language.")}.");
+        var now = DateTime.UtcNow;
+        var client = new HttpClient();
 
-        await _bot.PerformRequestAsync(ChatParticipant.System, $"Congratulate everyone {(_language == null ? string.Empty : $"in {_language} language")}in {_language}! Today is {todayIs}");
+        var response = await client.GetAsync($"https://nationaltoday.com/{now.ToString("MMMM").ToLowerInvariant()}-{now.Day}-holidays/");
+        var content = await response.Content.ReadAsStringAsync();
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(content);
+        var celebrations = doc.DocumentNode.SelectNodes("//*[contains(@class, 'holiday-title')]")
+            .Select(x => x.InnerText.Trim())
+            .ToList();
+
+        var todayIs = await _foulAiClientFactory.Create("gpt-4o-mini")
+            .GetCustomResponseAsync($"Today {DateTime.UtcNow.Day} of {DateTime.UtcNow.ToString("MMM")} the following things are celebrated: {string.Join(", ", celebrations)}. Pick one or couple most notable and write a short description. {(_language == null ? string.Empty : $"Use {_language} language.")}.");
+
+        await _bot.PerformRequestAsync(ChatParticipant.System, $"Congratulate everyone, describing these holidays. {(_language == null ? string.Empty : $"in {_language} language")}in {_language}! Today is {todayIs}");
     }
 }
