@@ -122,12 +122,13 @@ public static class BotsRegistration
         if (isDebug)
         {
             services.RegisterBot(configuration, "EwTest1BotApiKey", new FoulBotConfiguration(
-                "ew_test1bot", "First_TestBot", questBot,
+                "ew_test1bot", "First_TestBot", grumpyDirective,
                 ["квест", "бот", "привет"], [])
                 .WithVoiceBetween(2)
                 .AddStickers("CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA")
                 .NeverReplyOutOfTurn()
-                .SetContextSize(50, 12000));
+                .WithDailyCelebration()
+                .UseGpt35());
                 //.MakeStandalone<VanyaBirthdayBotHandlerFactory>());
 
             /*services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
@@ -161,7 +162,8 @@ public static class BotsRegistration
 
             services.RegisterBot(configuration, "EwSanchezBotApiKey", new FoulBotConfiguration(
                 "ew_sanchezbot", "Rick_Sanchez", rickDirective,
-                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"]),
+                ["rick", "sanchez"], ["rick", "sanchez", "morty", "wubba", "universe"])
+                    .WithDailyCelebration(),
                 type: Constants.BotTypes.Telegram);
 
             services.RegisterBot(configuration, "EwPidorBotApiKey", new FoulBotConfiguration(
@@ -170,7 +172,8 @@ public static class BotsRegistration
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
                 .UseGpt35().WithResettableContext()
-                .WithDocumentSearch());
+                .WithDocumentSearch()
+                .WithDailyCelebration());
 
             // Commented out configuration for the Boston Dynamics bot.
             services.RegisterBot(configuration, "EwMeatBagsBotApiKey", new FoulBotConfiguration(

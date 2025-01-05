@@ -49,6 +49,16 @@ public sealed record FoulBotConfiguration
 
     public bool IsAssistant => !NotAnAssistant;
 
+    public bool DailyCelebrationFeature { get; init; }
+
+    public FoulBotConfiguration WithDailyCelebration()
+    {
+        return this with
+        {
+            DailyCelebrationFeature = true
+        };
+    }
+
     public FoulBotConfiguration WithDocumentSearch(string? storeName = null)
     {
         return this with

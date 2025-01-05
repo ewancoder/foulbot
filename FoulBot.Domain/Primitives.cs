@@ -4,6 +4,10 @@ namespace FoulBot.Domain;
 public readonly record struct ChatParticipant(string Name)
 {
     public override string ToString() => Name;
+
+    public static ChatParticipant System = new("System");
+
+    public bool IsSystem => Name == "System";
 }
 
 public readonly record struct FoulChatId(string Value)

@@ -153,6 +153,15 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot.AddFeature(feature);
         }
 
+        var language = config.BotId == "ew_pidorbot" ? "Russian" : null;
+
+        if (config.DailyCelebrationFeature)
+        {
+            // !!! This is important. We need to instantiate it ONLY if config is true.
+            var dailyCelebrationFeature = new DailyCelebrationFeature(_aiClientFactory, bot, language);
+            bot.AddFeature(dailyCelebrationFeature);
+        }
+
         return bot;
     }
 }
