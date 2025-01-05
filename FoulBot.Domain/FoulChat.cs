@@ -32,7 +32,7 @@ public sealed class FoulChat : IFoulChat
     private readonly DateTime _chatCreatedAt = DateTime.UtcNow;
     private readonly IList<FoulMessage> _context;
     private readonly ConcurrentDictionary<string, List<FoulMessage>> _unconsolidatedMessages = [];
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private bool _isStopping;
 
     // TODO: Unit test non-empty context on startup (when using factory).

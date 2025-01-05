@@ -4,7 +4,7 @@ namespace FoulBot.Domain;
 
 public sealed record Attachment : IDisposable
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly MemoryStream _stream;
 
     public Attachment(string? name, MemoryStream stream)

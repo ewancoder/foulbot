@@ -25,7 +25,7 @@ public sealed class ReminderFeature : BotFeature, IAsyncDisposable
     private readonly IFoulBot _bot;
     private readonly CancellationTokenSource _localCts = new();
     private readonly CancellationTokenSource _cts;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private Task? _processing;
     private bool _isStopping;
 
