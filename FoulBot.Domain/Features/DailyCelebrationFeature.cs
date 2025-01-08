@@ -28,7 +28,7 @@ public sealed class DailyCelebrationFeature : IBotFeature
                 await Task.Delay(TimeSpan.FromMinutes(5));
 
                 var key = $"{DateTime.UtcNow.Day}-{DateTime.UtcNow.Month}";
-                if (_celebrated.ContainsKey(key) || DateTime.UtcNow.Hour < 12)
+                if (_celebrated.ContainsKey(key) || DateTime.UtcNow.Hour < 8)
                     continue;
 
                 _celebrated.Add(key, true);
