@@ -746,7 +746,7 @@ public class FoulBotTests : Testing<FoulBot>
     }
 
     [Theory, AutoMoqData]
-    public async Task PerformRequestAsync_ShouldNotAddTheRequestToContext(
+    public async Task PerformRequestAsync_ShouldAddTheRequestToContext(
         ChatParticipant requester, string request, string requestMessage)
     {
         SetupPerformRequest(requester, request, requestMessage);
@@ -755,7 +755,7 @@ public class FoulBotTests : Testing<FoulBot>
 
         await sut.PerformRequestAsync(requester, request);
 
-        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Never);
+        _chat.Verify(x => x.AddMessage(It.IsAny<FoulMessage>()), Times.Once);
     }
 
     #endregion

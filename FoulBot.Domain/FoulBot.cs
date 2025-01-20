@@ -146,6 +146,7 @@ public sealed class FoulBot : IFoulBot, IAsyncDisposable
 
         _logger.LogInformation("Performed request: {Request}, sending response to chat: {Response}", request, requestPerformedMessage);
         await _botMessenger.SendTextMessageAsync(requestPerformedMessage);
+        NotifyContext(requestPerformedMessage);
     }
 
     public async ValueTask TriggerAsync(FoulMessage message)
