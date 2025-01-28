@@ -1,6 +1,9 @@
-﻿using Telegram.Bot;
+﻿using System.Text;
+using System.Text.RegularExpressions;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using UnidecodeSharpCore;
 
 namespace FoulBot.Infrastructure.Telegram;
 
@@ -9,8 +12,10 @@ public interface IFoulMessageFactory
     ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client);
 }
 
-public sealed class FoulMessageFactory : IFoulMessageFactory
+public sealed partial class FoulMessageFactory : IFoulMessageFactory
 {
+    [GeneratedRegex(@"[^a-zA-Z_]", RegexOptions.Compiled, matchTimeoutMilliseconds: 50)]
+    private static partial Regex NotAllowedCharacters();
     private readonly ILogger<FoulMessageFactory> _logger;
 
     public FoulMessageFactory(ILogger<FoulMessageFactory> logger)
@@ -75,20 +80,30 @@ public sealed class FoulMessageFactory : IFoulMessageFactory
 
     private static string? GetSenderName(Message message)
     {
-        // TODO: Remove all unsupported characters (normalize name).
-        // Maybe do this on OpenAI side.
         if (message?.From == null)
             return null;
 
-        if (message.From.FirstName == null && message.From.LastName == null)
-            return null;
+        var firstName = message.From.FirstName ?? string.Empty;
+        firstName = NotAllowedCharacters().Replace(firstName.Unidecode(), string.Empty);
 
-        if (message.From.FirstName == null)
-            return message.From.LastName;
+        var lastName = message.From.LastName ?? string.Empty;
+        lastName = NotAllowedCharacters().Replace(lastName.Unidecode(), string.Empty);
 
-        if (message.From.LastName == null)
-            return message.From.FirstName;
+        var userName = message.From.Username ?? string.Empty;
+        userName = NotAllowedCharacters().Replace(userName.Unidecode(), string.Empty);
 
-        return $"{message.From.FirstName}_{message.From.LastName}";
+        var sb = new StringBuilder();
+        if (firstName is not null && firstName.Length > 0)
+            sb.Append(firstName + "_");
+
+        if (lastName is not null && lastName.Length > 0)
+            sb.Append(lastName + "_");
+
+        if (sb.Length > 0)
+            sb.Remove(sb.Length - 1, 1);
+        else
+            sb.Append(userName);
+
+        return sb.ToString();
     }
 }
