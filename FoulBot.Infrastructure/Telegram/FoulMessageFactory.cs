@@ -12,6 +12,30 @@ public interface IFoulMessageFactory
     ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client);
 }
 
+public static class HardcodedNames
+{
+    private static readonly Dictionary<string, string> _pidorNames = new();
+
+    static HardcodedNames()
+    {
+        try
+        {
+            if (File.Exists("/data/pidor_names"))
+            {
+                var data = File.ReadAllText("/data/pidor_names");
+                _pidorNames = data.Split(',').ToDictionary(
+                    x => x.Split('=')[0], x => x.Split('=')[1]);
+            }
+        } catch { }
+    }
+
+    public static string? TryGetName(string nickname)
+    {
+        _pidorNames.TryGetValue(nickname, out var name);
+        return name;
+    }
+}
+
 public sealed partial class FoulMessageFactory : IFoulMessageFactory
 {
     [GeneratedRegex(@"[^a-zA-Z_]", RegexOptions.Compiled, matchTimeoutMilliseconds: 50)]
@@ -82,6 +106,13 @@ public sealed partial class FoulMessageFactory : IFoulMessageFactory
     {
         if (message?.From == null)
             return null;
+
+        if (message.From.Username is not null)
+        {
+            var hardcodedName = HardcodedNames.TryGetName(message.From.Username);
+            if (hardcodedName is not null)
+                return hardcodedName;
+        }
 
         var firstName = message.From.FirstName ?? string.Empty;
         firstName = NotAllowedCharacters().Replace(firstName.Unidecode(), string.Empty);
