@@ -153,14 +153,15 @@ public sealed class FoulBotFactory : IFoulBotFactory
             bot.AddFeature(feature);
         }
 
-        var language = config.BotId == "ew_pidorbot" ? "Russian" : null;
+        // Temporarily disable altogether until we provide a persistence layer for this.
+        /*var language = config.BotId == "ew_pidorbot" ? "Russian" : null;
 
         if (config.DailyCelebrationFeature && !chat.IsPrivateChat) // Temorarily disable for private chats until a better solution.
         {
             // !!! This is important. We need to instantiate it ONLY if config is true.
             var dailyCelebrationFeature = new DailyCelebrationFeature(_aiClientFactory, bot, language);
             bot.AddFeature(dailyCelebrationFeature);
-        }
+        }*/
 
         return bot;
     }
