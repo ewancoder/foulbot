@@ -155,7 +155,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         var language = config.BotId == "ew_pidorbot" ? "Russian" : null;
 
-        if (config.DailyCelebrationFeature)
+        if (config.DailyCelebrationFeature && !chat.IsPrivateChat) // Temorarily disable for private chats until a better solution.
         {
             // !!! This is important. We need to instantiate it ONLY if config is true.
             var dailyCelebrationFeature = new DailyCelebrationFeature(_aiClientFactory, bot, language);
