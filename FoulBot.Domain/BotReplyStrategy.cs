@@ -7,8 +7,7 @@ public interface IBotReplyStrategy
 
 public sealed class BotReplyStrategy : IBotReplyStrategy
 {
-    // Temporarily reduce the time between messages so that bots could reply to keywords all the time.
-    public static readonly TimeSpan MinimumTimeBetweenMessages = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan MinimumTimeBetweenMessages = TimeSpan.FromHours(1);
 
     private readonly ILogger<BotReplyStrategy> _logger;
     private readonly IContextReducer _contextReducer;
