@@ -21,7 +21,8 @@ public sealed class DailyCelebrationFeature : IBotFeature
         _bot = bot;
         _language = language;
 
-        _ = Task.Run(async () =>
+        // Temporarily disable self-writing about celebrations so we can enable the feature itself.
+        /*_ = Task.Run(async () =>
         {
             while (true)
             {
@@ -35,7 +36,7 @@ public sealed class DailyCelebrationFeature : IBotFeature
 
                 await SayWhatIsTodayAsync();
             }
-        });
+        });*/
     }
 
     public async ValueTask<bool> ProcessMessageAsync(FoulMessage message)
