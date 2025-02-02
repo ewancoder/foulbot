@@ -28,7 +28,7 @@ public sealed record FileSavedReminder(
         dto.AtUtc,
         dto.Request,
         dto.EveryDay,
-        dto.From == null ? new("_") : new(dto.From));
+        dto.From == null ? new("_", null) : new(dto.From, null)); // TODO: figure out whether we need to set user id here.
 }
 
 /// <summary>

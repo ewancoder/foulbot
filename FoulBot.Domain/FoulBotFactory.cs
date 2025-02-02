@@ -27,6 +27,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
     private readonly ILogger<BotReplyStrategy> _botReplyStrategyLogger;
     private readonly ILogger<TalkYourselfFeature> _talkYourselfFeatureLogger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly INamesStorage _namesStorage;
 
     public FoulBotFactory(
         TimeProvider timeProvider,
@@ -40,7 +41,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
         ILogger<ReminderFeature> reminderCreatorLogger,
         ILogger<BotReplyStrategy> botReplyStrategyLogger,
         ILogger<TalkYourselfFeature> talkYourselfFeatureLogger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        INamesStorage namesStorage)
     {
         _timeProvider = timeProvider;
         _delayStrategy = botDelayStrategy;
@@ -54,6 +56,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
         _botReplyStrategyLogger = botReplyStrategyLogger;
         _talkYourselfFeatureLogger = talkYourselfFeatureLogger;
         _serviceProvider = serviceProvider;
+        _namesStorage = namesStorage;
     }
 
     /// <summary>
@@ -161,6 +164,8 @@ public sealed class FoulBotFactory : IFoulBotFactory
             var dailyCelebrationFeature = new DailyCelebrationFeature(_aiClientFactory, bot, language);
             bot.AddFeature(dailyCelebrationFeature);
         }
+
+        bot.AddFeature(new CustomNamesFeature(_namesStorage));
 
         return bot;
     }

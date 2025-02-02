@@ -86,7 +86,7 @@ public sealed class TalkYourselfFeature : IBotFeature, IAsyncDisposable
             await _bot.TriggerAsync(FoulMessage.CreateText(
                 Guid.NewGuid().ToString(),
                 FoulMessageSenderType.User,
-                new("TalkYourself"),
+                new("TalkYourself", null),
                 string.Empty,
                 _timeProvider.GetUtcNow().UtcDateTime,
                 false,

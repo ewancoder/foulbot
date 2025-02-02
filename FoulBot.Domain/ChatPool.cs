@@ -281,7 +281,7 @@ public sealed class ChatPool : IAsyncDisposable
             if (invitedBy != null)
             {
                 _logger.LogDebug("Greeting people in chat who invited the bot");
-                await bot.GreetEveryoneAsync(new(invitedBy));
+                await bot.GreetEveryoneAsync(new(invitedBy, "unknown"));
             }
 
             if (!_bots.TryAdd($"{foulBotId.BotId}{chat.ChatId.Value}", bot))

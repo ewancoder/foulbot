@@ -74,7 +74,7 @@ public sealed partial class FoulMessageFactory : IFoulMessageFactory
             return FoulMessage.CreateDocument(
                 messageId,
                 FoulMessageSenderType.User,
-                new(senderName),
+                new(senderName, telegramMessage.From?.Username),
                 telegramMessage.Date,
                 false,
                 telegramMessage.ReplyToMessage?.From?.Username,
@@ -90,7 +90,7 @@ public sealed partial class FoulMessageFactory : IFoulMessageFactory
         return FoulMessage.CreateText(
             messageId,
             FoulMessageSenderType.User,
-            new(senderName),
+            new(senderName, telegramMessage.From?.Username),
             telegramMessage.Text,
             telegramMessage.Date,
             false,

@@ -55,7 +55,7 @@ public sealed class ContextReducer : IContextReducer
 
         return
         [
-            FoulMessage.CreateText("Directive", FoulMessageSenderType.System, new("System"), _config.Directive, DateTime.MinValue, false, null),
+            FoulMessage.CreateText("Directive", FoulMessageSenderType.System, new("System", null), _config.Directive, DateTime.MinValue, false, null),
             .. onlyAddressedToMe.Concat(allMessages)
             .DistinctBy(x => x.Id)
             .OrderBy(x => x.Date)

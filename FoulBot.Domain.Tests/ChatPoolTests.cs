@@ -159,7 +159,7 @@ public class ChatPoolTests : Testing<ChatPool>
         if (botMethodType == BotMethodType.TriggerAsync)
             Mock.Get(bot).Verify(x => x.TriggerAsync(message), isAllowedChat ? Times.Once : Times.Never);
         if (botMethodType == BotMethodType.GreetEveryoneAsync)
-            Mock.Get(bot).Verify(x => x.GreetEveryoneAsync(new(invitedBy)), isAllowedChat ? Times.Once : Times.Never);
+            Mock.Get(bot).Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")), isAllowedChat ? Times.Once : Times.Never);
 
         if (!isAllowedChat)
         {
@@ -200,7 +200,7 @@ public class ChatPoolTests : Testing<ChatPool>
         if (botMethodType == BotMethodType.TriggerAsync)
             botMock.Verify(x => x.TriggerAsync(message));
         if (botMethodType == BotMethodType.GreetEveryoneAsync)
-            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)));
+            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")));
 
         botMock.ResetCalls();
 
@@ -226,7 +226,7 @@ public class ChatPoolTests : Testing<ChatPool>
                 _chatId, botId, invitedBy, brokenFactory, Cts.Token);
 
         botMock.Verify(x => x.TriggerAsync(message), Times.Never);
-        botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)), Times.Never);
+        botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")), Times.Never);
         botMock.Verify(x => x.DisposeAsync());
     }
 
@@ -262,7 +262,7 @@ public class ChatPoolTests : Testing<ChatPool>
         if (botMethodType == BotMethodType.TriggerAsync)
             botMock.Verify(x => x.TriggerAsync(message));
         if (botMethodType == BotMethodType.GreetEveryoneAsync)
-            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)));
+            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")));
 
         botMock.ResetCalls();
 
@@ -278,7 +278,7 @@ public class ChatPoolTests : Testing<ChatPool>
         await WaitAsync();
 
         botMock.Verify(x => x.TriggerAsync(message), Times.Never);
-        botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)), Times.Never);
+        botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")), Times.Never);
         botMock.Verify(x => x.DisposeAsync());
 
         // More checks for creation of another bot.
@@ -297,7 +297,7 @@ public class ChatPoolTests : Testing<ChatPool>
         if (botMethodType == BotMethodType.TriggerAsync)
             botMock.Verify(x => x.TriggerAsync(message), Times.Once);
         if (botMethodType == BotMethodType.GreetEveryoneAsync)
-            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy)), Times.Once);
+            botMock.Verify(x => x.GreetEveryoneAsync(new(invitedBy, "unknown")), Times.Once);
     }
 
     [Theory]

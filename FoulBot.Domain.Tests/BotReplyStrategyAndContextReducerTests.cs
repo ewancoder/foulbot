@@ -443,7 +443,7 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var response = sut.GetContextForReplying(BuildUserMessage()
-            .With(x => x.Sender, () => new(config.BotName))
+            .With(x => x.Sender, () => new(config.BotName, null))
             .With(x => x.IsOriginallyBotMessage, true)
             .Create());
 
@@ -459,7 +459,7 @@ public class BotReplyStrategyAndContextReducerTests : Testing<BotReplyStrategy>
         var sut = Fixture.Create<BotReplyStrategy>();
 
         var response = sut.GetContextForReplying(BuildUserMessage()
-            .With(x => x.Sender, () => new(config.BotName))
+            .With(x => x.Sender, () => new(config.BotName, null))
             .With(x => x.IsOriginallyBotMessage, false)
             .With(x => x.ReplyTo, config.BotId) // To make the message trigger a reply.
             .Create());
@@ -762,7 +762,7 @@ public sealed class BotReplyStrategyTheoryData : TheoryData<List<FoulMessage>, F
         return _fixture.Build<FoulMessage>()
             .With(x => x.Text, GenerateTriggeredText())
             .With(x => x.SenderType, FoulMessageSenderType.User)
-            .With(x => x.Sender, () => new(senderName))
+            .With(x => x.Sender, () => new(senderName, "sender-id"))
             .With(x => x.IsOriginallyBotMessage, isOriginallyBotMessage)
             .With(x => x.ForceReply, false)
             .Create();

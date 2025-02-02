@@ -145,7 +145,7 @@ public sealed class DocumentSearchFeature : BotFeature
         return FoulMessage.CreateText(
             Guid.NewGuid().ToString(),
             FoulMessageSenderType.Bot,
-            new(_config.BotName),
+            new(_config.BotName, null),
             text,
             DateTime.UtcNow,
             true,

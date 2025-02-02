@@ -11,7 +11,7 @@ public class ChatParticipantConverter : JsonConverter<ChatParticipant?>
     {
         var value = reader.GetString();
 
-        return value == null ? null : new ChatParticipant(value);
+        return value == null ? null : new ChatParticipant(value, "unknown"); // TODO: Store user id.
     }
 
     public override void Write(

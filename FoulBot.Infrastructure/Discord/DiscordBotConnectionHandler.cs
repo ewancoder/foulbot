@@ -109,7 +109,7 @@ public sealed class DiscordBotConnectionHandler : IBotConnectionHandler
         var foulMessage = FoulMessage.CreateText(
             message.Id.ToString(),
             FoulMessageSenderType.User,
-            new(authorName),
+            new(authorName, null), // TODO: !!! Send UserId from discord here.
             messageText,
             message.Timestamp.UtcDateTime,
             false,

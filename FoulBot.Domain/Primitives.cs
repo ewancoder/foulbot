@@ -1,11 +1,15 @@
 ﻿
 namespace FoulBot.Domain;
 
-public readonly record struct ChatParticipant(string Name)
+/// <summary>
+/// UserId is technical unique user name or ID - we use it to map hardcoded user names.
+/// It shouldn't exist only for system messages.
+/// </summary>
+public readonly record struct ChatParticipant(string Name, string? UserId)
 {
     public override string ToString() => Name;
 
-    public static ChatParticipant System = new("System");
+    public static ChatParticipant System = new("System", null);
 
     public bool IsSystem => Name == "System";
 }

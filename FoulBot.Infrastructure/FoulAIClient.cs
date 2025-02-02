@@ -1,4 +1,5 @@
-﻿using System.ClientModel;
+﻿
+using System.ClientModel;
 using System.Text.RegularExpressions;
 using FoulBot.Domain.Connections;
 using FoulBot.Domain.Features;
@@ -330,7 +331,7 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
     }
 
     public IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(string storeName, string prompt)
-        => GetSearchResultsAsync(storeName, [FoulMessage.CreateText("id", FoulMessageSenderType.User, new("user"), prompt, DateTime.UtcNow, false, null)]);
+        => GetSearchResultsAsync(storeName, [FoulMessage.CreateText("id", FoulMessageSenderType.User, new("user", "document-user-id"), prompt, DateTime.UtcNow, false, null)]);
 
     public async IAsyncEnumerable<DocumentSearchResponse> GetSearchResultsAsync(
         string storeName, IEnumerable<FoulMessage> context)

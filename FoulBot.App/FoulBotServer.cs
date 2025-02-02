@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FoulBot.Infrastructure.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FoulBot.App;
 
@@ -20,6 +21,8 @@ public sealed class FoulBotServer
             .AddScoped<ChatLoader>()
             .AddScoped<ApplicationInitializer>()
             .RegisterBots(builder.Configuration, isDebug);
+
+        builder.Services.AddSingleton<INamesStorage, RedisNamesStorage>();
 
         {
             using var rootProvider = builder.BuildServiceProvider();
