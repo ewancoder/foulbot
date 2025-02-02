@@ -10,10 +10,11 @@ public sealed class FoulBotServer
     public static async Task StartAsync(CancellationToken cancellationToken)
     {
         var isDebug = false;
+        var isInMemory = false;
 #if DEBUG
         isDebug = true;
+        //isInMemory = true; // Enable this to debug without Redis etc.
 #endif
-        var isInMemory = true; // Enable this to debug without Redis etc.
 
         var builder = FoulBotServerBuilder.Create(isDebug, isInMemory);
 
