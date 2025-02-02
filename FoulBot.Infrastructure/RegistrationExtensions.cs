@@ -129,8 +129,6 @@ public static class RegistrationExtensions
             .Destructure.ByTransforming<Attachment>(a => new { a.Name })
             .CreateLogger();
 
-        logger.Write(LogEventLevel.Information, "hi");
-
         return services.AddLogging(builder => builder.AddSerilog(logger, dispose: true));
     }
 }
