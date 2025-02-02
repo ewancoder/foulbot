@@ -50,6 +50,8 @@ public sealed class RedisNamesStorage : INamesStorage
 
             var db = _redis.GetDatabase();
             var namesString = await db.StringGetAsync("hard_names");
+            if (string.IsNullOrWhiteSpace(namesString))
+                namesString = "empty=empty";
             var names = namesString.ToString()
                 .Split(',')
                 .Select(keyValue => new KeyValuePair<string, string>(keyValue.Split('=')[0], keyValue.Split('=')[1]));

@@ -12,44 +12,24 @@ public interface IFoulMessageFactory
     ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client);
 }
 
-public static class HardcodedNames
-{
-    private static readonly Dictionary<string, string> _pidorNames = new();
-
-    static HardcodedNames()
-    {
-        try
-        {
-            if (File.Exists("/data/pidor_names"))
-            {
-                var data = File.ReadAllText("/data/pidor_names");
-                _pidorNames = data.Split(',').ToDictionary(
-                    x => x.Split('=')[0], x => x.Split('=')[1]);
-            }
-        } catch { }
-    }
-
-    public static string? TryGetName(string nickname)
-    {
-        _pidorNames.TryGetValue(nickname, out var name);
-        return name;
-    }
-}
-
 public sealed partial class FoulMessageFactory : IFoulMessageFactory
 {
     [GeneratedRegex(@"[^a-zA-Z_]", RegexOptions.Compiled, matchTimeoutMilliseconds: 50)]
     private static partial Regex NotAllowedCharacters();
     private readonly ILogger<FoulMessageFactory> _logger;
+    private readonly INamesStorage _namesStorage;
 
-    public FoulMessageFactory(ILogger<FoulMessageFactory> logger)
+    public FoulMessageFactory(
+        ILogger<FoulMessageFactory> logger,
+        INamesStorage namesStorage)
     {
         _logger = logger;
+        _namesStorage = namesStorage;
     }
 
     public async ValueTask<FoulMessage?> CreateFromAsync(Message telegramMessage, TelegramBotClient client)
     {
-        var senderName = GetSenderName(telegramMessage);
+        var senderName = await GetSenderNameAsync(telegramMessage);
         if (senderName == null)
         {
             _logger.LogWarning("Message sender name is null, skipping the message.");
@@ -102,14 +82,14 @@ public sealed partial class FoulMessageFactory : IFoulMessageFactory
         return $"{message.From?.Id}-{message.Date.Ticks}";
     }
 
-    private static string? GetSenderName(Message message)
+    private async ValueTask<string?> GetSenderNameAsync(Message message)
     {
         if (message?.From == null)
             return null;
 
         if (message.From.Username is not null)
         {
-            var hardcodedName = HardcodedNames.TryGetName(message.From.Username);
+            var hardcodedName = await _namesStorage.GetNameAsync(message.From.Username);
             if (hardcodedName is not null)
                 return hardcodedName;
         }
