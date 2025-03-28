@@ -167,6 +167,9 @@ public sealed class FoulBotFactory : IFoulBotFactory
 
         bot.AddFeature(new CustomNamesFeature(_namesStorage));
 
+        // The last one is filtering.
+        bot.AddFeature(new NoClutterFeature(chat));
+
         return bot;
     }
 }

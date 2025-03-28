@@ -117,7 +117,7 @@ public static class BotsRegistration
 
         var assistantDirective = "You are a helpful assistant.";
 
-        var questBot = "Ты квест мастер. Твоя задача увлекательно сообщать о заданиях для квеста.";
+        //var questBot = "Ты квест мастер. Твоя задача увлекательно сообщать о заданиях для квеста.";
 
         if (isDebug)
         {

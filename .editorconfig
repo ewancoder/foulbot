@@ -188,6 +188,8 @@ dotnet_naming_style.prefix_underscore.required_prefix           = _
 
 # === ANALYSIS ===
 
+dotnet_diagnostic.IDE0040.severity = none
+
 # == Nullable reference types ==
 
 dotnet_diagnostic.CS8600.severity = error
