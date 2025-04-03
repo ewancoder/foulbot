@@ -9,3 +9,4 @@ allowed_chats
 **/logs/
 **/chats
 **/reminders/
+.idea/
