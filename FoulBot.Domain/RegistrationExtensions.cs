@@ -24,6 +24,13 @@ public static class RegistrationExtensions
             .AddTransient<VanyaBirthdayBotHandlerFactory>();
     }
 
+    /// <summary>
+    /// Something cool.
+    /// </summary>
+    /// <param name="services">Hello.</param>
+    /// <param name="key"></param>
+    /// <typeparam name="TDuplicateMessageHandler"></typeparam>
+    /// <returns></returns>
     public static IServiceCollection AddChatPool<TDuplicateMessageHandler>(
         this IServiceCollection services, string key)
         where TDuplicateMessageHandler : class, IDuplicateMessageHandler
@@ -53,7 +60,9 @@ public static class ServiceCollectionExtensions
 
         return services.Replace(ServiceDescriptor.Describe(
             typeof(TInterface),
-            s => (TInterface)objectFactory(s, [s.CreateInstance(wrappedDescriptor)]),
+            s => (TInterface)(
+                objectFactory(s, [s.CreateInstance(wrappedDescriptor)])
+                ?? throw new InvalidOperationException("Decorator factory returned null.")),
             wrappedDescriptor.Lifetime));
     }
 

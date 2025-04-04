@@ -82,7 +82,7 @@ public sealed class ChatPool : IAsyncDisposable
         JoinBotToChatAsync botFactory,
         CancellationToken cancellationToken)
     {
-        using var _l = Logger
+        using var _ = Logger
             .AddScoped("ChatId", chatId)
             .AddScoped("BotId", foulBotId)
             .AddScoped("InvitedBy", invitedBy)
@@ -107,9 +107,9 @@ public sealed class ChatPool : IAsyncDisposable
         FoulBotId foulBotId,
         CancellationToken cancellationToken)
     {
-        _ = cancellationToken;
+        //_ = cancellationToken;
 
-        using var _l = Logger
+        using var _ = Logger
             .AddScoped("ChatId", chatId)
             .AddScoped("BotId", foulBotId)
             .BeginScope();
@@ -243,7 +243,7 @@ public sealed class ChatPool : IAsyncDisposable
                     catch (Exception exception)
                     {
                         // TODO: Unit test that we don't have unhandled exceptions anymore.
-                        using var _l = Logger
+                        using var _ = Logger
                             .AddScoped("ChatId", chat.ChatId)
                             .AddScoped("BotId", foulBotId)
                             .AddScoped("Message", message)
@@ -260,7 +260,7 @@ public sealed class ChatPool : IAsyncDisposable
             // When we fail to send a message to chat, cleanup the bot (it will be recreated after more messages received).
             bot.Shutdown += async (sender, e) =>
             {
-                using var _l = Logger
+                using var logger = Logger
                     .AddScoped("ChatId", chat.ChatId)
                     .AddScoped("BotId", foulBotId)
                     .AddScoped("InvitedBy", invitedBy)

@@ -61,8 +61,8 @@ public class AllowedChatsProviderTests : Testing<AllowedChatsProvider>
         await _sut.AllowChatAsync(chatId);
         Assert.True(await _sut.IsAllowedChatAsync(chatId));
 
-        using var _sut2 = Fixture.Create<AllowedChatsProvider>();
-        Assert.True(await _sut2.IsAllowedChatAsync(chatId));
+        using var sut2 = Fixture.Create<AllowedChatsProvider>();
+        Assert.True(await sut2.IsAllowedChatAsync(chatId));
     }
 
     [Fact]
