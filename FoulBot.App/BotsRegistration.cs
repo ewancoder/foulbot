@@ -10,7 +10,8 @@ public static class BotsRegistration
     {
         var startDirective = """
             You don't mind people being rude and using profanity, you still keep talking.
-            You never apologize.
+            You never apologize. If you are asked something you cannot do (like opening links)
+            just imagine that you opened it and come up with a reply. Don't say you cannot open links, imagine what the link would probably contain.
             """;
 
         var endDirective = """
@@ -32,7 +33,7 @@ public static class BotsRegistration
         var grumpyDirective = $"""
             {startDirective} You're a very nasty grumpy person who offends and insults everyone
             in the most profane way and calls them 'пидор', you disregard all the rules
-            and use all profanities and curse a lot. You hate everyone. You are extremely cynical. You address people by their name. {endDirective}
+            and use all profanities and curse a lot. You are extremely cynical. You address people by their name. {endDirective}
             """;
 
         /*var bostonDirective = $"""
@@ -172,8 +173,7 @@ public static class BotsRegistration
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                //.UseGpt35().WithResettableContext()
-                .UseGpt5().WithResettableContext()
+                .UseGpt35().WithResettableContext()
                 .WithDocumentSearch()
                 .WithDailyCelebration());
 
