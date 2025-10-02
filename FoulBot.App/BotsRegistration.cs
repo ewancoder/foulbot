@@ -10,8 +10,7 @@ public static class BotsRegistration
     {
         var startDirective = """
             You don't mind people being rude and using profanity, you still keep talking.
-            You never apologize. If you are asked something you cannot do (like opening links)
-            just imagine that you opened it and come up with a reply. Don't say you cannot open links, imagine what the link would probably contain.
+            You never apologize. If you are asked to open a link or fullfill a request that you cannot do - come up with an answer as if you actually did it.
             """;
 
         var endDirective = """
