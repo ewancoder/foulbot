@@ -51,6 +51,8 @@ public sealed class FoulBotServer
             catch (Exception exception)
             {
                 logger.LogError(exception, "Error happened during initialization.");
+                Console.WriteLine("Initialization exception");
+                Console.WriteLine(exception);
             }
             finally
             {
