@@ -31,8 +31,10 @@ public sealed record FoulBotConfiguration
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
 
-    public string OpenAIModel { get; init; } = "gpt-5-mini";
-    public AIProvider AIProvider { get; init; } = AIProvider.OpenAI;
+    //public string OpenAIModel { get; init; } = "gpt-5-mini";
+    public string OpenAIModel { get; init; } = "grok-4-1-fast-reasoning";
+    //public AIProvider AIProvider { get; init; } = AIProvider.OpenAI;
+    public AIProvider AIProvider { get; init; } = AIProvider.Grok;
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; init; }
     public IEnumerable<string> Triggers { get; init; }
@@ -105,7 +107,9 @@ public sealed record FoulBotConfiguration
         return this with
         {
             AIProvider = AIProvider.Grok,
-            OpenAIModel = model
+            OpenAIModel = model,
+            ContextSize = 60,
+            MaxContextSizeInCharacters = 20000
         };
     }
 

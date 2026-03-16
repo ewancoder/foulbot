@@ -131,7 +131,7 @@ public static class BotsRegistration
                 .AddStickers("CAACAgIAAxkBAANeZkjBeCiGLZa43_TLYv7zumAIZtsAAh8DAALPu9QOHcj5YzGu_m81BA")
                 .NeverReplyOutOfTurn()
                 .WithDailyCelebration()
-                .UseGpt35());
+                .UseGrok());
                 //.MakeStandalone<VanyaBirthdayBotHandlerFactory>());
 
             /*services.RegisterBot(configuration, "EwTest2BotApiKey", new FoulBotConfiguration(
@@ -213,7 +213,7 @@ public static class BotsRegistration
             services.RegisterBot(configuration, "EwStathemBotApiKey", new FoulBotConfiguration(
                 "ew_stathembot", "Jason_Stathah", stathemDirective,
                 ["stathem", "bro", "стетхем", "бро", "джейсон"], ["бро", "стетхем", "джейсон"])
-                    .UseGpt35().WithResettableContext());
+                    .UseGrok().WithResettableContext());
 
             services.RegisterBot(configuration, "EwRealtorBotApiKey", new FoulBotConfiguration(
                 "ew_realtorbot", "Realtor", realtorDirective,
