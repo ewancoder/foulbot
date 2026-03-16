@@ -2,6 +2,12 @@
 
 namespace FoulBot.Domain;
 
+public enum AIProvider
+{
+    OpenAI,
+    Grok
+}
+
 public sealed record FoulBotConfiguration
 {
     public FoulBotConfiguration(
@@ -26,6 +32,7 @@ public sealed record FoulBotConfiguration
     public string BotName => FoulBotId.BotName;
 
     public string OpenAIModel { get; init; } = "gpt-5-mini";
+    public AIProvider AIProvider { get; init; } = AIProvider.OpenAI;
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; init; }
     public IEnumerable<string> Triggers { get; init; }
@@ -90,6 +97,15 @@ public sealed record FoulBotConfiguration
             OpenAIModel = "gpt-3.5-turbo",
             ContextSize = 12,
             MaxContextSizeInCharacters = 3000
+        };
+    }
+
+    public FoulBotConfiguration UseGrok(string model = "grok-3-mini")
+    {
+        return this with
+        {
+            AIProvider = AIProvider.Grok,
+            OpenAIModel = model
         };
     }
 

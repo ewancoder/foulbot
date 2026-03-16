@@ -113,13 +113,14 @@ public sealed class FoulAIClientFactory : IFoulAIClientFactory
         _vectorStoreMapping = vectorStoreMapping;
     }
 
-    public IFoulAIClient Create(string openAiModel)
+    public IFoulAIClient Create(string openAiModel, AIProvider provider = AIProvider.OpenAI)
         => new FoulAIClient(
             _logger,
             _random,
             _vectorStoreMapping,
             _configuration,
-            openAiModel);
+            openAiModel,
+            provider);
 
     public IDocumentSearch CreateDocumentSearch(string openAiModel)
         => new FoulAIClient(
@@ -151,19 +152,36 @@ public sealed partial class FoulAIClient : IFoulAIClient, IDocumentSearch
         ISharedRandomGenerator random,
         IVectorStoreMapping vectorStoreMapping,
         IConfiguration configuration,
-        string openAiModel)
+        string openAiModel,
+        AIProvider provider = AIProvider.OpenAI)
     {
         _logger = logger;
         _random = random;
         _vectorStoreMapping = vectorStoreMapping;
-        var key = configuration["OpenAIKey"]
+        var openAiKey = configuration["OpenAIKey"]
             ?? throw new InvalidOperationException("Could not read OpenAIKey value.");
 
-        _client = new(model: openAiModel, key);
-        _audioClient = new("tts-1", key);
-        _fileClient = new(key);
-        _assistantClient = new(key);
-        _vectorClient = new(key);
+        if (provider == AIProvider.Grok)
+        {
+            var grokKey = configuration["GrokApiKey"]
+                ?? throw new InvalidOperationException("Could not read GrokApiKey value.");
+
+            var grokOptions = new OpenAI.OpenAIClientOptions
+            {
+                Endpoint = new Uri("https://api.x.ai/v1")
+            };
+            _client = new(model: openAiModel, new System.ClientModel.ApiKeyCredential(grokKey), grokOptions);
+        }
+        else
+        {
+            _client = new(model: openAiModel, openAiKey);
+        }
+
+        // Audio, files, assistants, vector stores always use OpenAI.
+        _audioClient = new("tts-1", openAiKey);
+        _fileClient = new(openAiKey);
+        _assistantClient = new(openAiKey);
+        _vectorClient = new(openAiKey);
     }
 
     public async ValueTask<Stream> GetAudioResponseAsync(string text)

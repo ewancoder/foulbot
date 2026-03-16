@@ -78,7 +78,7 @@ public sealed class FoulBotFactory : IFoulBotFactory
             _botReplyStrategyLogger, contextReducer, _timeProvider, chat, config);
         var replyImitatorFactory = new ReplyImitatorFactory(
             _typingImitatorLogger, botMessenger, _timeProvider, _random);
-        var aiClient = _aiClientFactory.Create(config.OpenAIModel);
+        var aiClient = _aiClientFactory.Create(config.OpenAIModel, config.AIProvider);
         var documentSearch = (IDocumentSearch)aiClient;
         IMessageFilter messageFilter = config.IsAssistant
             ? new AssistantMessageFilter()

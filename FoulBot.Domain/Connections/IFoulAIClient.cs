@@ -2,7 +2,7 @@
 
 public interface IFoulAIClientFactory
 {
-    IFoulAIClient Create(string openAiModel);
+    IFoulAIClient Create(string openAiModel, AIProvider provider = AIProvider.OpenAI);
 }
 
 public interface IFoulAIClient
