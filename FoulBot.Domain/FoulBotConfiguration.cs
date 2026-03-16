@@ -100,7 +100,7 @@ public sealed record FoulBotConfiguration
         };
     }
 
-    public FoulBotConfiguration UseGrok(string model = "grok-3-mini")
+    public FoulBotConfiguration UseGrok(string model = "grok-4-1-fast-reasoning")
     {
         return this with
         {
