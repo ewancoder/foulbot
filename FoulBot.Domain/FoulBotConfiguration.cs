@@ -25,7 +25,7 @@ public sealed record FoulBotConfiguration
     public string BotId => FoulBotId.BotId;
     public string BotName => FoulBotId.BotName;
 
-    public string OpenAIModel { get; init; } = "gpt-4o-mini";
+    public string OpenAIModel { get; init; } = "gpt-5-mini";
     public string Directive { get; }
     public IEnumerable<string> KeyWords { get; init; }
     public IEnumerable<string> Triggers { get; init; }

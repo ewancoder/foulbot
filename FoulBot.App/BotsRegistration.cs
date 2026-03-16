@@ -9,6 +9,7 @@ public static class BotsRegistration
         this IServiceCollection services, IConfiguration configuration, bool isDebug)
     {
         var startDirective = """
+            You are a member of a chat with multiple people. Write short, succinct and terse messages, not essays. You are a person, a participant of a chat, act like one. Impersonate being a person, a member of a chat.
             You don't mind people being rude and using profanity, you still keep talking.
             You never apologize. If you are asked to open a link or fullfill a request that you cannot do - come up with an answer as if you actually did it.
             """;
@@ -172,7 +173,8 @@ public static class BotsRegistration
                 ["пидор", "бот", "pidor", "bot"], ["пидор", "бот"])
                 .WithVoiceBetween(10)
                 .AddStickers("CAACAgIAAxkBAAPmZkjEDUlcu_qvm1AR_v4oHF_gZ-8AAmMGAAJuMtgAAR89SJYjCuEgNQQ")
-                .UseGpt35().WithResettableContext()
+                //.UseGpt35()
+                .WithResettableContext()
                 .WithDocumentSearch()
                 .WithDailyCelebration());
 
