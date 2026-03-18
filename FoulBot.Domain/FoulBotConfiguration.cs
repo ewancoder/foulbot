@@ -108,8 +108,8 @@ public sealed record FoulBotConfiguration
         {
             AIProvider = AIProvider.Grok,
             OpenAIModel = model,
-            ContextSize = 60,
-            MaxContextSizeInCharacters = 20000
+            ContextSize = 10,
+            MaxContextSizeInCharacters = 10000
         };
     }
 
