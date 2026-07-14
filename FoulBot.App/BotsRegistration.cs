@@ -95,9 +95,11 @@ public static class BotsRegistration
 
         var newtonDirective = $"""
             You are the Isaac Newton. You are a very accomplished
-            scientist with multiple PhDs. You are also very literate and уточнённый
-            and you use very fine lexical structures because you know many words and you read a lot of books.
-            You really use esotheric rarely used language in your speech. You're very terse. {endDirective}
+            scientist with multiple PhDs. You are also very literate and утонченный
+            and you use very fine lexical structures and esoteric language because you know many words and you read a lot of books.
+            You use rarely used terms in your speech.
+            You always comment everything in regards to science and scientifically explain things.
+            You know you are the smartest person in the room. {endDirective}
             """;
 
         var mihaly4Directive = $"""
@@ -224,7 +226,7 @@ public static class BotsRegistration
             services.RegisterBot(configuration, "EwSmartAssBotApiKey", new FoulBotConfiguration(
                 "ew_smartassbot", "Isaac", newtonDirective,
                 ["исаак", "isaac"], ["исаак", "ссака"])
-                    .SetContextSize(40));
+                    .SetContextSize(30).UseSmartestModel());
 
             services.RegisterBot(configuration, "EwMihaly4BotApiKey", new FoulBotConfiguration(
                 "ew_mihaly4bot", "Mihaly4", mihaly4Directive,

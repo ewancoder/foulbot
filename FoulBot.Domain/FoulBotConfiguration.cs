@@ -93,6 +93,16 @@ public sealed record FoulBotConfiguration
         };
     }
 
+    public FoulBotConfiguration UseSmartestModel()
+    {
+        return this with
+        {
+            OpenAIModel = "gpt-5.4-mini",
+            ContextSize = 20,
+            MaxContextSizeInCharacters = 5000
+        };
+    }
+
     public FoulBotConfiguration DoNotWriteOnYourOwn()
     {
         return this with
