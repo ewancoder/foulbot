@@ -313,7 +313,7 @@ public sealed partial class ChatSession : IAsyncDisposable
         if (kind == ReplyKind.Glance)
             return tools;
 
-        var stickerEmojis = await _services.Stickers.GetEmojisAsync(60);
+        var stickerEmojis = await _services.Stickers.GetEmojisAsync(Chat, 60);
         if (stickerEmojis.Count > 0)
             tools.Add(BotTools.StickerTool(stickerEmojis));
 

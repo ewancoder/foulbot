@@ -122,21 +122,24 @@ public sealed class InMemoryChatStore : IChatStore
 
 public sealed class FakeStickers : IStickerBook
 {
-    public List<KnownSticker> Known { get; } = [];
+    public Dictionary<ChatRef, List<KnownSticker>> Known { get; } = [];
 
-    public Task<bool> KnowsSetAsync(string set) => Task.FromResult(Known.Any(sticker => sticker.Set == set));
+    public Task<bool> KnowsSetAsync(ChatRef chat, string set) => Task.FromResult(Of(chat).Any(sticker => sticker.Set == set));
 
-    public Task LearnAsync(IReadOnlyCollection<KnownSticker> stickers)
+    public Task LearnAsync(ChatRef chat, IReadOnlyCollection<KnownSticker> stickers)
     {
-        Known.AddRange(stickers);
+        Of(chat).AddRange(stickers);
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<string>> GetEmojisAsync(int count)
-        => Task.FromResult<IReadOnlyList<string>>([.. Known.Select(sticker => sticker.Emoji).Distinct().Take(count)]);
+    public Task<IReadOnlyList<string>> GetEmojisAsync(ChatRef chat, int count)
+        => Task.FromResult<IReadOnlyList<string>>([.. Of(chat).Select(sticker => sticker.Emoji).Distinct().Take(count)]);
 
-    public Task<KnownSticker?> PickAsync(string emoji)
-        => Task.FromResult(Known.FirstOrDefault(sticker => sticker.Emoji == emoji) ?? Known.FirstOrDefault());
+    public Task<KnownSticker?> PickAsync(ChatRef chat, string emoji)
+        => Task.FromResult(Of(chat).FirstOrDefault(sticker => sticker.Emoji == emoji) ?? Of(chat).FirstOrDefault());
+
+    public List<KnownSticker> Of(ChatRef chat)
+        => Known.TryGetValue(chat, out var stickers) ? stickers : Known[chat] = [];
 }
 
 public sealed class FakeImages : IImageGenerator

@@ -98,7 +98,7 @@ public sealed partial class TelegramPoller : BackgroundService, IUpdateHandler
             return;
 
         if (message.Sticker != null)
-            await LearnStickersAsync(message.Sticker, cancellationToken);
+            await LearnStickersAsync(new ChatRef(message.Chat.Id), message.Sticker, cancellationToken);
 
         var text = Describe(message);
         if (text == null)
@@ -161,19 +161,19 @@ public sealed partial class TelegramPoller : BackgroundService, IUpdateHandler
     }
 
     /// <summary>
-    /// The bot learns every sticker set people use, so it has stickers to send.
+    /// The bot learns every sticker set people use in a chat, so it has stickers to send there.
     /// </summary>
-    private async Task LearnStickersAsync(Sticker sticker, CancellationToken cancellationToken)
+    private async Task LearnStickersAsync(ChatRef chat, Sticker sticker, CancellationToken cancellationToken)
     {
         try
         {
-            var isNewSet = sticker.SetName != null && !await _stickers.KnowsSetAsync(sticker.SetName);
-            await _stickers.LearnAsync([ToKnown(sticker)]);
+            var isNewSet = sticker.SetName != null && !await _stickers.KnowsSetAsync(chat, sticker.SetName);
+            await _stickers.LearnAsync(chat, [ToKnown(sticker)]);
 
             if (isNewSet)
             {
                 var set = await _client.GetStickerSet(sticker.SetName!, cancellationToken);
-                await _stickers.LearnAsync([.. set.Stickers.Select(ToKnown)]);
+                await _stickers.LearnAsync(chat, [.. set.Stickers.Select(ToKnown)]);
             }
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)

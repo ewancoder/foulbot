@@ -78,7 +78,7 @@ internal sealed class ChatTurn : IChatActions, IAsyncDisposable
 
     public async Task<string> SendStickerAsync(string emoji, CancellationToken cancellationToken)
     {
-        var sticker = await _services.Stickers.PickAsync(emoji);
+        var sticker = await _services.Stickers.PickAsync(Chat, emoji);
         if (sticker == null)
             return "Error: you don't have any stickers yet.";
 

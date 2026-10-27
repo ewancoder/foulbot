@@ -197,7 +197,7 @@ public sealed class ChatSessionTests : IDisposable
     [Fact]
     public async Task ShouldSendStickerAndImage()
     {
-        _bot.Stickers.Known.Add(new("sticker-file", "unique", "😂", "set"));
+        _bot.Stickers.Of(_group).Add(new("sticker-file", "unique", "😂", "set"));
         _bot.Llm.Respond(
             string.Empty,
             Call(BotTools.SendSticker, """{ "emoji": "😂" }"""),
@@ -210,6 +210,20 @@ public sealed class ChatSessionTests : IDisposable
         Assert.Equal(["sticker-file"], _bot.Messenger.Stickers);
         Assert.Equal(["a grumpy robot"], _bot.Images.Prompts);
         Assert.Equal(["это ты"], _bot.Messenger.Photos);
+    }
+
+    [Fact]
+    public async Task ShouldNotSendStickers_LearnedInOtherChats()
+    {
+        _bot.Stickers.Of(_private).Add(new("sticker-file", "unique", "😂", "set"));
+        _bot.Llm.Respond(string.Empty, Call(BotTools.SendSticker, """{ "emoji": "😂" }"""));
+        var session = await CreateAsync(_group);
+
+        await session.HandleAsync(TestBot.Message("бот, стикер"), isBacklog: false);
+        await session.ReplyIfNeededAsync();
+
+        Assert.DoesNotContain(_bot.Llm.Calls[0].Tools, tool => tool.Name == BotTools.SendSticker);
+        Assert.Empty(_bot.Messenger.Stickers);
     }
 
     [Fact]
