@@ -65,11 +65,14 @@ public sealed partial class Responder
     [GeneratedRegex(@"^\[msg \d+\]\s*", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MessagePrefix();
 
-    [GeneratedRegex(@"\[(?<name>[a-z_]+)(?<arguments>(?:\s+[a-z_]+\s*=\s*(?:""[^""]*""|[^\s\]]+))*)\s*\]", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    [GeneratedRegex(@"\[(?<name>[a-z_]+)(?<arguments>[^\[\]\n]*)\]", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MimickedToolCall();
 
-    [GeneratedRegex(@"(?<key>[a-z_]+)\s*=\s*(?:""(?<value>[^""]*)""|(?<value>[^\s\]]+))", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    [GeneratedRegex(@"(?<key>[a-z_]+)\s*=\s*(?:""(?<value>[^""]*)""|(?<value>\S+))", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MimickedArgument();
+
+    [GeneratedRegex(@"\b\d+\b", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    private static partial Regex MimickedMessageId();
 
     public async Task RunAsync(
         ReplyRequest request, IReadOnlyList<LlmTool> tools, IChatActions actions, CancellationToken cancellationToken)
@@ -158,8 +161,8 @@ public sealed partial class Responder
     }
 
     /// <summary>
-    /// The model sometimes writes a tool call as text, like "[send_sticker emoji=✋]", instead of calling it.
-    /// Such calls are cut out of the text and executed if the tool is available.
+    /// The model sometimes writes a tool call as text instead of calling it, in whatever format:
+    /// "[send_sticker emoji=✋]", "[react on 112165 with 👺]". Such calls are cut out of the text and executed if the tool is available.
     /// </summary>
     internal static (string Text, IReadOnlyList<LlmToolCall> Calls) ExtractMimickedToolCalls(string reply, IReadOnlyList<LlmTool> tools)
     {
@@ -170,8 +173,9 @@ public sealed partial class Responder
             if (!tools.Any(tool => tool.Name == name))
                 return match.Value;
 
+            var rest = match.Groups["arguments"].Value;
             var arguments = new JsonObject();
-            foreach (Match argument in MimickedArgument().Matches(match.Groups["arguments"].Value))
+            foreach (Match argument in MimickedArgument().Matches(rest))
             {
                 var value = argument.Groups["value"].Value;
                 arguments[argument.Groups["key"].Value] = int.TryParse(value, CultureInfo.InvariantCulture, out var number)
@@ -179,11 +183,27 @@ public sealed partial class Responder
                     : JsonValue.Create(value);
             }
 
+            // Free-form calls of the simple tools: take the message id and the emoji from wherever they are.
+            if (name is BotTools.React or BotTools.SendSticker && !arguments.ContainsKey("emoji")
+                && rest.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(IsEmoji) is { } emoji)
+                arguments["emoji"] = TrimAscii(emoji);
+
+            if (name == BotTools.React && !arguments.ContainsKey("message_id")
+                && MimickedMessageId().Match(rest) is { Success: true } id)
+                arguments["message_id"] = int.Parse(id.Value, CultureInfo.InvariantCulture);
+
             calls.Add(new LlmToolCall($"call_{Guid.NewGuid():N}", name, arguments.ToJsonString()));
             return string.Empty;
         });
 
         return (calls.Count == 0 ? reply : text.Trim(), calls);
+
+        static bool IsEmoji(string word)
+            => word.Any(c => char.IsSurrogate(c) || char.GetUnicodeCategory(c) == UnicodeCategory.OtherSymbol);
+
+        // Quotes, brackets and commas around the emoji.
+        static string TrimAscii(string word)
+            => word[word.TakeWhile(char.IsAscii).Count()..(word.Length - word.Reverse().TakeWhile(char.IsAscii).Count())];
     }
 
     private static LlmMessage ToLlmMessage(ChatMessage message, IReadOnlyDictionary<string, BinaryData>? photos)

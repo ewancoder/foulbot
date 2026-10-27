@@ -92,6 +92,21 @@ public sealed class ResponderTests
     }
 
     [Theory]
+    [InlineData("[react on 112165 with 👺]\n[send_sticker with 😡]", "👺", "😡")]
+    [InlineData("[react message_id=112165 emoji=🤨] [send_sticker 😡]", "🤨", "😡")]
+    [InlineData("[react(112165, \"❤\")] [send_sticker: \"😡\"]", "❤", "😡")]
+    public void ShouldExtract_FreeFormToolCalls(string reply, string reaction, string sticker)
+    {
+        var (text, calls) = Responder.ExtractMimickedToolCalls(reply, [BotTools.StickerTool(["😡"]), BotTools.ReactTool]);
+
+        Assert.Equal(string.Empty, text);
+        var react = JsonDocument.Parse(calls[0].Arguments).RootElement;
+        Assert.Equal(112165, react.GetProperty("message_id").GetInt32());
+        Assert.Equal(reaction, react.GetProperty("emoji").GetString());
+        Assert.Equal(sticker, JsonDocument.Parse(calls[1].Arguments).RootElement.GetProperty("emoji").GetString());
+    }
+
+    [Theory]
     [InlineData("[send_sticker emoji=✋]")]
     [InlineData("[стикер ✋]")]
     [InlineData("[фото] красота")]
