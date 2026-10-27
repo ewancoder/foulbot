@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using PidorBot.AI;
 using PidorBot.Chats;
@@ -63,6 +65,12 @@ public sealed partial class Responder
     [GeneratedRegex(@"^\[msg \d+\]\s*", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MessagePrefix();
 
+    [GeneratedRegex(@"\[(?<name>[a-z_]+)(?<arguments>(?:\s+[a-z_]+\s*=\s*(?:""[^""]*""|[^\s\]]+))*)\s*\]", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    private static partial Regex MimickedToolCall();
+
+    [GeneratedRegex(@"(?<key>[a-z_]+)\s*=\s*(?:""(?<value>[^""]*)""|(?<value>[^\s\]]+))", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    private static partial Regex MimickedArgument();
+
     public async Task RunAsync(
         ReplyRequest request, IReadOnlyList<LlmTool> tools, IChatActions actions, CancellationToken cancellationToken)
     {
@@ -72,12 +80,17 @@ public sealed partial class Responder
         for (var round = 1; round <= MaxRounds; round++)
         {
             var response = await _llm.CompleteAsync(prompt, LlmTier.Chat, tools, cancellationToken);
-            var text = request.Kind == ReplyKind.Glance ? string.Empty : Clean(response.Text, request.Context);
+            var (written, mimickedCalls) = ExtractMimickedToolCalls(response.Text, tools);
+            if (mimickedCalls.Count > 0)
+                _logger.LogWarning("The model wrote tool calls as text, executing them: {Reply}", response.Text);
+
+            IReadOnlyList<LlmToolCall> toolCalls = [.. response.ToolCalls, .. mimickedCalls];
+            var text = request.Kind == ReplyKind.Glance ? string.Empty : Clean(written, request.Context);
 
             if (text.Length > 0)
             {
                 var isGood = ReplyFilter.IsGood(text);
-                if (!isGood && response.ToolCalls.Count == 0 && ++badReplies < MaxBadReplies)
+                if (!isGood && toolCalls.Count == 0 && ++badReplies < MaxBadReplies)
                 {
                     _logger.LogWarning("Generated a bad reply (attempt {Attempt}), regenerating: {Reply}", badReplies, text);
                     continue;
@@ -86,11 +99,11 @@ public sealed partial class Responder
                 await actions.SayAsync(text, remember: isGood, cancellationToken);
             }
 
-            if (response.ToolCalls.Count == 0)
+            if (toolCalls.Count == 0)
                 return;
 
-            prompt.Add(new LlmMessage(LlmRole.Assistant, text) { ToolCalls = response.ToolCalls });
-            foreach (var call in response.ToolCalls)
+            prompt.Add(new LlmMessage(LlmRole.Assistant, text) { ToolCalls = toolCalls });
+            foreach (var call in toolCalls)
             {
                 var result = await BotTools.ExecuteAsync(call, actions, cancellationToken);
                 _logger.LogInformation("Tool {Tool}({Arguments}): {Result}", call.Name, call.Arguments, result);
@@ -142,6 +155,35 @@ public sealed partial class Responder
             .FirstOrDefault(prefix => reply.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
         return prefix == null ? reply : reply[prefix.Length..].TrimStart();
+    }
+
+    /// <summary>
+    /// The model sometimes writes a tool call as text, like "[send_sticker emoji=✋]", instead of calling it.
+    /// Such calls are cut out of the text and executed if the tool is available.
+    /// </summary>
+    internal static (string Text, IReadOnlyList<LlmToolCall> Calls) ExtractMimickedToolCalls(string reply, IReadOnlyList<LlmTool> tools)
+    {
+        var calls = new List<LlmToolCall>();
+        var text = MimickedToolCall().Replace(reply, match =>
+        {
+            var name = match.Groups["name"].Value;
+            if (!tools.Any(tool => tool.Name == name))
+                return match.Value;
+
+            var arguments = new JsonObject();
+            foreach (Match argument in MimickedArgument().Matches(match.Groups["arguments"].Value))
+            {
+                var value = argument.Groups["value"].Value;
+                arguments[argument.Groups["key"].Value] = int.TryParse(value, CultureInfo.InvariantCulture, out var number)
+                    ? JsonValue.Create(number)
+                    : JsonValue.Create(value);
+            }
+
+            calls.Add(new LlmToolCall($"call_{Guid.NewGuid():N}", name, arguments.ToJsonString()));
+            return string.Empty;
+        });
+
+        return (calls.Count == 0 ? reply : text.Trim(), calls);
     }
 
     private static LlmMessage ToLlmMessage(ChatMessage message, IReadOnlyDictionary<string, BinaryData>? photos)

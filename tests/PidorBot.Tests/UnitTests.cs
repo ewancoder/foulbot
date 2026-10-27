@@ -78,6 +78,30 @@ public sealed class ResponderTests
     [InlineData("  отстань  ", "отстань")]
     public void ShouldClean_MimickedPrefixes(string reply, string expected)
         => Assert.Equal(expected, Responder.Clean(reply, [TestBot.Message("x")]));
+
+    [Fact]
+    public void ShouldExtract_ToolCallsWrittenAsText()
+    {
+        var (text, calls) = Responder.ExtractMimickedToolCalls(
+            "держи [send_sticker emoji=✋] [react message_id=5 emoji=\"🔥\"]", [BotTools.StickerTool(["✋"]), BotTools.ReactTool]);
+
+        Assert.Equal("держи", text);
+        Assert.Equal([BotTools.SendSticker, BotTools.React], calls.Select(call => call.Name));
+        Assert.Equal("✋", JsonDocument.Parse(calls[0].Arguments).RootElement.GetProperty("emoji").GetString());
+        Assert.Equal(5, JsonDocument.Parse(calls[1].Arguments).RootElement.GetProperty("message_id").GetInt32());
+    }
+
+    [Theory]
+    [InlineData("[send_sticker emoji=✋]")]
+    [InlineData("[стикер ✋]")]
+    [InlineData("[фото] красота")]
+    public void ShouldNotExtract_UnavailableToolCalls(string reply)
+    {
+        var (text, calls) = Responder.ExtractMimickedToolCalls(reply, [BotTools.ReactTool]);
+
+        Assert.Equal(reply, text);
+        Assert.Empty(calls);
+    }
 }
 
 public sealed class StorageCompatibilityTests : IDisposable

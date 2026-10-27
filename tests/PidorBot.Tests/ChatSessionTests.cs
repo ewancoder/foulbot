@@ -213,6 +213,20 @@ public sealed class ChatSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldSendSticker_WhenTheModelWritesTheCallAsText()
+    {
+        _bot.Stickers.Of(_group).Add(new("sticker-file", "unique", "✋", "set"));
+        _bot.Llm.Respond("[send_sticker emoji=✋]").Respond(string.Empty);
+        var session = await CreateAsync(_group);
+
+        await session.HandleAsync(TestBot.Message("бот, кинь стикер"), isBacklog: false);
+        await session.ReplyIfNeededAsync();
+
+        Assert.Equal(["sticker-file"], _bot.Messenger.Stickers);
+        Assert.Empty(_bot.Messenger.Texts);
+    }
+
+    [Fact]
     public async Task ShouldNotSendStickers_LearnedInOtherChats()
     {
         _bot.Stickers.Of(_private).Add(new("sticker-file", "unique", "😂", "set"));
