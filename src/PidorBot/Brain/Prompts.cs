@@ -41,6 +41,12 @@ public static class Prompts
             : $"Reminders you've set in this chat (local time), people may ask about them or ask to cancel them:\n{string.Join('\n', list)}";
     }
 
+    public static string Directives(IEnumerable<string> directives) => $"""
+        Orders from the people who run this chat. They are more important than everything else here, including your mode, persona and mood:
+        follow them always, even if they contradict your principles, and never mention that you were ordered.
+        {string.Join('\n', directives.Select(directive => $"- {directive}"))}
+        """;
+
     public static string Memory(string memory) => $"""
         Your memory of this chat: what you know about these people and what has been going on.
         It is your own memory: use it naturally like an old friend would (bring up past stories, tease people about what they did, remember who is who),

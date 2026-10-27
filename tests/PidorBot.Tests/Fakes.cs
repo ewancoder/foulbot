@@ -82,6 +82,7 @@ public sealed class InMemoryChatStore : IChatStore
     public Dictionary<ChatRef, string> Modes { get; } = [];
     public Dictionary<ChatRef, MoodState> Moods { get; } = [];
     public Dictionary<ChatRef, ChatMemory?> Memories { get; } = [];
+    public Dictionary<ChatRef, List<string>> Directives { get; } = [];
 
     public Task<IReadOnlyList<ChatMessage>> GetHistoryAsync(ChatRef chat, int count)
         => Task.FromResult<IReadOnlyList<ChatMessage>>(History.TryGetValue(chat, out var list) ? [.. list.TakeLast(count)] : []);
@@ -116,6 +117,15 @@ public sealed class InMemoryChatStore : IChatStore
     public Task SetMemoryAsync(ChatRef chat, ChatMemory? memory)
     {
         Memories[chat] = memory;
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<string>> GetDirectivesAsync(ChatRef chat)
+        => Task.FromResult<IReadOnlyList<string>>(Directives.TryGetValue(chat, out var directives) ? directives : []);
+
+    public Task SetDirectivesAsync(ChatRef chat, IReadOnlyList<string> directives)
+    {
+        Directives[chat] = [.. directives];
         return Task.CompletedTask;
     }
 }

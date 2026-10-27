@@ -38,6 +38,9 @@ All prompt text lives in `Brain/Modes.cs` and `Brain/Prompts.cs`.
 | `$memory` | What the bot remembers about this chat |
 | `$forget` | Wipe the memory |
 | `$newmood` | Think of a new mood right now |
+| `$directive <text>` | Give the bot an order: goes into every prompt above the mode, mood and memory, until cancelled |
+| `$directive` | List the orders |
+| `$directive del <N>` / `$directive clear` | Cancel order N / all orders |
 
 ## Configuration
 

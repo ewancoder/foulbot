@@ -25,6 +25,9 @@ public interface IChatStore
 
     Task<ChatMemory?> GetMemoryAsync(ChatRef chat);
     Task SetMemoryAsync(ChatRef chat, ChatMemory? memory);
+
+    Task<IReadOnlyList<string>> GetDirectivesAsync(ChatRef chat);
+    Task SetDirectivesAsync(ChatRef chat, IReadOnlyList<string> directives);
 }
 
 /// <summary>

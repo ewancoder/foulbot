@@ -111,6 +111,45 @@ public sealed class ChatSessionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldAddDirectives_PersistThem_AndPutThemInEveryPrompt()
+    {
+        var session = await CreateAsync(_group);
+
+        await session.HandleAsync(TestBot.Message("$directive говори только стихами"), isBacklog: false);
+        await session.HandleAsync(TestBot.Message("$directive называй Ивана королём"), isBacklog: false);
+        Assert.Equal(["говори только стихами", "называй Ивана королём"], _bot.Store.Directives[_group]);
+        Assert.Empty(session.GetHistory());
+
+        session = await CreateAsync(_group);
+        await session.HandleAsync(TestBot.Message("бот, привет"), isBacklog: false);
+        await session.ReplyIfNeededAsync();
+
+        var messages = _bot.Llm.Calls.Single().Messages;
+        Assert.StartsWith(Modes.Mild.Directive, messages[0].Text);
+        Assert.Contains("- говори только стихами", messages[0].Text);
+        Assert.Contains("- называй Ивана королём", messages[^1].Text);
+    }
+
+    [Fact]
+    public async Task ShouldListDeleteAndClearDirectives()
+    {
+        _bot.Store.Directives[_group] = ["раз", "два", "три"];
+        var session = await CreateAsync(_group);
+
+        await session.HandleAsync(TestBot.Message("$directive"), isBacklog: false);
+        Assert.Equal("1. раз\n2. два\n3. три", _bot.Messenger.Texts[^1]);
+
+        await session.HandleAsync(TestBot.Message("$directive del 2"), isBacklog: false);
+        Assert.Equal(["раз", "три"], _bot.Store.Directives[_group]);
+
+        await session.HandleAsync(TestBot.Message("$directive del 7"), isBacklog: false);
+        Assert.Equal(["раз", "три"], _bot.Store.Directives[_group]);
+
+        await session.HandleAsync(TestBot.Message("$directive clear"), isBacklog: false);
+        Assert.Empty(_bot.Store.Directives[_group]);
+    }
+
+    [Fact]
     public async Task ShouldUseHardcoreDirective_InHardcoreMode()
     {
         _bot.Store.Modes[_group] = "hardcore";

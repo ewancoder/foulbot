@@ -31,6 +31,7 @@ public enum ReplyKind
 
 /// <param name="Photos">Photos attached to context messages, by message id.</param>
 /// <param name="Reminders">Reminders set in this chat, for the LLM.</param>
+/// <param name="Directives">Orders given with $directive, they override everything else.</param>
 public sealed record ReplyRequest(
     ReplyKind Kind,
     BotMode Mode,
@@ -40,7 +41,8 @@ public sealed record ReplyRequest(
     DateTimeOffset LocalNow,
     string? Instruction = null,
     IReadOnlyDictionary<string, BinaryData>? Photos = null,
-    IReadOnlyList<string>? Reminders = null);
+    IReadOnlyList<string>? Reminders = null,
+    IReadOnlyList<string>? Directives = null);
 
 /// <summary>
 /// The bot's turn in the chat: turns everything it knows (mode, mood, memory, recent messages) into actions.
@@ -121,6 +123,8 @@ public sealed partial class Responder
     public IReadOnlyList<LlmMessage> BuildPrompt(ReplyRequest request)
     {
         var system = new List<string> { request.Mode.Directive, Prompts.Persona, Prompts.Tools };
+        if (request.Directives?.Count > 0)
+            system.Insert(1, Prompts.Directives(request.Directives));
         if (request.Memory != null)
             system.Add(Prompts.Memory(request.Memory));
         if (request.Reminders != null)
@@ -137,6 +141,10 @@ public sealed partial class Responder
             ReplyKind.Glance => Prompts.Glance,
             _ => request.Instruction
         };
+
+        // Repeated at the end: orders get lost in a long prompt.
+        if (request.Directives?.Count > 0)
+            instruction = instruction == null ? Prompts.Directives(request.Directives) : $"{instruction}\n{Prompts.Directives(request.Directives)}";
 
         return
         [

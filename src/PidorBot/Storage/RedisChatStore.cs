@@ -6,7 +6,7 @@ namespace PidorBot.Storage;
 
 /// <summary>
 /// Reads and writes the same Redis keys as the old FoulBot, so the bot keeps its chat history and hardcore mode.
-/// New state (mood, memory) lives under pidorbot:* keys.
+/// New state (mood, memory, directives) lives under pidorbot:* keys.
 /// </summary>
 public sealed class RedisChatStore : IChatStore
 {
@@ -74,6 +74,12 @@ public sealed class RedisChatStore : IChatStore
 
     public Task SetMemoryAsync(ChatRef chat, ChatMemory? memory)
         => SetJsonAsync(Key(chat, "memory"), memory);
+
+    public async Task<IReadOnlyList<string>> GetDirectivesAsync(ChatRef chat)
+        => await GetJsonAsync<List<string>>(Key(chat, "directives")) ?? [];
+
+    public Task SetDirectivesAsync(ChatRef chat, IReadOnlyList<string> directives)
+        => SetJsonAsync(Key(chat, "directives"), directives.Count == 0 ? null : directives.ToList());
 
     private Task<T?> GetJsonAsync<T>(string key) where T : class
         => SafeAsync($"get {key}", (T?)null, async () =>

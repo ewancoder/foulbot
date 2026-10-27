@@ -49,6 +49,11 @@ public sealed partial class ChatSession
                 await SendRawAsync("Всё забыл.");
                 return true;
 
+            // Orders that go into every prompt above everything else: $directive <text>, $directive del <N>, $directive clear.
+            case "$directive":
+                await HandleDirectiveAsync(argument);
+                return true;
+
             // Thinking takes a while, don't hold up other messages.
             case "$newmood":
                 RunInBackground("think of a new mood", async () =>
@@ -61,6 +66,59 @@ public sealed partial class ChatSession
             default:
                 return false;
         }
+    }
+
+    private IReadOnlyList<string> GetDirectives()
+    {
+        lock (_lock)
+            return [.. _directives];
+    }
+
+    private async Task HandleDirectiveAsync(string? argument)
+    {
+        var parts = argument?.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+        var verb = parts.Length > 0 ? parts[0].ToLowerInvariant() : null;
+        var changed = true;
+        string reply;
+
+        lock (_lock)
+        {
+            if (verb == null)
+            {
+                changed = false;
+                reply = _directives.Count == 0
+                    ? "Приказов нет. $directive <текст> — добавить."
+                    : string.Join('\n', _directives.Select((directive, index) => $"{index + 1}. {directive}"));
+            }
+            else if (verb == "clear" && parts.Length == 1)
+            {
+                _directives.Clear();
+                reply = "Все приказы отменены.";
+            }
+            else if (verb == "del" && parts.Length == 2)
+            {
+                if (int.TryParse(parts[1], CultureInfo.InvariantCulture, out var number) && number >= 1 && number <= _directives.Count)
+                {
+                    _directives.RemoveAt(number - 1);
+                    reply = $"Приказ {number} отменён.";
+                }
+                else
+                {
+                    changed = false;
+                    reply = $"Нет приказа {parts[1]}.";
+                }
+            }
+            else
+            {
+                _directives.Add(argument!);
+                reply = $"Есть! Приказ {_directives.Count}: {argument}";
+            }
+        }
+
+        if (changed)
+            await _services.Store.SetDirectivesAsync(Chat, GetDirectives());
+
+        await SendRawAsync(reply);
     }
 
     private async Task SetModeAsync(BotMode mode)
@@ -100,6 +158,7 @@ public sealed partial class ChatSession
             Настроение: {(mood == null ? "ещё не выбрано" : $"{mood.Text} (до {Local(mood.ExpiresAt)})")}
             Память: {(memory == null ? "пусто" : $"обновлена {Local(memory.UpdatedAt)}, {memory.Text.Length} символов")}
             Напоминаний: {(await _services.Reminders.GetAsync(Chat)).Count}
+            Приказов: {GetDirectives().Count}
             """;
     }
 

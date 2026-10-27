@@ -46,6 +46,7 @@ public sealed partial class ChatSession : IAsyncDisposable
     private long _seenMessages;
 
     private BotMode _mode;
+    private readonly List<string> _directives;
     private DateTime _contextStartsAt = DateTime.MinValue;
     private DateTime _lastKeywordReplyAt = DateTime.MinValue;
     private int _repliesSinceVoice;
@@ -53,7 +54,8 @@ public sealed partial class ChatSession : IAsyncDisposable
     private bool _lastMessageIsSpontaneous;
     private volatile bool _canWrite = true;
 
-    private ChatSession(ChatRef chat, ChatServices services, IReadOnlyList<ChatMessage> history, BotMode mode)
+    private ChatSession(
+        ChatRef chat, ChatServices services, IReadOnlyList<ChatMessage> history, BotMode mode, IReadOnlyList<string> directives)
     {
         Chat = chat;
         _services = services;
@@ -62,6 +64,7 @@ public sealed partial class ChatSession : IAsyncDisposable
         _history = [.. history];
         _seenMessages = _history.Count;
         _mode = mode;
+        _directives = [.. directives];
 
         // Don't talk to everyone right after a restart.
         var now = Now;
@@ -82,8 +85,9 @@ public sealed partial class ChatSession : IAsyncDisposable
     {
         var history = await services.Store.GetHistoryAsync(chat, HistoryToLoad);
         var mode = Modes.Find(await services.Store.GetModeAsync(chat)) ?? Modes.Default;
+        var directives = await services.Store.GetDirectivesAsync(chat);
 
-        return new ChatSession(chat, services, history, mode);
+        return new ChatSession(chat, services, history, mode, directives);
     }
 
     /// <summary>
@@ -286,7 +290,8 @@ public sealed partial class ChatSession : IAsyncDisposable
         var request = new ReplyRequest(
             kind, _mode, mood, memory?.Text, context, LocalNow, instruction,
             await LookAtPhotosAsync(context),
-            kind == ReplyKind.Glance ? null : await GetRemindersAsync());
+            kind == ReplyKind.Glance ? null : await GetRemindersAsync(),
+            GetDirectives());
 
         var tools = await GetToolsAsync(kind, context);
         try
