@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [ 'main', 'develop' ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Test
+      run: dotnet test
+
+  build-publish-and-deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Image name
+      run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+    - name: Login to GitHub Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.IMAGE }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        push: true
+        context: .
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    # Same server, same compose file location and project as the old FoulBot: the old container is replaced.
+    - name: Deploy
+      uses: appleboy/ssh-action@v1.0.3
+      if: github.ref == 'refs/heads/main'
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        passphrase: ${{ secrets.PASSWORD }}
+        key: ${{ secrets.KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          set -e
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose-production.yml > /tmp/foulbot-docker-compose.yml
+          export PIDORBOT_IMAGE=${{ env.IMAGE }}:main
+          docker compose -f /tmp/foulbot-docker-compose.yml pull
+          docker compose -f /tmp/foulbot-docker-compose.yml up -d

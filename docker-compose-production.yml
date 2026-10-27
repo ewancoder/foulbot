@@ -1,0 +1,32 @@
+# Same services, container names, volumes and network as the old FoulBot:
+# `docker compose up -d` replaces the old bot in place and keeps all its data.
+networks:
+  default:
+    name: foulbot
+
+services:
+  foulbot:
+    image: ${PIDORBOT_IMAGE:-ghcr.io/ewancoder/pidorbot:main}
+    container_name: foulbot
+    restart: unless-stopped
+    mem_limit: 400m
+    mem_reservation: 300m
+    ports:
+      - "30880:8080"
+    env_file:
+      - /data/foulbot/secrets.env
+    volumes:
+      - /data/foulbot/key.json:/app/key.json
+      - /data/foulbot/chats:/app/chats
+      - /data/foulbot/allowed_chats:/app/allowed_chats
+      - /data/foulbot/logs:/app/logs
+      - /data/foulbot/reminders:/app/reminders
+
+  foulbot-redis:
+    image: redis
+    command: redis-server --save 60 1
+    container_name: foulbot-redis
+    restart: unless-stopped
+    mem_limit: 500m
+    volumes:
+      - /data/foulbot/redis:/data

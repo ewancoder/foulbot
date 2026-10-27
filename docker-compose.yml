@@ -1,0 +1,7 @@
+# Local development: just Redis. Run the bot with `dotnet run --project src/PidorBot`,
+# RedisConnectionString=localhost:6379 in user secrets.
+services:
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"

@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+/.vs/
+.idea/
+*.user
+allowed_chats
+**/reminders/
+**/logs/
+/secrets.env
+# The old project, kept only for reference.
+/foulbot/

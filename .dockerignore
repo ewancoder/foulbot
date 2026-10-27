@@ -1,0 +1,12 @@
+**/bin
+**/obj
+**/.git
+**/.vs
+**/.idea
+**/*.user
+**/docker-compose*
+**/Dockerfile*
+foulbot/
+tests/
+README.md
+LICENSE

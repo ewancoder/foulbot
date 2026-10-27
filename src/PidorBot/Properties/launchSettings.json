@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PidorBot": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
