@@ -16,7 +16,7 @@ infrastructure and keeps all the FoulBot data: chat history, hardcore mode, allo
 - **Tools.** On each turn the chat model (Grok) gets tools and decides what to do: write, `react` to a message, `send_sticker`,
   `send_image`, `set_reminder`, `cancel_reminder`. Any combination works, or it does nothing. It sees the photos people send.
   It learns stickers from the stickers people send, including their whole sticker sets.
-- **Modes.** `mild` (the default: a polite old gentleman) and `hardcore` (filthy, angry). Switch with `$pidormode` or `$mode <name>`.
+- **Modes.** `mild` (the default: a sardonic grump who подкалывает everyone about what they actually say) and `hardcore` (filthy, angry). Switch with `$pidormode` or `$mode <name>`.
   Each chat has its own mode. To add a mode, add it to `Brain/Modes.cs`.
 - **Moods.** Every 25–40 minutes the thinking model (Grok reasoning) comes up with a new mood. It's based on the mode, the chat memory,
   recent messages and the time of day. The hardcoded moods of the mode are the fallback. Moods are refreshed in the background, so replies don't wait.
