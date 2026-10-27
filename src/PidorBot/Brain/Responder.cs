@@ -65,8 +65,11 @@ public sealed partial class Responder
     [GeneratedRegex(@"^\[msg \d+\]\s*", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MessagePrefix();
 
-    [GeneratedRegex(@"\[(?<name>[a-z_]+)(?<arguments>[^\[\]\n]*)\]", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    [GeneratedRegex(@"\[(?<content>[^\[\]\n]*)\]", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MimickedToolCall();
+
+    [GeneratedRegex(@"(?<![a-z_])[a-z_]+(?![a-z_])", RegexOptions.None, matchTimeoutMilliseconds: 100)]
+    private static partial Regex MimickedToolName();
 
     [GeneratedRegex(@"(?<key>[a-z_]+)\s*=\s*(?:""(?<value>[^""]*)""|(?<value>\S+))", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex MimickedArgument();
@@ -162,18 +165,20 @@ public sealed partial class Responder
 
     /// <summary>
     /// The model sometimes writes a tool call as text instead of calling it, in whatever format:
-    /// "[send_sticker emoji=✋]", "[react on 112165 with 👺]". Such calls are cut out of the text and executed if the tool is available.
+    /// "[send_sticker emoji=✋]", "[react on 112165 with 👺]", "[tool call send_sticker with 😎]". Such calls are cut out of the text and executed if the tool is available.
     /// </summary>
     internal static (string Text, IReadOnlyList<LlmToolCall> Calls) ExtractMimickedToolCalls(string reply, IReadOnlyList<LlmTool> tools)
     {
         var calls = new List<LlmToolCall>();
         var text = MimickedToolCall().Replace(reply, match =>
         {
-            var name = match.Groups["name"].Value;
-            if (!tools.Any(tool => tool.Name == name))
+            var content = match.Groups["content"].Value;
+            var nameMatch = MimickedToolName().Matches(content).FirstOrDefault(word => tools.Any(tool => tool.Name == word.Value));
+            if (nameMatch == null)
                 return match.Value;
 
-            var rest = match.Groups["arguments"].Value;
+            var name = nameMatch.Value;
+            var rest = content[(nameMatch.Index + nameMatch.Length)..];
             var arguments = new JsonObject();
             foreach (Match argument in MimickedArgument().Matches(rest))
             {

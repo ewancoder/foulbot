@@ -51,7 +51,7 @@ Optional, as `PidorBot__<Name>` environment variables:
 | `ChatModel` | `grok/grok-4-1-fast-non-reasoning` | Talks in the chat (`grok/…` or `openai/…`) |
 | `ThinkingModel` | `grok/grok-4-1-fast-reasoning` | Moods and memory |
 | `ImageModel` | `openai/gpt-image-1-mini` | Pictures |
-| `ChatTemperature` | `1.3` | Empty to not send it |
+| `ChatTemperature` | `1.1` | Empty to not send it |
 | `GlanceChance` | `0.2` | Chance to look at a message not addressed to the bot |
 | `VoiceEveryReplies` | `10` | `0` disables voice |
 | `VoiceModel`, `VoiceName` | `tts-1`, `onyx` | |

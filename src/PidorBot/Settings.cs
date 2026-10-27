@@ -48,7 +48,7 @@ public sealed class Settings
     /// Writes replies. Non-reasoning: reasoning models overthink the chat and write walls of text.
     /// </summary>
     public LlmModel ChatModel { get; init; } = LlmModel.Parse(DefaultChatModel);
-    public float? ChatTemperature { get; init; } = 1.3f;
+    public float? ChatTemperature { get; init; } = 1.1f;
     public int ChatMaxOutputTokens { get; init; } = 2000;
 
     /// <summary>
@@ -109,7 +109,7 @@ public sealed class Settings
             // Empty value disables temperature, some models don't support it.
             ChatTemperature = section["ChatTemperature"] is { } temperature
                 ? (temperature.Length == 0 ? null : float.Parse(temperature, System.Globalization.CultureInfo.InvariantCulture))
-                : 1.3f,
+                : 1.1f,
             ThinkingModel = LlmModel.Parse(section["ThinkingModel"] ?? DefaultThinkingModel),
             ImageModel = LlmModel.Parse(section["ImageModel"] ?? DefaultImageModel),
             GlanceChance = section.GetValue("GlanceChance", 0.2),

@@ -95,6 +95,7 @@ public sealed class ResponderTests
     [InlineData("[react on 112165 with 👺]\n[send_sticker with 😡]", "👺", "😡")]
     [InlineData("[react message_id=112165 emoji=🤨] [send_sticker 😡]", "🤨", "😡")]
     [InlineData("[react(112165, \"❤\")] [send_sticker: \"😡\"]", "❤", "😡")]
+    [InlineData("[tool call react on 112165 with ❤]\n[tool call send_sticker with emoji is 😡]", "❤", "😡")]
     public void ShouldExtract_FreeFormToolCalls(string reply, string reaction, string sticker)
     {
         var (text, calls) = Responder.ExtractMimickedToolCalls(reply, [BotTools.StickerTool(["😡"]), BotTools.ReactTool]);
